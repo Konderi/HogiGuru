@@ -36,6 +36,11 @@ export default function MyTeam() {
   const { guru, slots, adjustments, standing, swaps } = team.data;
   const active = slots.filter((s) => s.active);
   const byPos = (p: Position) => active.filter((s) => s.position === p);
+  // Ruutujen määrä = kentällisen koko (oletus F3/D2/G1), ei kuitenkaan vähemmän kuin todellisia pelaajia
+  const slotsFor = (p: Position, n: number) => {
+    const list = byPos(p);
+    return Array.from({ length: Math.max(n, list.length) }, (_, i) => list[i]);
+  };
   const history = slots.filter((s) => !s.active);
   const total = slots.reduce((a, s) => a + s.value, 0) + adjustments.reduce((a, x) => a + x.points, 0);
 
@@ -69,20 +74,25 @@ export default function MyTeam() {
             <div className="pointer-events-none absolute inset-x-0 top-[62%] h-1 bg-goal/25" />
             <div className="pointer-events-none absolute left-1/2 top-[62%] h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ice-400/20" />
             <div className="relative space-y-8">
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-6">{[0, 1, 2].map((i) => <PlayerTile key={i} s={byPos('F')[i]} />)}</div>
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-16">{[0, 1].map((i) => <PlayerTile key={i} s={byPos('D')[i]} />)}</div>
-              <div className="flex flex-wrap justify-center gap-3">{[0, 1].map((i) => <PlayerTile key={i} s={byPos('G')[i]} />)}</div>
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-6">{slotsFor('F', 3).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-16">{slotsFor('D', 2).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
+              <div className="flex flex-wrap justify-center gap-3">{slotsFor('G', 1).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card title="Valmentajat">
-              {byPos('C').length ? (
-                <table className="table"><tbody>
-                  {byPos('C').map((s) => <tr key={s.id}><td className="font-semibold text-white">{s.name}</td><td className="text-slate-400">{s.team}</td><td className="num scoreboard">{fmt(s.value)}</td></tr>)}
-                </tbody></table>
-              ) : <Empty>Ei valmentajia.</Empty>}
-            </Card>
+          {/* Valmentaja vaihtopenkillä */}
+          <section className="flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-white/10 bg-rink-850/60 px-5 py-4">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valmentaja</span>
+            {byPos('C').length ? byPos('C').map((s) => (
+              <span key={s.id} className="flex items-center gap-3">
+                <span className="font-semibold text-white">{s.name}</span>
+                <span className="text-sm text-slate-400">{s.team}</span>
+                <span className="scoreboard font-mono">{fmt(s.value)}</span>
+              </span>
+            )) : <span className="text-sm text-slate-500">Ei valmentajaa</span>}
+          </section>
+
+          <div>
             <Card title="Pisteerittely">
               <table className="table">
                 <thead><tr><th>Paikka</th><th>Nimi</th><th className="num">Alku</th><th className="num">Nyt</th><th className="num">HG</th></tr></thead>
