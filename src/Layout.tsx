@@ -12,7 +12,9 @@ const nav = [
 ];
 
 const linkCls = ({ isActive }: { isActive: boolean }) =>
-  `relative px-3 py-2 text-sm font-semibold uppercase tracking-wider transition ${isActive ? 'text-white after:absolute after:inset-x-3 after:-bottom-[17px] after:h-0.5 after:bg-ice-400' : 'text-slate-400 hover:text-white'}`;
+  `whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition ${isActive ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`;
+
+const initials = (n: string) => n.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase();
 
 export default function Layout() {
   const { me, logout } = useAuth();
@@ -32,16 +34,22 @@ export default function Layout() {
             <Logo />
             <span className="font-display text-2xl tracking-wider text-white">HOGI<span className="text-ice-400">GURU</span></span>
           </Link>
-          <nav className="hidden flex-1 items-center gap-1 lg:flex">
-            {[...nav, ...extra].map((n) => <NavLink key={n.to} to={n.to} end={'end' in n} className={linkCls}>{n.label}</NavLink>)}
+          <nav className="hidden flex-1 items-center gap-0.5 lg:flex">
+            {nav.map((n) => <NavLink key={n.to} to={n.to} end={'end' in n} className={linkCls}>{n.label}</NavLink>)}
+            {extra.length > 0 && <span className="mx-2 h-5 w-px bg-white/10" />}
+            {extra.map((n) => <NavLink key={n.to} to={n.to} className={linkCls}>{n.label}</NavLink>)}
           </nav>
-          <div className="ml-auto hidden items-center gap-3 lg:flex">
+          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
             {user ? (
               <>
-                <span className="text-sm text-slate-400">{me?.guru?.name ?? user.name}</span>
-                <button className="btn btn-ghost" onClick={async () => { await logout(); navigate('/'); }}>Kirjaudu ulos</button>
+                <span title={me?.guru?.name ?? user.name} className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-ice-400 to-ice-600 text-xs font-bold text-rink-950">
+                  {initials(me?.guru?.name ?? user.name)}
+                </span>
+                <button title="Kirjaudu ulos" aria-label="Kirjaudu ulos" className="rounded-full p-2 text-slate-400 transition hover:bg-white/5 hover:text-white" onClick={async () => { await logout(); navigate('/'); }}>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" /></svg>
+                </button>
               </>
-            ) : <Link to="/kirjaudu" className="btn btn-primary">Kirjaudu</Link>}
+            ) : <><Link to="/ilmoittaudu" className="rounded-full px-3 py-1.5 text-[13px] font-medium text-slate-300 hover:text-white">Ilmoittaudu</Link><Link to="/kirjaudu" className="btn btn-primary">Kirjaudu</Link></>}
           </div>
           <button className="ml-auto rounded-lg p-2 text-slate-300 lg:hidden" onClick={() => setOpen(!open)} aria-label="Valikko">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d={open ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg>

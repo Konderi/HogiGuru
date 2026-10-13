@@ -3,13 +3,15 @@ import { fmt, fmtDate, fmtDateTime, type LeaderRow } from '../api';
 import { useApi } from '../auth';
 import { Card, Countdown, Empty, ErrorBox, RankBadge, RankDelta, Spinner } from '../ui';
 import { StandingsTable, type StandingRow } from './Standings';
+import { fmtDeadline, type RegInfo } from './Register';
 
 interface Overview {
   season: { name: string; draftStatus: string };
   leaderboard: LeaderRow[];
-  nextSwap: { date: string; note: string | null } | null;
+  nextSwap: { date: string; note: string | null; start_time?: string; end_time?: string } | null;
   lastSync: { finished_at: string; message: string } | null;
   standings: StandingRow[];
+  registration: RegInfo;
 }
 
 export default function Home() {
@@ -21,6 +23,19 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
+      {data.registration?.open && (
+        <Link to="/ilmoittaudu" className="group flex flex-wrap items-center gap-4 rounded-2xl border border-goal/40 bg-gradient-to-r from-goal/20 via-goal/10 to-transparent px-6 py-5 transition hover:border-goal/70 animate-in">
+          <span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-goal opacity-70" /><span className="relative inline-flex h-3 w-3 rounded-full bg-goal" /></span>
+          <div className="flex-1">
+            <p className="font-display text-2xl tracking-wide text-white">Ilmoittautuminen kaudelle {data.season.name} on auki!</p>
+            <p className="text-sm text-slate-300">
+              {data.registration.deadline && <>Viimeistään {fmtDeadline(data.registration.deadline)}. </>}
+              {data.registration.fee && <>Osallistumismaksu {data.registration.fee}.</>}
+            </p>
+          </div>
+          <span className="btn btn-primary group-hover:translate-x-0.5">Ilmoittaudu →</span>
+        </Link>
+      )}
       {/* HERO */}
       <section className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-rink-800 via-rink-850 to-rink-950 px-6 py-12 sm:px-12 sm:py-16 animate-in">
         <div className="rink-lines pointer-events-none absolute inset-0 opacity-60" />
@@ -78,8 +93,8 @@ export default function Home() {
             <div className="p-5">
               {data.nextSwap ? (
                 <>
-                  <p className="mb-4 font-display text-2xl text-white">{fmtDate(data.nextSwap.date)}</p>
-                  <Countdown date={data.nextSwap.date} />
+                  <p className="mb-4 font-display text-2xl text-white">{fmtDate(data.nextSwap.date)}{data.nextSwap.start_time && <span className="ml-2 font-mono text-base text-ice-300">klo {data.nextSwap.start_time}–{data.nextSwap.end_time}</span>}</p>
+                  <Countdown date={`${data.nextSwap.date}T${data.nextSwap.start_time ?? '00:00'}:00`} />
                   {data.nextSwap.note && <p className="mt-4 text-sm text-slate-400">{data.nextSwap.note}</p>}
                 </>
               ) : <p className="text-sm text-slate-400">Vaihtopäiviä ei ole vielä julkaistu.</p>}

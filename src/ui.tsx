@@ -72,7 +72,7 @@ export function Avatar({ src, name, size = 'h-9 w-9' }: { src?: string | null; n
 export function Countdown({ date }: { date: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
-  const diff = Math.max(0, new Date(`${date}T00:00:00`).getTime() - now);
+  const diff = Math.max(0, new Date(date.length === 10 ? `${date}T00:00:00` : date).getTime() - now);
   const parts = [Math.floor(diff / 864e5), Math.floor(diff / 36e5) % 24, Math.floor(diff / 6e4) % 60, Math.floor(diff / 1e3) % 60];
   const labels = ['pv', 'h', 'min', 's'];
   return (

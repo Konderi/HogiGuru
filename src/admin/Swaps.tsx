@@ -4,14 +4,14 @@ import { useApi } from '../auth';
 import { Card, Empty, PageHeader, PosBadge, Spinner } from '../ui';
 import { api, useAdmin } from './AdminLayout';
 
-interface Day { id: number; date: string; note: string | null }
+interface Day { id: number; date: string; note: string | null; start_time: string; end_time: string }
 interface Swap { id: number; date: string; guru: string; position: Position; in_name: string; out_name: string; in_points: number; out_points: number }
 
 export default function Swaps() {
   const days = useApi<Day[]>('/swap-days');
   const swaps = useApi<Swap[]>('/admin/swaps');
   const { run } = useAdmin();
-  const [f, setF] = useState({ date: '', note: '' });
+  const [f, setF] = useState({ date: '', note: '', start_time: '09:00', end_time: '21:00' });
   const today = new Date().toLocaleDateString('sv-SE');
 
   return (
@@ -23,9 +23,14 @@ export default function Swaps() {
           <form className="space-y-2 border-b border-white/5 p-4" onSubmit={async (e) => {
             e.preventDefault();
             const ok = await run(() => api('/admin/swap-days', { body: f }), 'Vaihtopäivä lisätty');
-            if (ok) { setF({ date: '', note: '' }); days.reload(); }
+            if (ok) { setF({ ...f, date: '', note: '' }); days.reload(); }
           }}>
             <input type="date" required className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+            <div className="flex items-center gap-2">
+              <input type="time" className="input" value={f.start_time} onChange={(e) => setF({ ...f, start_time: e.target.value })} />
+              <span className="text-slate-500">–</span>
+              <input type="time" className="input" value={f.end_time} onChange={(e) => setF({ ...f, end_time: e.target.value })} />
+            </div>
             <input className="input" placeholder="Lisätieto (valinnainen)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
             <button className="btn btn-primary w-full">+ Lisää vaihtopäivä</button>
           </form>
@@ -33,7 +38,7 @@ export default function Swaps() {
             <ul className="divide-y divide-white/5">
               {days.data.map((d) => (
                 <li key={d.id} className={`flex items-center gap-3 px-4 py-2.5 ${d.date < today ? 'opacity-50' : ''}`}>
-                  <span className="flex-1"><span className="font-semibold text-white">{fmtDate(d.date)}</span>{d.note && <span className="block text-xs text-slate-400">{d.note}</span>}</span>
+                  <span className="flex-1"><span className="font-semibold text-white">{fmtDate(d.date)}</span> <span className="font-mono text-xs text-ice-300">klo {d.start_time}–{d.end_time}</span>{d.note && <span className="block text-xs text-slate-400">{d.note}</span>}</span>
                   <button className="text-slate-500 hover:text-goal" onClick={async () => { await run(() => api(`/admin/swap-days/${d.id}`, { method: 'DELETE' })); days.reload(); }}>✕</button>
                 </li>
               ))}

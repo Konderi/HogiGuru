@@ -62,12 +62,13 @@ export default function Draft() {
         </section>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <Card title={st.status === 'live' ? 'Valitse' : 'Draft-lista'}>
-          <div className="flex gap-1 p-3">
+          <div className="grid grid-cols-4 gap-1 p-3">
             {POSITIONS.map((p) => (
-              <button key={p} onClick={() => setPos(p)} className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold uppercase ${pos === p ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400'}`}>
-                {POS_PLURAL[p]} <span className="opacity-60">{st.pool.filter((x) => x.position === p).length}</span>
+              <button key={p} title={POS_PLURAL[p]} onClick={() => setPos(p)} className={`min-w-0 rounded-lg px-1 py-1.5 text-xs font-semibold ${pos === p ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400 hover:text-white'}`}>
+                <span className="block">{p === 'C' ? 'V' : p === 'F' ? 'H' : p === 'D' ? 'P' : 'MV'} · {st.pool.filter((x) => x.position === p).length}</span>
+                <span className="block truncate text-[10px] font-normal opacity-70">{POS_PLURAL[p]}</span>
               </button>
             ))}
           </div>
@@ -81,13 +82,13 @@ export default function Draft() {
           <div className="p-3"><input className="input" placeholder="Suodata…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
           <ul className="max-h-[55vh] overflow-y-auto">
             {pool.map((p) => {
-              const full = p.used >= st.maxPicks;
+              const full = p.used >= st.maxPicks[p.position];
               const owned = mine.some((m) => m.position === p.position && m.entity_id === p.entity_id);
               const disabled = st.status !== 'live' || full || owned || left(pos) <= 0 || busy;
               return (
                 <li key={p.entity_id} className="flex items-center gap-2 border-t border-white/5 px-4 py-2">
                   <span className={`flex-1 text-sm ${full ? 'text-slate-600 line-through' : 'text-white'}`}>{p.name} <span className="text-xs text-slate-500">{p.team}</span></span>
-                  <span className={`font-mono text-xs ${full ? 'text-goal' : 'text-slate-400'}`}>{p.used}/{st.maxPicks}</span>
+                  <span className={`font-mono text-xs ${full ? 'text-goal' : 'text-slate-400'}`}>{p.used}/{st.maxPicks[p.position]}</span>
                   {st.status === 'live' && <button className="btn btn-primary px-3 py-1 text-xs" disabled={disabled}
                     onClick={() => act(() => api('/admin/draft/pick', { body: { position: p.position, entity_id: p.entity_id } }), `${st.onClock?.name}: ${p.name}`)}>Valitse</button>}
                   {st.status === 'setup' && <button className="px-1 text-slate-500 hover:text-goal" onClick={() => act(() => api(`/admin/draft/pool/${p.position}/${p.entity_id}`, { method: 'DELETE' }))}>✕</button>}
@@ -99,7 +100,7 @@ export default function Draft() {
         </Card>
 
         <Card title="Draft-taulu">
-          {st.gurus.length ? <DraftGrid st={st} /> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
+          {st.gurus.length ? <div className="overflow-x-auto"><DraftGrid st={st} /></div> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
           {st.status === 'setup' && st.gurus.length > 0 && (
             <p className="border-t border-white/5 px-5 py-3 text-xs text-slate-400">
               Ennakkolista tehty: {st.hasPrefs.length}/{st.gurus.length}. Etäosallistujat merkitään gurun asetuksista; heidän vuorollaan valinta tehdään ennakkolistalta.

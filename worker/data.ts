@@ -2,10 +2,15 @@ import { entityPoints, type Position, type Scoring, type StatRow } from './scori
 
 export interface Season {
   id: number; name: string; liiga_season: number; active: number;
-  max_swaps: number | null; max_picks_per_entity: number;
+  max_swaps: number | null; max_picks_per_entity: number; max_picks_by_pos: Partial<Record<Position, number>>;
   roster: Record<Position, number>; scoring: Scoring;
   draft_status: 'setup' | 'live' | 'done'; draft_snake: number;
+  registration_open: number; registration_deadline: string | null; entry_fee: string | null; registration_info: string | null;
 }
+
+/** Montako gurua voi valita saman pelaajan/valmentajan tällä paikalla. */
+export const maxFor = (s: Season, pos: Position) => s.max_picks_by_pos?.[pos] ?? s.max_picks_per_entity;
+export const maxMap = (s: Season) => Object.fromEntries((['C', 'G', 'D', 'F'] as Position[]).map((p) => [p, maxFor(s, p)])) as Record<Position, number>;
 
 export function helsinkiDate(d = new Date()): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Helsinki' }).format(d);
@@ -14,7 +19,10 @@ export function helsinkiDate(d = new Date()): string {
 export async function getActiveSeason(db: D1Database): Promise<Season | null> {
   const row = await db.prepare('SELECT * FROM seasons WHERE active = 1 ORDER BY id DESC LIMIT 1').first<Record<string, unknown>>();
   if (!row) return null;
-  return { ...row, roster: JSON.parse(row.roster as string), scoring: JSON.parse(row.scoring as string) } as Season;
+  return {
+    ...row, roster: JSON.parse(row.roster as string), scoring: JSON.parse(row.scoring as string),
+    max_picks_by_pos: JSON.parse((row.max_picks_by_pos as string) ?? '{}'),
+  } as Season;
 }
 
 export interface Context {

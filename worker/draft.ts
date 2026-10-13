@@ -1,4 +1,4 @@
-import { entityName, loadContext, usageCounts, usageKey, type Season } from './data';
+import { entityName, loadContext, maxFor, maxMap, usageCounts, usageKey, type Season } from './data';
 import { entityPoints, POSITIONS, type Position } from './scoring';
 import { helsinkiDate } from './data';
 
@@ -30,7 +30,7 @@ export async function draftState(db: D1Database, season: Season) {
 
   return {
     status: season.draft_status, snake: !!season.draft_snake, roster: season.roster,
-    maxPicks: season.max_picks_per_entity, total, pickNo, round: Math.ceil(pickNo / Math.max(gurus.length, 1)),
+    maxPicks: maxMap(season), total, pickNo, round: Math.ceil(pickNo / Math.max(gurus.length, 1)),
     onClock, gurus, hasPrefs: (prefsR.results as { guru_id: number }[]).map((r) => r.guru_id),
     picks: picks.map((p) => ({ ...p, ...entityName(ctx, p.position, p.entity_id) })),
     pool,
@@ -56,7 +56,7 @@ export async function makePick(db: D1Database, season: Season, position: Positio
   if (!st.pool.some((p) => p.position === position && p.entity_id === entityId)) throw new Error('Valinta ei ole draft-listalla');
   if (mine.some((p) => usageKey(p.position, p.entity_id) === usageKey(position, entityId))) throw new Error('Guru on jo valinnut tämän');
   const used = st.picks.filter((p) => usageKey(p.position, p.entity_id) === usageKey(position, entityId)).length;
-  if (used >= season.max_picks_per_entity) throw new Error(`Valittu jo ${used} kertaa (max ${season.max_picks_per_entity})`);
+  if (used >= maxFor(season, position)) throw new Error(`Valittu jo ${used} kertaa (max ${maxFor(season, position)})`);
   await db.prepare('INSERT INTO draft_picks (season_id, pick_no, guru_id, position, entity_id, auto) VALUES (?,?,?,?,?,?)')
     .bind(season.id, st.pickNo, g.id, position, entityId, auto ? 1 : 0).run();
   return { guru: g.name, pickNo: st.pickNo };
@@ -80,7 +80,7 @@ export async function autoPick(db: D1Database, season: Season) {
   for (const pos of candidates) {
     for (const id of rankings[pos] ?? []) {
       const inPool = st.pool.find((p) => p.position === pos && p.entity_id === id);
-      if (!inPool || inPool.used >= season.max_picks_per_entity) continue;
+      if (!inPool || inPool.used >= maxFor(season, pos)) continue;
       if (mine.some((p) => usageKey(p.position, p.entity_id) === usageKey(pos, id))) continue;
       return makePick(db, season, pos, id, true);
     }
@@ -111,7 +111,7 @@ export async function swapSlot(db: D1Database, season: Season, slotId: number, e
   if (slot.end_date) throw new Error('Paikka on jo vaihdettu');
   const usage = await usageCounts(db, season.id);
   const used = usage.get(usageKey(slot.position, entityId)) ?? 0;
-  if (used >= season.max_picks_per_entity) throw new Error(`Varattu jo ${used} kertaa (max ${season.max_picks_per_entity})`);
+  if (used >= maxFor(season, slot.position)) throw new Error(`Varattu jo ${used} kertaa (max ${maxFor(season, slot.position)})`);
   const dup = await db.prepare('SELECT 1 FROM roster_slots WHERE guru_id = ? AND position = ? AND entity_id = ? AND end_date IS NULL')
     .bind(slot.guru_id, slot.position, entityId).first();
   if (dup) throw new Error('Gurulla on jo tämä valinta');

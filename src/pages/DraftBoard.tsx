@@ -4,7 +4,7 @@ import { useApi } from '../auth';
 import { Card, Empty, PageHeader, PosBadge, Spinner } from '../ui';
 
 export interface DraftState {
-  status: 'setup' | 'live' | 'done'; snake: boolean; roster: Record<Position, number>; maxPicks: number;
+  status: 'setup' | 'live' | 'done'; snake: boolean; roster: Record<Position, number>; maxPicks: Record<Position, number>;
   total: number; pickNo: number; round: number;
   onClock: { id: number; name: string; remote_draft: number } | null;
   gurus: { id: number; name: string; draft_number: number | null; remote_draft: number }[];
@@ -70,7 +70,7 @@ export default function DraftBoard() {
       </PageHeader>
       {st.status === 'setup' && (
         <p className="mb-6 text-sm text-slate-400">
-          Kentällinen: {POSITIONS.map((p) => `${st.roster[p]} ${POS_SHORT[p]}`).join(' · ')}. Sama valinta enintään {st.maxPicks} gurulla.
+          Kentällinen: {POSITIONS.map((p) => `${st.roster[p]} ${POS_SHORT[p]}`).join(' · ')}. Sama valinta enintään: {POSITIONS.map((p) => `${POS_SHORT[p]} ${st.maxPicks[p]}`).join(' · ')} gurua.
           {' '}Jos et pääse paikalle, tee ennakkolista Oma joukkue -sivulla.
         </p>
       )}

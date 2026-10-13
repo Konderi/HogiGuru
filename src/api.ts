@@ -32,10 +32,13 @@ export interface Scoring {
   G: Record<'shutouts' | 'saves' | 'goalsAgainst' | 'wins', number>;
   C: { teamPoints: number };
   coachFiredPenalty: number;
+  prediction?: { standings: number[]; topScorer: number[]; category: number[]; shutoutFactor: number };
 }
 export interface Season {
   id: number; name: string; liiga_season: number; max_swaps: number | null; max_picks_per_entity: number;
   roster: Record<Position, number>; scoring: Scoring; draft_status: 'setup' | 'live' | 'done'; draft_snake: number;
+  max_picks_by_pos: Partial<Record<Position, number>>; registration_open: number; registration_deadline: string | null;
+  entry_fee: string | null; registration_info: string | null;
 }
 
 export const fmt = (n: number | null | undefined, d = 1) =>

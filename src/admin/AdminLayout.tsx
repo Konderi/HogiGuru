@@ -5,6 +5,7 @@ import { Toast } from '../ui';
 
 const links = [
   { to: '/admin', label: 'Yleiskatsaus', icon: '◎', end: true },
+  { to: '/admin/ilmoittautuminen', label: 'Ilmoittautuminen', icon: '✎' },
   { to: '/admin/draft', label: 'Draft', icon: '◆' },
   { to: '/admin/vaihdot', label: 'Vaihdot', icon: '⇄' },
   { to: '/admin/gurut', label: 'Gurut & kentälliset', icon: '★' },

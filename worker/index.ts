@@ -2,7 +2,7 @@ import { Hono, type Context as HonoCtx, type Next } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { hashPassword, newSessionId, verifyPassword } from './auth';
 import {
-  computeLeaderboard, getActiveSeason, helsinkiDate, loadContext, slotView, usageCounts, usageKey,
+  computeLeaderboard, getActiveSeason, helsinkiDate, loadContext, maxFor, slotView, usageCounts, usageKey,
   type Season, type SlotRow,
 } from './data';
 import { autoPick, draftState, finalizeDraft, makePick, swapSlot } from './draft';
@@ -48,14 +48,16 @@ const isPos = (p: unknown): p is Position => POSITIONS.includes(p as Position);
 app.get('/public/overview', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   const today = helsinkiDate();
+  const nowHel = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Helsinki', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
   const [leaderboard, nextSwap, lastSync, standings] = await Promise.all([
     computeLeaderboard(db, season),
-    db.prepare('SELECT date, note FROM swap_days WHERE season_id = ? AND date >= ? ORDER BY date LIMIT 1').bind(season.id, today).first(),
+    db.prepare("SELECT date, note, start_time, end_time FROM swap_days WHERE season_id = ? AND date || ' ' || end_time >= ? ORDER BY date LIMIT 1").bind(season.id, nowHel).first(),
     db.prepare('SELECT finished_at, ok, message FROM sync_log WHERE ok = 1 ORDER BY id DESC LIMIT 1').first(),
     standingsQuery(db, season),
   ]);
   return c.json({
     season: { name: season.name, draftStatus: season.draft_status },
+    registration: registrationInfo(season),
     leaderboard: leaderboard.map(({ user_id: _u, ...r }) => r),
     nextSwap, lastSync, standings,
   });
@@ -102,7 +104,7 @@ app.get('/stats', async (c) => {
     hg: pos === 'G' ? goaliePoints(r, season.scoring.G) : skaterPoints(r, season.scoring[pos]),
     reserved: usage.get(usageKey(pos, r.id)) ?? 0,
   })).sort((a, b) => b.hg - a.hg);
-  return c.json({ maxPicks: season.max_picks_per_entity, players: out });
+  return c.json({ maxPicks: maxFor(season, pos), players: out });
 });
 
 app.get('/coaches', async (c) => {
@@ -132,6 +134,57 @@ app.get('/hall-of-fame', async (c) => {
 });
 
 app.get('/teams', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM teams ORDER BY name').all()).results));
+
+// ================= ILMOITTAUTUMINEN =================
+
+const CATEGORIES = ['points', 'goals', 'assists', 'plusMinus', 'dPoints', 'pim', 'shutouts'] as const;
+
+function registrationInfo(s: Season) {
+  const deadlinePassed = !!s.registration_deadline && new Date(`${s.registration_deadline}:00+03:00`).getTime() < Date.now();
+  return {
+    open: !!s.registration_open && !deadlinePassed, enabled: !!s.registration_open,
+    deadline: s.registration_deadline, fee: s.entry_fee, info: s.registration_info,
+  };
+}
+
+/** Lomakkeen tarvitsemat tiedot: joukkueet, pelaajat joukkueittain, säännöt. */
+app.get('/public/registration', async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const [teams, players, swapDays] = await db.batch([
+    db.prepare('SELECT t.id, t.name, t.logo FROM teams t ORDER BY t.name'),
+    db.prepare(
+      `SELECT p.id, p.first_name || ' ' || p.last_name AS name, p.team_id, p.team_name AS team, p.role
+       FROM players p JOIN player_stats s ON s.player_id = p.id AND s.season = ? ORDER BY p.last_name, p.first_name`,
+    ).bind(season.liiga_season),
+    db.prepare('SELECT date, start_time, end_time FROM swap_days WHERE season_id = ? ORDER BY date').bind(season.id),
+  ]);
+  return c.json({
+    season: { name: season.name, roster: season.roster, maxPicks: maxMapPublic(season), maxSwaps: season.max_swaps, scoring: season.scoring },
+    registration: registrationInfo(season),
+    teams: teams.results, players: players.results, swapDays: swapDays.results,
+  });
+});
+const maxMapPublic = (s: Season) => Object.fromEntries(POSITIONS.map((p) => [p, maxFor(s, p)]));
+
+app.post('/public/registration', async (c) => {
+  const season = c.get('season');
+  if (!registrationInfo(season).open) throw new Error('Ilmoittautuminen ei ole auki');
+  const b = await c.req.json<{ name: string; phone?: string; email: string; standings: string[]; top_scorers: Record<string, number>; categories: Record<string, number>; website?: string }>();
+  if (b.website) return c.json({ ok: true }); // roskapostiansa
+  const name = b.name?.trim(); const email = b.email?.trim().toLowerCase();
+  if (!name || name.length > 80) throw new Error('Kirjoita nimesi');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Tarkista sähköpostiosoite');
+  const standings = (b.standings ?? []).map(String).slice(0, 40);
+  if (new Set(standings).size !== standings.length) throw new Error('Sarjataulukossa on sama joukkue kahdesti');
+  const top = Object.fromEntries(Object.entries(b.top_scorers ?? {}).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v));
+  const cats = Object.fromEntries(CATEGORIES.map((k) => [k, Number(b.categories?.[k]) || null]).filter(([, v]) => v));
+  await c.env.DB.prepare(
+    `INSERT INTO registrations (season_id, name, phone, email, standings, top_scorers, categories) VALUES (?,?,?,?,?,?,?)
+     ON CONFLICT(season_id, email) DO UPDATE SET name = excluded.name, phone = excluded.phone, standings = excluded.standings,
+       top_scorers = excluded.top_scorers, categories = excluded.categories, updated_at = CURRENT_TIMESTAMP`,
+  ).bind(season.id, name, b.phone?.trim().slice(0, 30) || null, email, JSON.stringify(standings), JSON.stringify(top), JSON.stringify(cats)).run();
+  return c.json({ ok: true });
+});
 
 app.get('/players/search', requireUser, async (c) => {
   const q = `%${(c.req.query('q') ?? '').trim()}%`;
@@ -268,12 +321,52 @@ admin.put('/season', async (c) => {
   const b = await c.req.json<Partial<Season>>();
   const s = c.get('season');
   await c.env.DB.prepare(
-    'UPDATE seasons SET name = ?, liiga_season = ?, max_swaps = ?, max_picks_per_entity = ?, roster = ?, scoring = ?, draft_snake = ? WHERE id = ?',
+    `UPDATE seasons SET name = ?, liiga_season = ?, max_swaps = ?, max_picks_per_entity = ?, roster = ?, scoring = ?, draft_snake = ?,
+       max_picks_by_pos = ?, registration_open = ?, registration_deadline = ?, entry_fee = ?, registration_info = ? WHERE id = ?`,
   ).bind(
     b.name ?? s.name, b.liiga_season ?? s.liiga_season, b.max_swaps === undefined ? s.max_swaps : num(b.max_swaps),
     b.max_picks_per_entity ?? s.max_picks_per_entity, JSON.stringify(b.roster ?? s.roster), JSON.stringify(b.scoring ?? s.scoring),
-    b.draft_snake === undefined ? s.draft_snake : b.draft_snake ? 1 : 0, s.id,
+    b.draft_snake === undefined ? s.draft_snake : b.draft_snake ? 1 : 0,
+    JSON.stringify(b.max_picks_by_pos ?? s.max_picks_by_pos),
+    b.registration_open === undefined ? s.registration_open : b.registration_open ? 1 : 0,
+    b.registration_deadline === undefined ? s.registration_deadline : b.registration_deadline || null,
+    b.entry_fee === undefined ? s.entry_fee : b.entry_fee || null,
+    b.registration_info === undefined ? s.registration_info : b.registration_info || null,
+    s.id,
   ).run();
+  return c.json({ ok: true });
+});
+
+// Ilmoittautumiset
+admin.get('/registrations', async (c) => {
+  const res = await c.env.DB.prepare(
+    `SELECT r.*, g.name AS guru_name FROM registrations r LEFT JOIN gurus g ON g.id = r.guru_id WHERE r.season_id = ? ORDER BY r.created_at`,
+  ).bind(c.get('season').id).all<Record<string, string>>();
+  return c.json(res.results.map((r) => ({ ...r, standings: JSON.parse(r.standings), top_scorers: JSON.parse(r.top_scorers), categories: JSON.parse(r.categories) })));
+});
+/** Hyväksyntä: luo gurun (tai liittää samannimiseen) ja halutessa käyttäjätunnuksen. */
+admin.post('/registrations/:id/accept', async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const { password } = await c.req.json<{ password?: string }>().catch(() => ({ password: undefined }));
+  const r = await db.prepare('SELECT * FROM registrations WHERE id = ? AND season_id = ?').bind(Number(c.req.param('id')), season.id).first<{ id: number; name: string; email: string }>();
+  if (!r) throw new Error('Ilmoittautumista ei löydy');
+  let guru = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND lower(name) = lower(?)').bind(season.id, r.name).first<{ id: number }>();
+  if (!guru) guru = await db.prepare('INSERT INTO gurus (season_id, name) VALUES (?,?) RETURNING id').bind(season.id, r.name).first<{ id: number }>();
+  if (password) {
+    if (password.length < 8) throw new Error('Salasanan pitää olla vähintään 8 merkkiä');
+    let u = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(r.email.toLowerCase()).first<{ id: number }>();
+    if (!u) u = await db.prepare("INSERT INTO users (email, name, password_hash, role) VALUES (?,?,?,'guru') RETURNING id").bind(r.email, r.name, await hashPassword(password)).first<{ id: number }>();
+    await db.prepare('UPDATE gurus SET user_id = ? WHERE id = ?').bind(u!.id, guru!.id).run();
+  }
+  await db.prepare("UPDATE registrations SET status = 'accepted', guru_id = ? WHERE id = ?").bind(guru!.id, r.id).run();
+  return c.json({ guruId: guru!.id });
+});
+admin.post('/registrations/:id/reject', async (c) => {
+  await c.env.DB.prepare("UPDATE registrations SET status = 'rejected' WHERE id = ?").bind(Number(c.req.param('id'))).run();
+  return c.json({ ok: true });
+});
+admin.delete('/registrations/:id', async (c) => {
+  await c.env.DB.prepare('DELETE FROM registrations WHERE id = ?').bind(Number(c.req.param('id'))).run();
   return c.json({ ok: true });
 });
 
@@ -443,8 +536,9 @@ admin.post('/coaches/:id/fire', async (c) => {
 
 // Vaihtopäivät
 admin.post('/swap-days', async (c) => {
-  const b = await c.req.json<{ date: string; note?: string }>();
-  await c.env.DB.prepare('INSERT INTO swap_days (season_id, date, note) VALUES (?,?,?)').bind(c.get('season').id, b.date, b.note ?? null).run();
+  const b = await c.req.json<{ date: string; note?: string; start_time?: string; end_time?: string }>();
+  await c.env.DB.prepare('INSERT INTO swap_days (season_id, date, note, start_time, end_time) VALUES (?,?,?,?,?)')
+    .bind(c.get('season').id, b.date, b.note ?? null, b.start_time || '09:00', b.end_time || '21:00').run();
   return c.json({ ok: true });
 });
 admin.delete('/swap-days/:id', async (c) => {
