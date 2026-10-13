@@ -356,6 +356,7 @@ Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään lii
 - Excel-tuonti
 
 **Seuraavaksi**
+- [ ] Sähköpostihälytys ylläpidolle, jos tilastopäivitys epäonnistuu (tehdään, kun sivusto on livessä)
 - [ ] Veikkausosion pisteiden automaattinen laskenta ja oma tulostaulu
 - [ ] Pistekehityskäyrät
 - [ ] Kausien hallinta
