@@ -334,7 +334,16 @@ Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään lii
 
 ⚠️ Tuonti **korvaa** kauden gurut, kentälliset ja valmentajat. Sivustolla tehdyt muutokset niihin ylikirjoittuvat, ja tunnusten liitokset guruihin on tarkistettava tuonnin jälkeen (Ylläpito → Käyttäjät). Tunnukset ja tilastot säilyvät. Kaudella 2026–27 Excel on rinnakkainen päälähde; aja tuonnin jälkeen **Päivitä tilastot**.
 
-Validointi: 52/53 gurua täsmäsi Excelin kanssa (ainoa ero johtui Excelin lähteen vanhentuneesta datasta). Excelin rakenne: [`docs/excel-analyysi.md`](docs/excel-analyysi.md).
+Validointi: 52/53 gurua täsmäsi Excelin kanssa (ainoa ero johtui Excelin lähteen vanhentuneesta datasta).
+
+### Hall of Fame (maratontaulukko)
+
+```bash
+python3 -m venv /tmp/xv && /tmp/xv/bin/pip install xlrd
+/tmp/xv/bin/python tools/import_hof.py data/maratontaulukko.xls > data/hof.sql
+npx wrangler d1 execute hogiguru --remote --file data/hof.sql
+```
+Tuo kaikkien kausien (2001–2026) sijoitukset ja gaalapaikat. Kauden maratonpisteet = (osallistujat + 1 − sija) / osallistujat × 100. Hall of Fame -sivu laskee niistä maratontaulukon, mestarit ja mitalit. Tuonti korvaa koko Hall of Famen. Excelin rakenne: [`docs/excel-analyysi.md`](docs/excel-analyysi.md).
 
 ---
 
@@ -368,6 +377,7 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 - Vaihtotoiveet kierroksittaisella käsittelyllä, varaustilanne pelaajahaussa
 - liiga.fi-synkronointi
 - Excel-tuonti
+- Hall of Fame: maratontaulukko 2001–2026, mestarit, kausikohtaiset tulokset ja gaalapaikat
 - Käyttö- ja ylläpito-ohjeet
 - Tuotantojulkaisu (guru.konderi.fi, D1, ajastetut päivitykset) – lokakuu 2026
 
@@ -379,7 +389,6 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 - [ ] GitHub Actions -julkaisu
 
 **Myöhemmin**
-- [ ] Hall of Fame -historian tuonti
 - [ ] Workers AI -viikkokatsaukset
 - [ ] Sähköposti-ilmoitukset
 
