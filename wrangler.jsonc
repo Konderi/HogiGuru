@@ -12,8 +12,7 @@
     {
       "binding": "DB",
       "database_name": "hogiguru",
-      // Korvataan komennon `wrangler d1 create hogiguru` antamalla ID:llä
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "29dc5201-2f43-4bab-847c-b48931420325",
       "migrations_dir": "migrations"
     }
   ],
