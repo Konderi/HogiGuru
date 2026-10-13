@@ -39,6 +39,7 @@ export interface Season {
   roster: Record<Position, number>; scoring: Scoring; draft_status: 'setup' | 'live' | 'done'; draft_snake: number;
   max_picks_by_pos: Partial<Record<Position, number>>; registration_open: number; registration_deadline: string | null;
   entry_fee: string | null; registration_info: string | null;
+  results_published?: number; selection_mode?: 'draft' | 'baskets'; baskets?: string[][];
 }
 
 export const fmt = (n: number | null | undefined, d = 1) =>

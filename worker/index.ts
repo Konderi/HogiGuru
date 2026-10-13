@@ -9,6 +9,7 @@ import { autoPick, draftState, finalizeDraft, makePick, swapSlot } from './draft
 import { syncLiiga } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
 import { entityName } from './data';
+import { computeResults } from './predictions';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
 
 interface Env { DB: D1Database }
@@ -58,7 +59,7 @@ app.get('/public/overview', async (c) => {
     standingsQuery(db, season),
   ]);
   return c.json({
-    season: { name: season.name, draftStatus: season.draft_status },
+    season: { name: season.name, draftStatus: season.draft_status, resultsPublished: !!season.results_published },
     registration: registrationInfo(season),
     leaderboard: leaderboard.map(({ user_id: _u, ...r }) => r),
     nextSwap, lastSync, standings,
@@ -179,6 +180,12 @@ app.get('/hall-of-fame', async (c) => {
 
 app.get('/teams', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM teams ORDER BY name').all()).results));
 
+app.get('/results', async (c) => {
+  const season = c.get('season');
+  if (!season.results_published) return c.json({ published: false, season: season.name });
+  return c.json(await computeResults(c.env.DB, season));
+});
+
 // ================= ILMOITTAUTUMINEN =================
 
 const CATEGORIES = ['points', 'goals', 'assists', 'plusMinus', 'dPoints', 'pim', 'shutouts'] as const;
@@ -194,7 +201,7 @@ function registrationInfo(s: Season) {
 /** Lomakkeen tarvitsemat tiedot: joukkueet, pelaajat joukkueittain, säännöt. */
 app.get('/public/registration', async (c) => {
   const db = c.env.DB; const season = c.get('season');
-  const [teams, players, swapDays, coaches] = await db.batch([
+  const [teams, players, swapDays, coaches, prevStandings] = await db.batch([
     db.prepare('SELECT t.id, t.name, t.logo FROM teams t ORDER BY t.name'),
     db.prepare(
       `SELECT p.id, p.first_name || ' ' || p.last_name AS name, p.team_id, p.team_name AS team, p.role
@@ -202,11 +209,14 @@ app.get('/public/registration', async (c) => {
     ).bind(season.liiga_season),
     db.prepare('SELECT date, start_time, end_time FROM swap_days WHERE season_id = ? ORDER BY date').bind(season.id),
     db.prepare('SELECT c.id, c.name, c.team_id, t.name AS team FROM coaches c LEFT JOIN teams t ON t.id = c.team_id WHERE c.season_id = ? AND c.fired = 0 ORDER BY t.name').bind(season.id),
+    // Korien oletusjako: edellisen kauden sarjataulukko (tai nykyinen, jos edellistä ei ole)
+    db.prepare(`SELECT team_id FROM standings WHERE season = COALESCE((SELECT MAX(season) FROM standings WHERE season < ?), ?) ORDER BY ranking`).bind(season.liiga_season, season.liiga_season),
   ]);
   return c.json({
-    season: { name: season.name, roster: season.roster, maxPicks: maxMapPublic(season), maxSwaps: season.max_swaps, scoring: season.scoring },
+    season: { name: season.name, roster: season.roster, maxPicks: maxMapPublic(season), maxSwaps: season.max_swaps, scoring: season.scoring, selectionMode: season.selection_mode, baskets: season.baskets },
     registration: registrationInfo(season),
     teams: teams.results, players: players.results, swapDays: swapDays.results, coaches: coaches.results,
+    standings: prevStandings.results,
   });
 });
 const maxMapPublic = (s: Season) => Object.fromEntries(POSITIONS.map((p) => [p, maxFor(s, p)]));
@@ -214,7 +224,7 @@ const maxMapPublic = (s: Season) => Object.fromEntries(POSITIONS.map((p) => [p, 
 app.post('/public/registration', async (c) => {
   const season = c.get('season');
   if (!registrationInfo(season).open) throw new Error('Ilmoittautuminen ei ole auki');
-  const b = await c.req.json<{ name: string; phone?: string; email: string; standings: string[]; top_scorers: Record<string, number>; categories: Record<string, number>; website?: string; position_order?: string[]; rankings?: Record<string, number[]> }>();
+  const b = await c.req.json<{ name: string; phone?: string; email: string; standings: string[]; top_scorers: Record<string, number>; categories: Record<string, number>; website?: string; position_order?: string[]; rankings?: Record<string, number[]>; basket_picks?: { position: string; entity_id: number }[] }>();
   if (b.website) return c.json({ ok: true }); // roskapostiansa
   const name = b.name?.trim(); const email = b.email?.trim().toLowerCase();
   if (!name || name.length > 80) throw new Error('Kirjoita nimesi');
@@ -225,21 +235,37 @@ app.post('/public/registration', async (c) => {
   const cats = Object.fromEntries(CATEGORIES.map((k) => [k, Number(b.categories?.[k]) || null]).filter(([, v]) => v));
   // All-Stars-toivelistat ja draftin valintajärjestys (pakollisia)
   const hasCoaches = !!(await c.env.DB.prepare('SELECT 1 FROM coaches WHERE season_id = ? LIMIT 1').bind(season.id).first());
-  const rankings = Object.fromEntries(POSITIONS.map((p) => [p, [...new Set((b.rankings?.[p] ?? []).map(Number).filter(Boolean))].slice(0, 60)]));
-  for (const p of POSITIONS) {
-    if (p === 'C' && !hasCoaches) continue;
-    if (rankings[p].length < (season.roster[p] ?? 0)) throw new Error(`Lisää All-Stars-toivelistaan vähintään ${season.roster[p]} × ${POS_FI[p]}`);
-  }
-  const order = (b.position_order ?? []).filter(isPos);
   const need = POSITIONS.reduce((s, p) => s + (season.roster[p] ?? 0), 0);
-  if (order.length !== need || POSITIONS.some((p) => order.filter((x) => x === p).length !== (season.roster[p] ?? 0)))
-    throw new Error('Täytä draftin valintajärjestys kokonaan');
+  let rankings: Record<string, number[]> = {}; let order: Position[] = []; let picks: { position: Position; entity_id: number }[] = [];
+  if (season.selection_mode === 'baskets') {
+    // Korimalli: jokaisesta korista yksi valinta, paikkajakauma = kentällinen
+    const bk = season.baskets;
+    picks = bk.map((_, i) => b.basket_picks?.[i]).map((x) => ({ position: x?.position as Position, entity_id: Number(x?.entity_id) }));
+    if (picks.some((x) => !isPos(x.position) || !x.entity_id)) throw new Error('Valitse yksi pelaaja jokaisesta korista');
+    if (POSITIONS.some((p) => picks.filter((x) => x.position === p).length !== (season.roster[p] ?? 0)))
+      throw new Error(`Kentällisessä pitää olla ${POSITIONS.map((p) => `${season.roster[p]} × ${POS_FI[p]}`).join(', ')}`);
+    for (const [i, x] of picks.entries()) {
+      const row = x.position === 'C'
+        ? await c.env.DB.prepare('SELECT team_id FROM coaches WHERE id = ? AND season_id = ?').bind(x.entity_id, season.id).first<{ team_id: string }>()
+        : await c.env.DB.prepare('SELECT team_id, role FROM players WHERE id = ?').bind(x.entity_id).first<{ team_id: string; role: string }>();
+      if (!row || !bk[i].includes(row.team_id)) throw new Error(`Korin ${i + 1} valinta ei kuulu korin joukkueisiin`);
+    }
+  } else {
+    rankings = Object.fromEntries(POSITIONS.map((p) => [p, [...new Set((b.rankings?.[p] ?? []).map(Number).filter(Boolean))].slice(0, 60)]));
+    for (const p of POSITIONS) {
+      if (p === 'C' && !hasCoaches) continue;
+      if (rankings[p].length < (season.roster[p] ?? 0)) throw new Error(`Lisää All-Stars-toivelistaan vähintään ${season.roster[p]} × ${POS_FI[p]}`);
+    }
+    order = (b.position_order ?? []).filter(isPos);
+    if (order.length !== need || POSITIONS.some((p) => order.filter((x) => x === p).length !== (season.roster[p] ?? 0)))
+      throw new Error('Täytä draftin valintajärjestys kokonaan');
+  }
   await c.env.DB.prepare(
-    `INSERT INTO registrations (season_id, name, phone, email, standings, top_scorers, categories, position_order, rankings) VALUES (?,?,?,?,?,?,?,?,?)
+    `INSERT INTO registrations (season_id, name, phone, email, standings, top_scorers, categories, position_order, rankings, basket_picks) VALUES (?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(season_id, email) DO UPDATE SET name = excluded.name, phone = excluded.phone, standings = excluded.standings,
        top_scorers = excluded.top_scorers, categories = excluded.categories, position_order = excluded.position_order,
-       rankings = excluded.rankings, updated_at = CURRENT_TIMESTAMP`,
-  ).bind(season.id, name, b.phone?.trim().slice(0, 30) || null, email, JSON.stringify(standings), JSON.stringify(top), JSON.stringify(cats), JSON.stringify(order), JSON.stringify(rankings)).run();
+       rankings = excluded.rankings, basket_picks = excluded.basket_picks, updated_at = CURRENT_TIMESTAMP`,
+  ).bind(season.id, name, b.phone?.trim().slice(0, 30) || null, email, JSON.stringify(standings), JSON.stringify(top), JSON.stringify(cats), JSON.stringify(order), JSON.stringify(rankings), JSON.stringify(picks)).run();
   return c.json({ ok: true });
 });
 const POS_FI: Record<Position, string> = { F: 'hyökkääjä', D: 'puolustaja', G: 'maalivahti', C: 'valmentaja' };
@@ -452,7 +478,8 @@ admin.put('/season', async (c) => {
   const s = c.get('season');
   await c.env.DB.prepare(
     `UPDATE seasons SET name = ?, liiga_season = ?, max_swaps = ?, max_picks_per_entity = ?, roster = ?, scoring = ?, draft_snake = ?,
-       max_picks_by_pos = ?, registration_open = ?, registration_deadline = ?, entry_fee = ?, registration_info = ? WHERE id = ?`,
+       max_picks_by_pos = ?, registration_open = ?, registration_deadline = ?, entry_fee = ?, registration_info = ?,
+       results_published = ?, selection_mode = ?, baskets = ? WHERE id = ?`,
   ).bind(
     b.name ?? s.name, b.liiga_season ?? s.liiga_season, b.max_swaps === undefined ? s.max_swaps : num(b.max_swaps),
     b.max_picks_per_entity ?? s.max_picks_per_entity, JSON.stringify(b.roster ?? s.roster), JSON.stringify(b.scoring ?? s.scoring),
@@ -462,6 +489,9 @@ admin.put('/season', async (c) => {
     b.registration_deadline === undefined ? s.registration_deadline : b.registration_deadline || null,
     b.entry_fee === undefined ? s.entry_fee : b.entry_fee || null,
     b.registration_info === undefined ? s.registration_info : b.registration_info || null,
+    b.results_published === undefined ? s.results_published : b.results_published ? 1 : 0,
+    b.selection_mode === 'baskets' || b.selection_mode === 'draft' ? b.selection_mode : s.selection_mode,
+    JSON.stringify((b.baskets ?? s.baskets).map((x) => x.map(String)).filter((x) => x.length)),
     s.id,
   ).run();
   return c.json({ ok: true });
@@ -472,7 +502,7 @@ admin.get('/registrations', async (c) => {
   const res = await c.env.DB.prepare(
     `SELECT r.*, g.name AS guru_name FROM registrations r LEFT JOIN gurus g ON g.id = r.guru_id WHERE r.season_id = ? ORDER BY r.created_at`,
   ).bind(c.get('season').id).all<Record<string, string>>();
-  return c.json(res.results.map((r) => ({ ...r, standings: JSON.parse(r.standings), top_scorers: JSON.parse(r.top_scorers), categories: JSON.parse(r.categories), position_order: JSON.parse(r.position_order ?? '[]'), rankings: JSON.parse(r.rankings ?? '{}') })));
+  return c.json(res.results.map((r) => ({ ...r, standings: JSON.parse(r.standings), top_scorers: JSON.parse(r.top_scorers), categories: JSON.parse(r.categories), position_order: JSON.parse(r.position_order ?? '[]'), rankings: JSON.parse(r.rankings ?? '{}'), basket_picks: JSON.parse(r.basket_picks ?? '[]') })));
 });
 /** Hyväksyntä: luo gurun (tai liittää samannimiseen) ja halutessa käyttäjätunnuksen. */
 admin.post('/registrations/:id/accept', async (c) => {
@@ -495,7 +525,33 @@ admin.post('/registrations/:id/accept', async (c) => {
     await db.prepare('INSERT INTO draft_prefs (guru_id, position_order, rankings) VALUES (?,?,?) ON CONFLICT(guru_id) DO NOTHING')
       .bind(guru!.id, reg.position_order, reg.rankings ?? '{}').run();
   }
+  // Korimalli: kentällinen suoraan lomakkeelta (vain jos gurulla ei vielä ole pelaajia)
+  const bp: { position: Position; entity_id: number }[] = JSON.parse((r as unknown as { basket_picks?: string }).basket_picks ?? '[]');
+  if (season.selection_mode === 'baskets' && bp.length && !(await db.prepare('SELECT 1 FROM roster_slots WHERE guru_id = ? LIMIT 1').bind(guru!.id).first())) {
+    const ctx = await loadContext(db, season); const date = helsinkiDate();
+    const { entityPoints } = await import('./scoring');
+    await db.batch(bp.map((x) => db.prepare('INSERT INTO roster_slots (guru_id, position, entity_id, start_date, start_points) VALUES (?,?,?,?,?)')
+      .bind(guru!.id, x.position, x.entity_id, date, entityPoints(x.position, x.entity_id, season.scoring, ctx.stats, ctx.coachTeam, ctx.teamPoints))));
+  }
   return c.json({ guruId: guru!.id });
+});
+
+// Kokonaistulokset (All-Stars + veikkaukset). Ylläpito näkee aina, muut vasta julkaisun jälkeen.
+admin.get('/results', async (c) => c.json(await computeResults(c.env.DB, c.get('season'))));
+admin.put('/results/override', async (c) => {
+  const b = await c.req.json<Record<string, unknown>>();
+  await c.env.DB.prepare('UPDATE seasons SET results_override = ? WHERE id = ?').bind(JSON.stringify(b ?? {}), c.get('season').id).run();
+  return c.json({ ok: true });
+});
+/** Tallentaa kauden kokonaistuloksen Hall of Fameen (korvaa saman kauden aiemmat rivit). */
+admin.post('/results/hall-of-fame', async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const res = await computeResults(db, season);
+  await db.batch([
+    db.prepare('DELETE FROM hall_of_fame WHERE season_name = ?').bind(season.name),
+    ...res.rows.map((r) => db.prepare('INSERT INTO hall_of_fame (season_name, rank, name, points) VALUES (?,?,?,?)').bind(season.name, r.rank, r.name, r.total)),
+  ]);
+  return c.json({ ok: true, count: res.rows.length });
 });
 admin.post('/registrations/:id/reject', async (c) => {
   await c.env.DB.prepare("UPDATE registrations SET status = 'rejected' WHERE id = ?").bind(Number(c.req.param('id'))).run();

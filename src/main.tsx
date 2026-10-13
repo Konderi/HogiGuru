@@ -23,6 +23,8 @@ import AdminCoaches from './admin/Coaches';
 import AdminHof from './admin/HallOfFame';
 import AdminRegistrations from './admin/Registrations';
 import Register from './pages/Register';
+import Results from './pages/Results';
+import AdminResults from './admin/Results';
 import './index.css';
 
 function Protected({ admin, children }: { admin?: boolean; children: React.ReactNode }) {
@@ -44,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="sarjataulukko" element={<Standings />} />
             <Route path="tilastot" element={<Stats />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />
+            <Route path="kokonaistulokset" element={<Results />} />
             <Route path="kirjaudu" element={<Login />} />
             <Route path="ilmoittaudu" element={<Register />} />
             <Route path="oma-joukkue" element={<Protected><MyTeam /></Protected>} />
@@ -58,6 +61,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="valmentajat" element={<AdminCoaches />} />
               <Route path="hall-of-fame" element={<AdminHof />} />
               <Route path="ilmoittautuminen" element={<AdminRegistrations />} />
+              <Route path="tulokset" element={<AdminResults />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

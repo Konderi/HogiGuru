@@ -6,6 +6,8 @@ export interface Season {
   roster: Record<Position, number>; scoring: Scoring;
   draft_status: 'setup' | 'live' | 'done'; draft_snake: number;
   registration_open: number; registration_deadline: string | null; entry_fee: string | null; registration_info: string | null;
+  results_published: number; selection_mode: 'draft' | 'baskets'; baskets: string[][];
+  results_override: import('./predictions').Override;
 }
 
 /** Montako gurua voi valita saman pelaajan/valmentajan tällä paikalla. */
@@ -22,6 +24,9 @@ export async function getActiveSeason(db: D1Database): Promise<Season | null> {
   return {
     ...row, roster: JSON.parse(row.roster as string), scoring: JSON.parse(row.scoring as string),
     max_picks_by_pos: JSON.parse((row.max_picks_by_pos as string) ?? '{}'),
+    baskets: JSON.parse((row.baskets as string) ?? '[]'),
+    results_override: JSON.parse((row.results_override as string) ?? '{}'),
+    selection_mode: row.selection_mode === 'baskets' ? 'baskets' : 'draft',
   } as Season;
 }
 

@@ -8,6 +8,7 @@ const nav = [
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/sarjataulukko', label: 'Sarjataulukko' },
   { to: '/tilastot', label: 'Tilastot' },
+  { to: '/kokonaistulokset', label: 'Kokonaistulokset' },
   { to: '/hall-of-fame', label: 'Hall of Fame' },
 ];
 

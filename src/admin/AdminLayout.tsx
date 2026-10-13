@@ -12,6 +12,7 @@ const links = [
   { to: '/admin/pisteytys', label: 'Pisteytys & kausi', icon: '∑' },
   { to: '/admin/valmentajat', label: 'Valmentajat', icon: '♟' },
   { to: '/admin/kayttajat', label: 'Käyttäjät', icon: '☺' },
+  { to: '/admin/tulokset', label: 'Kokonaistulokset', icon: '🏆' },
   { to: '/admin/hall-of-fame', label: 'Hall of Fame', icon: '♛' },
 ];
 

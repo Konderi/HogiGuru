@@ -8,10 +8,10 @@ interface Team { id: string; name: string; logo: string | null }
 interface Player { id: number; name: string; team_id: string | null; team: string | null; role: string | null }
 export interface RegInfo { open: boolean; enabled: boolean; deadline: string | null; fee: string | null; info: string | null }
 interface Data {
-  season: { name: string; roster: Record<Position, number>; maxPicks: Record<Position, number>; maxSwaps: number | null; scoring: Scoring };
+  season: { name: string; roster: Record<Position, number>; maxPicks: Record<Position, number>; maxSwaps: number | null; scoring: Scoring; selectionMode?: 'draft' | 'baskets'; baskets?: string[][] };
   registration: RegInfo; teams: Team[]; players: Player[];
   swapDays: { date: string; start_time: string; end_time: string }[];
-  coaches: { id: number; name: string; team: string | null }[];
+  coaches: { id: number; name: string; team_id: string; team: string | null }[];
 }
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -100,6 +100,7 @@ export default function Register() {
   const [cats, setCats] = useState<Record<string, number | undefined>>({});
   const [wish, setWish] = useState<Record<Position, number[]>>({ F: [], D: [], G: [], C: [] });
   const [posOrder, setPosOrder] = useState<Position[]>([]);
+  const [bPicks, setBPicks] = useState<{ position?: Position; entity_id?: number }[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -118,13 +119,20 @@ export default function Register() {
   const reg = data.registration;
   const roster = data.season.roster;
   const hasCoaches = data.coaches.length > 0;
-  const wishPool: Record<Position, Pick<Player, 'id' | 'name' | 'team'>[]> = {
+  const wishPool: Record<Position, Pick<Player, 'id' | 'name' | 'team' | 'team_id'>[]> = {
     F: data.players.filter((x) => x.role !== 'P' && x.role !== 'MV'), D: data.players.filter((x) => x.role === 'P'),
     G: data.players.filter((x) => x.role === 'MV'), C: data.coaches,
   };
   const orderTotal = POSITIONS.reduce((s, x) => s + (roster[x] ?? 0), 0);
   const left = (x: Position) => (roster[x] ?? 0) - posOrder.filter((y) => y === x).length;
-  const missing = [
+  const basketMode = data.season.selectionMode === 'baskets' && (data.season.baskets?.length ?? 0) > 0;
+  const baskets = data.season.baskets ?? [];
+  const teamName = (id: string) => teamById.get(id)?.name ?? id;
+  const bUsed = (x: Position, except: number) => bPicks.filter((b, i) => i !== except && b.position === x).length;
+  const setPick = (i: number, v: { position?: Position; entity_id?: number }) => { const n = [...bPicks]; n[i] = v; setBPicks(n); };
+  const missing = basketMode ? [
+    ...baskets.map((_, i) => (bPicks[i]?.entity_id ? null : `kori ${i + 1}`)).filter((x): x is string => !!x),
+  ] : [
     ...POSITIONS.filter((x) => (x !== 'C' || hasCoaches) && wish[x].length < (roster[x] ?? 0)).map((x) => `toivelista: ${POS_LABEL[x].toLowerCase()}`),
     ...(posOrder.length < orderTotal ? ['draftin valintajärjestys'] : []),
   ];
@@ -134,7 +142,7 @@ export default function Register() {
     if (missing.length) { setErr(`Täydennä vielä: ${missing.join(', ')}`); return; }
     setBusy(true); setErr(null);
     try {
-      await api('/public/registration', { body: { ...form, standings: order, top_scorers: top, categories: cats, rankings: wish, position_order: posOrder } });
+      await api('/public/registration', { body: { ...form, standings: order, top_scorers: top, categories: cats, rankings: wish, position_order: posOrder, basket_picks: bPicks } });
       setDone(true); window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
   };
@@ -248,6 +256,30 @@ export default function Register() {
             </div>
           </Card>
 
+          {basketMode ? (
+            <Card title="4) All-Stars-kentällinen koreista *">
+              <p className="px-5 pt-4 text-xs text-slate-400">Valitse jokaisesta korista yksi pelaaja tai valmentaja. Kentälliseen tulee yhteensä {POSITIONS.map((x) => `${roster[x]} ${POS_LABEL[x].toLowerCase()}`).join(', ')}.</p>
+              <div className="space-y-3 p-5">
+                {baskets.map((teams, i) => {
+                  const pk = bPicks[i] ?? {};
+                  const free = POSITIONS.filter((x) => (x !== 'C' || hasCoaches) && bUsed(x, i) < (roster[x] ?? 0));
+                  const pool = pk.position ? wishPool[pk.position].filter((x) => !!x.team_id && teams.includes(x.team_id)) : [];
+                  return (
+                    <div key={i} className="rounded-xl border border-white/10 p-3">
+                      <p className="mb-2 text-sm"><span className="scoreboard mr-2">Kori {i + 1}</span><span className="text-slate-300">{teams.map(teamName).join(' · ')}</span></p>
+                      <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
+                        <select className="input" value={pk.position ?? ''} onChange={(e) => setPick(i, { position: (e.target.value || undefined) as Position | undefined })}>
+                          <option value="">Pelipaikka…</option>
+                          {POSITIONS.filter((x) => free.includes(x) || x === pk.position).map((x) => <option key={x} value={x}>{POS_LABEL[x]}</option>)}
+                        </select>
+                        {pk.position ? <PlayerSelect key={`${i}-${pk.position}`} players={pool} value={pk.entity_id} onChange={(v) => setPick(i, { ...pk, entity_id: v })} /> : <div className="self-center text-xs text-slate-500">Valitse ensin pelipaikka</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ) : (<>
           <Card title="4) All-Stars-toivelista *">
             <p className="px-5 pt-4 text-xs text-slate-400">Listaa pelaajat toivejärjestyksessä jokaiseen pelipaikkaan. Kun valitset nimen, alle aukeaa uusi kenttä. Draftissa valitaan listaltasi ylin vielä vapaana oleva. Listaa useampi kuin minimi, sillä suosikit voivat mennä muille.</p>
             <div className="grid gap-6 p-5 md:grid-cols-2">
@@ -278,6 +310,7 @@ export default function Register() {
               )}
             </div>
           </Card>
+          </>)}
 
           {missing.length > 0 && <p className="text-xs text-amber-300">Puuttuu vielä: {missing.join(', ')}</p>}
           {err && <ErrorBox error={err} />}

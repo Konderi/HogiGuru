@@ -395,3 +395,9 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 ---
 
 *HogiGuru – tehty lätkäfaneilta lätkäfaneille.* 🏒
+
+## Kokonaistulokset ja valintatapa
+
+- **Pimitys:** kauden aikana julkisesti näkyy vain All-Stars. Veikkauskategoriat (sarjataulukko, joukkueiden pistemiehet, kategoriat) lasketaan `worker/predictions.ts`:ssä, mutta `/api/results` palauttaa ne vasta kun `seasons.results_published = 1`.
+- **Ylläpito → Kokonaistulokset:** esikatselu eriteltynä, julkaisukytkin, käsikorjaukset oikeisiin vastauksiin (`results_override`, JSON) ja tallennus Hall of Fameen.
+- **Valintatapa** (Ylläpito → Ilmoittautuminen): `draft` (toivelistat + valintajärjestys) tai `baskets` (korit: yksi valinta per kori, kentällinen syntyy suoraan hyväksynnässä).
