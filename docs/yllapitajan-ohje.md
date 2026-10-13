@@ -88,7 +88,11 @@ Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylity
 
 ## 6. ⚠️ Pistekertoimien muuttaminen kesken kauden
 
-HG-pisteet lasketaan **aina lennossa**: pelaajan koko kauden tilastot × **nykyiset** kertoimet. Siksi muutos vaikuttaa **taannehtivasti**:
+HG-pisteet lasketaan **aina lennossa**: pelaajan koko kauden tilastot × **nykyiset** kertoimet. Siksi muutos vaikuttaa **takautuvasti** eli koko kauteen, myös jo pelattuihin peleihin.
+
+**Peruminen:** muutoksen saa perutuksi palauttamalla vanhat kertoimet, jolloin pisteet palaavat täsmälleen ennalleen. Poikkeuksena ovat muutettujen kertoimien aikana käsitellyt vaihdot (niiden pisteet on jäädytetty uusilla kertoimilla) ja leaderboardin päiväkohtainen historia.
+
+Vaikutukset tarkemmin:
 
 | Mikä | Mitä tapahtuu |
 |---|---|

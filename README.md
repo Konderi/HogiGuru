@@ -335,7 +335,7 @@ Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään lii
 
 Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset → valmentajat → draft. Kauden aikana tilastot päivittyvät itsestään, ja vaihtopäivien toiveet käsitellään esikatselun kautta. Kauden lopussa mitalistit Hall of Fameen.
 
-⚠️ Pistekertoimet vaikuttavat **taannehtivasti** koko kauden pisteisiin. Älä muuta niitä kesken kauden; ks. [ohjeen kohta 6](docs/yllapitajan-ohje.md#6-️-pistekertoimien-muuttaminen-kesken-kauden).
+⚠️ Pistekertoimet vaikuttavat **takautuvasti** koko kauden pisteisiin, myös jo pelattuihin peleihin. Muutoksen voi perua palauttamalla vanhat kertoimet, mutta niiden aikana käsitellyt vaihdot jäävät uusilla kertoimilla laskettuina. Älä siksi muuta kertoimia kesken kauden; ks. [ohjeen kohta 6](docs/yllapitajan-ohje.md#6-️-pistekertoimien-muuttaminen-kesken-kauden).
 
 ---
 
