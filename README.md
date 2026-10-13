@@ -71,7 +71,8 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 ### Gurun näkymät (kirjautunut)
 | Sivu | Polku | Sisältö |
 |---|---|---|
-| Oma joukkue | `/oma-joukkue` | Kentällinen (kaukalo + valmentaja), pisteerittely, vaihdetut pelaajat, korjaukset, vaihtotoiveet varaustilanteineen, draft-ennakkolista, salasanan vaihto |
+| Oma joukkue | `/oma-joukkue` | Kentällinen (mittasuhteiltaan oikea pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), pisteerittely, vaihdetut pelaajat, korjaukset, vaihtotoiveet varaustilanteineen, draft-ennakkolista, salasanan vaihto |
+| Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat eriteltynä. Pimitetty, kunnes ylläpito julkaisee gaalassa |
 | Draft | `/draft` | Live-draft-taulu |
 
 ### Ylläpito (`/admin`)

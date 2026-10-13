@@ -3,6 +3,7 @@ import { api, fmt, fmtDate, POS_LABEL, type Position, type Slot } from '../api';
 import { useApi } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
 import { SwapRequests } from '../components/SwapRequests';
+import HalfRink from '../components/HalfRink';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, RankBadge, Spinner } from '../ui';
 
 interface TeamResp {
@@ -15,13 +16,13 @@ interface TeamResp {
 interface DraftResp { status: 'setup' | 'live' | 'done'; roster: Record<Position, number>; pool: PoolItem[] }
 
 function PlayerTile({ s }: { s?: Slot }) {
-  if (!s) return <div className="flex h-36 w-28 items-center justify-center rounded-2xl border border-dashed border-white/15 text-xs text-slate-500 sm:w-32">Tyhjä</div>;
+  if (!s) return <div className="flex h-24 w-[74px] items-center justify-center rounded-2xl border border-dashed border-slate-500/60 bg-rink-950/40 text-xs text-slate-300 sm:h-36 sm:w-32">Tyhjä</div>;
   return (
-    <div className="group flex w-28 flex-col items-center rounded-2xl border border-white/10 bg-rink-950/70 p-3 text-center shadow-lg backdrop-blur transition hover:-translate-y-0.5 hover:border-ice-400/50 sm:w-32">
-      <Avatar src={s.picture} name={s.name} size="h-14 w-14" />
-      <p className="mt-2 line-clamp-2 text-xs font-semibold leading-tight text-white">{s.name}</p>
-      <p className="text-[10px] uppercase tracking-wider text-slate-500">{s.team}</p>
-      <p className={`scoreboard mt-1 text-lg ${s.value < 0 ? '!text-goal' : ''}`}>{fmt(s.value)}</p>
+    <div className="group flex w-[74px] flex-col items-center rounded-xl border border-white/10 bg-rink-950/85 p-1.5 text-center shadow-xl shadow-rink-950/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-ice-400/50 sm:w-32 sm:rounded-2xl sm:p-3">
+      <Avatar src={s.picture} name={s.name} size="h-9 w-9 sm:h-14 sm:w-14" />
+      <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-tight text-white sm:mt-2 sm:text-xs">{s.name}</p>
+      <p className="hidden text-[10px] uppercase tracking-wider text-slate-500 sm:block">{s.team}</p>
+      <p className={`scoreboard mt-0.5 text-sm sm:mt-1 sm:text-lg ${s.value < 0 ? '!text-goal' : ''}`}>{fmt(s.value)}</p>
     </div>
   );
 }
@@ -68,16 +69,16 @@ export default function MyTeam() {
         <Card title="Draft-ennakkolista" ><div className="p-5"><DraftPrefsEditor endpoint="/me/draft-prefs" pool={draft.data.pool} roster={draft.data.roster} /></div></Card>
       ) : (
         <div className="space-y-6">
-          {/* Kaukalo */}
-          <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-100/[0.07] to-ice-500/[0.04] px-4 py-10 animate-in">
-            <div className="pointer-events-none absolute inset-x-0 top-1/3 h-1 bg-ice-400/25" />
-            <div className="pointer-events-none absolute inset-x-0 top-[62%] h-1 bg-goal/25" />
-            <div className="pointer-events-none absolute left-1/2 top-[62%] h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ice-400/20" />
-            <div className="relative space-y-8">
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-6">{slotsFor('F', 3).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-16">{slotsFor('D', 2).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
-              <div className="flex flex-wrap justify-center gap-3">{slotsFor('G', 1).map((s, i) => <PlayerTile key={i} s={s} />)}</div>
-            </div>
+          {/* Kaukalo: pystysuuntainen puolikaukalo, pelaajat omilla paikoillaan */}
+          <section className="relative mx-auto w-full max-w-[640px] animate-in" style={{ aspectRatio: '850 / 1000' }}>
+            <HalfRink className="absolute inset-0 h-full w-full drop-shadow-2xl" />
+            {([['F', 3, 17], ['D', 2, 57], ['G', 1, 84]] as const).map(([pos, n, y]) => {
+              const list = slotsFor(pos, n);
+              const xs = list.length === 3 ? [20, 50, 80] : list.length === 2 ? [26, 74] : list.length === 1 ? [50] : list.map((_, i) => ((i + 1) * 100) / (list.length + 1));
+              return list.map((s, i) => (
+                <div key={`${pos}${i}`} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${xs[i]}%`, top: `${y}%` }}><PlayerTile s={s} /></div>
+              ));
+            })}
           </section>
 
           {/* Valmentaja vaihtopenkillä */}
