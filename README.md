@@ -71,7 +71,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 ### Gurun näkymät (kirjautunut)
 | Sivu | Polku | Sisältö |
 |---|---|---|
-| Oma joukkue | `/oma-joukkue` | Kentällinen, pisteerittely, vaihdetut pelaajat, korjaukset, draft-ennakkolista, salasanan vaihto |
+| Oma joukkue | `/oma-joukkue` | Kentällinen (kaukalo + valmentaja), pisteerittely, vaihdetut pelaajat, korjaukset, vaihtotoiveet varaustilanteineen, draft-ennakkolista, salasanan vaihto |
 | Draft | `/draft` | Live-draft-taulu |
 
 ### Ylläpito (`/admin`)
@@ -80,7 +80,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Yleiskatsaus | Tilastopäivitys napista, päivitysloki, avainluvut |
 | Ilmoittautuminen | Lomakkeen avaus/sulku, määräaika, maksu, lisätieto; ilmoittautuneet, veikkausten tarkastelu, hyväksyntä guruksi (+ tunnus), CSV-vienti |
 | Draft | Listat, arvonta, live-valinnat, ennakkolistat, peruminen, vienti kentällisiin |
-| Vaihdot | Vaihtopäivät kellonaikoineen, vaihtoloki, peruminen |
+| Vaihdot | Vaihtopäivät kellonaikoineen, vaihtotoiveiden esikatselu ja käsittely, vaihtoloki, peruminen |
 | Gurut & kentälliset | Gurut, kentälliset, vaihdot, paikkojen muokkaus, pistekorjaukset |
 | Pisteytys & kausi | Kertoimet, kentällisen koko, valintarajat paikoittain, vaihtojen määrä, veikkausosion pisteet |
 | Valmentajat | Valmentajat, potkut |
@@ -96,7 +96,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
   Selain ──────────▶│  Cloudflare Worker  (guru.konderi.fi)        │
                     │  /*        → staattiset tiedostot (React SPA)│
                     │  /api/*    → Hono-API (worker/index.ts)      │
-                    │  cron      → syncLiiga() tunnin välein       │
+                    │  cron      → syncLiiga() iltaisin + yöllä    │
                     └──────────────┬───────────────────┬───────────┘
                             ┌──────▼──────┐     ┌──────▼─────────┐
                             │ Cloudflare  │     │ liiga.fi       │
@@ -109,7 +109,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Frontend | React 19, React Router, Vite, Tailwind CSS v4 |
 | Backend | Cloudflare Workers + [Hono](https://hono.dev) |
 | Tietokanta | Cloudflare D1 (SQLite) |
-| Ajastus | Workers Cron Triggers (`5 * * * *`) |
+| Ajastus | Workers Cron Triggers (`*/30 18-21 * * *` ja `0 2 * * *` UTC) |
 | Kirjautuminen | PBKDF2-salasanat + HttpOnly-istuntoeväste |
 | Build | `@cloudflare/vite-plugin` |
 
@@ -127,21 +127,26 @@ HogiGuru-app/
 ├── vite.config.ts
 ├── migrations/
 │   ├── 0001_init.sql            tietokantarakenne + oletuspisteytys
-│   └── 0002_registration.sql    ilmoittautuminen, valintarajat, kauden 26–27 säännöt ja vaihtopäivät
+│   ├── 0002_registration.sql    ilmoittautuminen, valintarajat, kauden 26–27 säännöt ja vaihtopäivät
+│   └── 0003_swap_requests.sql   vaihtotoiveet, vaihtopäivien käsittelytila
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
 │   ├── scoring.ts               pisteytyskaavat
 │   ├── draft.ts                 draft, automaattivalinta, vaihdot
+│   ├── swaps.ts                 vaihtotoiveiden vuorojärjestys, esikatselu ja käsittely
 │   ├── liiga.ts                 liiga.fi-synkronointi
 │   └── auth.ts                  salasanat, istunnot
 ├── src/                         FRONTEND
 │   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css
-│   ├── components/DraftPrefs.tsx
+│   ├── components/              DraftPrefs.tsx, SwapRequests.tsx
 │   ├── pages/                   Home, Register, Leaderboard, Standings, Stats, HallOfFame, Login, MyTeam, DraftBoard
 │   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, Swaps, Gurus, Scoring, Coaches, Users, HallOfFame
 ├── tools/import_excel.py        kauden tuonti Excelistä
-├── docs/excel-analyysi.md       alkuperäisen Excelin analyysi
+├── docs/
+│   ├── kayttoohje.md            käyttöohje guruille
+│   ├── yllapitajan-ohje.md      ylläpitäjän ohje
+│   └── excel-analyysi.md        alkuperäisen Excelin analyysi
 └── data/                        EI versionhallinnassa (Excelit, kaavake)
 ```
 
@@ -208,7 +213,7 @@ Kaikki kertoimet: Ylläpito → Pisteytys & kausi. Koodi: [`worker/scoring.ts`](
 | Maalivahdit | `…?dataType=basicStatsGk` |
 | Sarjataulukko | `https://liiga.fi/api/v2/standings/?season={kausi}` |
 
-`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan tunnin välein ja napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
+`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan iltaisin 30 min välein (n. klo 21–01 Suomen aikaa), kerran yöllä (n. klo 05) ja napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
 
 ---
 
@@ -260,7 +265,7 @@ Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vai
 | Rooli | Näkee | Voi tehdä |
 |---|---|---|
 | Vierailija | Julkiset sivut | Ilmoittautua |
-| Guru | + oma kentällinen, draft | Ennakkolista, salasanan vaihto |
+| Guru | + oma kentällinen, draft | Ennakkolista, vaihtotoiveet, salasanan vaihto |
 | Ylläpitäjä | Kaikki | Kaikki |
 
 Ensimmäinen ylläpitäjä luodaan sivulla `/kirjaudu`, kun kannassa ei ole käyttäjiä.
@@ -273,11 +278,11 @@ Kaikki reitit polun `/api` alla, JSON, virheet `{ "error": "…" }`.
 
 | Ryhmä | Reitit |
 |---|---|
-| Julkiset | `GET /public/overview`, `/leaderboard`, `/standings`, `/stats?pos=F\|D\|G`, `/coaches`, `/swap-days`, `/hall-of-fame`, `/teams` |
+| Julkiset | `GET /public/overview`, `/leaderboard`, `/standings`, `/stats?pos=F\|D\|G`, `/coaches`, `/players/search`, `/swap-days`, `/public/swaps`, `/hall-of-fame`, `/teams` |
 | Ilmoittautuminen | `GET /public/registration`, `POST /public/registration` |
 | Kirjautuminen | `GET /auth/me`, `POST /auth/login`, `/auth/logout`, `/auth/password`, `/setup` |
-| Guru | `GET /me/team`, `GET/PUT /me/draft-prefs`, `GET /draft` |
-| Ylläpito | `/admin/overview`, `/admin/sync`, `/admin/season`, `/admin/registrations` (+ `/accept`, `/reject`), `/admin/users`, `/admin/gurus`, `/admin/slots`, `/admin/swaps` (+ `/undo`), `/admin/adjustments`, `/admin/coaches` (+ `/fire`), `/admin/swap-days`, `/admin/draft/*`, `/admin/hall-of-fame` |
+| Guru | `GET /me/team`, `GET/PUT /me/draft-prefs`, `GET/PUT /me/swaps`, `GET /draft` |
+| Ylläpito | `/admin/overview`, `/admin/sync`, `/admin/season`, `/admin/registrations` (+ `/accept`, `/reject`), `/admin/users`, `/admin/gurus`, `/admin/slots`, `/admin/swaps` (+ `/undo`), `/admin/adjustments`, `/admin/coaches` (+ `/fire`), `/admin/swap-days` (+ `/:id/preview`, `/:id/process`), `/admin/draft/*`, `/admin/hall-of-fame` |
 
 ---
 
@@ -311,7 +316,9 @@ npx wrangler d1 create hogiguru      # database_id → wrangler.jsonc
 npm run db:migrate:remote
 npm run deploy                       # → guru.konderi.fi
 ```
-Jatkossa: `git pull && npm run deploy`. Uudet kantamuutokset tiedostoina `migrations/000N_….sql`.
+Jatkossa: `git pull && npm run deploy`. Uudet kantamuutokset tiedostoina `migrations/000N_….sql` → `npm run db:migrate:remote` ennen julkaisua.
+
+**Nykyinen tuotanto:** Worker `hogiguru`, D1 `hogiguru` (EEUR, `29dc5201-…`), custom domain `guru.konderi.fi`, migraatiot 0001–0003 ajettu. Paikallisesti voi julkaista myös `npx wrangler login` -kirjautumisella ilman API-avainta.
 
 **Varmuuskopio:** `npx wrangler d1 export hogiguru --remote --output backup.sql` (lisäksi D1 Time Travel 30 pv).
 
@@ -323,7 +330,11 @@ Jatkossa: `git pull && npm run deploy`. Uudet kantamuutokset tiedostoina `migrat
 python3 tools/import_excel.py "data/HG All stars laskin 2026-2027.xlsx" 2027 > data/import.sql
 npx wrangler d1 execute hogiguru --remote --file data/import.sql
 ```
-Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään liiga.fi:n pelaajiin. Validointi: 52/53 gurua täsmäsi Excelin kanssa (ainoa ero johtui Excelin lähteen vanhentuneesta datasta). Excelin rakenne: [`docs/excel-analyysi.md`](docs/excel-analyysi.md).
+Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään liiga.fi:n pelaajiin.
+
+⚠️ Tuonti **korvaa** kauden gurut, kentälliset ja valmentajat. Sivustolla tehdyt muutokset niihin ylikirjoittuvat, ja tunnusten liitokset guruihin on tarkistettava tuonnin jälkeen (Ylläpito → Käyttäjät). Tunnukset ja tilastot säilyvät. Kaudella 2026–27 Excel on rinnakkainen päälähde; aja tuonnin jälkeen **Päivitä tilastot**.
+
+Validointi: 52/53 gurua täsmäsi Excelin kanssa (ainoa ero johtui Excelin lähteen vanhentuneesta datasta). Excelin rakenne: [`docs/excel-analyysi.md`](docs/excel-analyysi.md).
 
 ---
 
@@ -354,11 +365,14 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 - Julkinen sivusto, kirjautuminen, ylläpito
 - Ilmoittautuminen veikkauksineen
 - Draft
+- Vaihtotoiveet kierroksittaisella käsittelyllä, varaustilanne pelaajahaussa
 - liiga.fi-synkronointi
 - Excel-tuonti
+- Käyttö- ja ylläpito-ohjeet
+- Tuotantojulkaisu (guru.konderi.fi, D1, ajastetut päivitykset) – lokakuu 2026
 
 **Seuraavaksi**
-- [ ] Sähköpostihälytys ylläpidolle, jos tilastopäivitys epäonnistuu (tehdään, kun sivusto on livessä)
+- [ ] Sähköpostihälytys ylläpidolle, jos tilastopäivitys epäonnistuu
 - [ ] Veikkausosion pisteiden automaattinen laskenta ja oma tulostaulu
 - [ ] Pistekehityskäyrät
 - [ ] Kausien hallinta
