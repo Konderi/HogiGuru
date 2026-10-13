@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Oswald", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-rink-950: #040814;
+  --color-rink-900: #060b18;
+  --color-rink-850: #0a1226;
+  --color-rink-800: #0e1830;
+  --color-rink-700: #16233f;
+  --color-rink-600: #213256;
+  --color-ice-50: #f0f9ff;
+  --color-ice-200: #bae6fd;
+  --color-ice-300: #7dd3fc;
+  --color-ice-400: #38bdf8;
+  --color-ice-500: #0ea5e9;
+  --color-goal: #ef4444;
+  --color-gold: #fbbf24;
+  --color-silver: #cbd5e1;
+  --color-bronze: #d97706;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    @apply bg-rink-900 font-sans text-slate-200 antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgb(14 165 233 / 0.18), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgb(239 68 68 / 0.07), transparent 70%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  h1, h2, h3 { @apply font-display tracking-wide uppercase text-white; }
+  ::selection { @apply bg-ice-500/40; }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/8 bg-rink-850/80 shadow-xl shadow-black/30 backdrop-blur;
+  }
+  .card-header {
+    @apply flex items-center justify-between gap-3 border-b border-white/6 px-5 py-4;
+  }
+  .card-title { @apply font-display text-lg tracking-wider uppercase text-white; }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition
+      disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ice-400;
+  }
+  .btn-primary { @apply bg-ice-500 text-rink-950 hover:bg-ice-400 shadow-lg shadow-ice-500/20; }
+  .btn-ghost { @apply border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10; }
+  .btn-danger { @apply bg-goal/90 text-white hover:bg-goal; }
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-rink-950/60 px-3 py-2 text-sm text-white placeholder:text-slate-500
+      focus:border-ice-400 focus:outline-none focus:ring-2 focus:ring-ice-400/30;
+  }
+  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400; }
+  .table td { @apply border-t border-white/5 px-3 py-2.5; }
+  .table tbody tr { @apply transition hover:bg-white/[0.03]; }
+  .num { @apply text-right font-mono tabular-nums; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider; }
+  .scoreboard {
+    @apply font-mono font-bold tabular-nums text-ice-300;
+    text-shadow: 0 0 12px rgb(56 189 248 / 0.55);
+  }
+}
+
+/* Kaukalon viivat taustakoristeeksi */
+.rink-lines {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 2px), rgb(239 68 68 / 0.25) calc(50% - 2px), rgb(239 68 68 / 0.25) calc(50% + 2px), transparent calc(50% + 2px)),
+    linear-gradient(90deg, transparent 22%, rgb(56 189 248 / 0.18) 22%, rgb(56 189 248 / 0.18) calc(22% + 6px), transparent calc(22% + 6px),
+      transparent calc(78% - 6px), rgb(56 189 248 / 0.18) calc(78% - 6px), rgb(56 189 248 / 0.18) 78%, transparent 78%);
+}
+.ice-sheen {
+  background-image: linear-gradient(115deg, rgb(255 255 255 / 0.06) 0%, transparent 35%, rgb(255 255 255 / 0.04) 60%, transparent 80%);
+}
+@keyframes puck-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.animate-in { animation: puck-in .4s ease-out both; }
