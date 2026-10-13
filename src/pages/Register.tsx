@@ -89,7 +89,7 @@ export default function Register() {
         <div>
           <p className="label">All-Stars-kentällinen</p>
           <p>{POSITIONS.slice().reverse().map((x) => `${data.season.roster[x]} ${POS_LABEL[x].toLowerCase()}`).join(', ')}. Valitaan draft-tilaisuudessa vuorotellen.</p>
-          <p className="mt-1 text-slate-400">Sama valinta enintään: {POSITIONS.map((x) => `${POS_LABEL[x].toLowerCase()} ${data.season.maxPicks[x]}`).join(', ')} gurulla.</p>
+          <p className="mt-1 text-slate-400">Sama pelaaja voi olla valittuna enintään: {POSITIONS.map((x) => `${POS_LABEL[x].toLowerCase()} ${data.season.maxPicks[x]}`).join(', ')} kertaa.</p>
         </div>
         <div>
           <p className="label">Pisteytys</p>

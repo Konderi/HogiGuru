@@ -70,7 +70,7 @@ export default function DraftBoard() {
       </PageHeader>
       {st.status === 'setup' && (
         <p className="mb-6 text-sm text-slate-400">
-          Kentällinen: {POSITIONS.map((p) => `${st.roster[p]} ${POS_SHORT[p]}`).join(' · ')}. Sama valinta enintään: {POSITIONS.map((p) => `${POS_SHORT[p]} ${st.maxPicks[p]}`).join(' · ')} gurua.
+          Kentällinen: {POSITIONS.map((p) => `${st.roster[p]} ${POS_SHORT[p]}`).join(' · ')}. Sama pelaaja voi olla valittuna enintään: {POSITIONS.map((p) => `${POS_SHORT[p]} ${st.maxPicks[p]}`).join(' · ')} kertaa.
           {' '}Jos et pääse paikalle, tee ennakkolista Oma joukkue -sivulla.
         </p>
       )}

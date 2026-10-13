@@ -55,7 +55,7 @@ export default function Scoring() {
           </div>
         </Card>
 
-        <Card title="Sama valinta enintään (gurua)">
+        <Card title="Sama pelaaja voi olla valittuna enintään (kertaa)">
           <div className="grid grid-cols-4 gap-4 p-5">
             {POSITIONS.map((p) => (
               <div key={p}><label className="label">{POS_LABEL[p]}</label><input type="number" min={1} className="input" value={s.max_picks_by_pos?.[p] ?? s.max_picks_per_entity} onChange={(e) => setS({ ...s, max_picks_by_pos: { ...s.max_picks_by_pos, [p]: Number(e.target.value) } })} /></div>

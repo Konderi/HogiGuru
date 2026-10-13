@@ -39,7 +39,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Sääntö | Arvo | Muokattavissa |
 |---|---|---|
 | Kentällinen | 1 valmentaja, 1 maalivahti, 2 puolustajaa, 3 hyökkääjää | ✅ |
-| Sama valinta enintään | valmentaja 5, maalivahti 5, puolustaja 5, hyökkääjä 4 gurua | ✅ |
+| Sama pelaaja voi olla valittuna enintään | valmentaja 5, maalivahti 5, puolustaja 5 ja hyökkääjä 4 kertaa | ✅ |
 | Vaihtoja kaudessa | 4 | ✅ |
 | Vaihtopäivät | su 11.10., 29.11., 10.1., 21.2. klo 9–21 | ✅ |
 | Valmentajan potkut | −10 p jokaiselle gurulle, jolla valmentaja on | ✅ |
