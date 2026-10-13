@@ -18,7 +18,8 @@
     }
   ],
   // Tilastopäivitys: tunnin välein (UTC)
-  "triggers": { "crons": ["5 * * * *"] },
+  // UTC-aikoja. Iltaisin pelien jälkeen 30 min välein (n. klo 20–24 Suomen aikaa) + varmistusajo yöllä (n. klo 4–5).
+  "triggers": { "crons": ["*/30 18-21 * * *", "0 2 * * *"] },
   "routes": [{ "pattern": "guru.konderi.fi", "custom_domain": true }],
   "observability": { "enabled": true }
 }
