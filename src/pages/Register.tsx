@@ -11,6 +11,7 @@ interface Data {
   season: { name: string; roster: Record<Position, number>; maxPicks: Record<Position, number>; maxSwaps: number | null; scoring: Scoring };
   registration: RegInfo; teams: Team[]; players: Player[];
   swapDays: { date: string; start_time: string; end_time: string }[];
+  coaches: { id: number; name: string; team: string | null }[];
 }
 
 export const CATEGORY_LABEL: Record<string, string> = {
@@ -20,15 +21,24 @@ export const CATEGORY_LABEL: Record<string, string> = {
 
 export const fmtDeadline = (d: string | null) => d ? new Date(d).toLocaleString('fi-FI', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
-/** Haettava pelaajavalinta: kirjoita nimeä, valitse listasta. */
-function PlayerSelect({ players, value, onChange, placeholder = 'Kirjoita nimeä…' }: { players: Player[]; value?: number; onChange: (id?: number) => void; placeholder?: string }) {
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/** Haettava pelaajavalinta: ehdottaa nimiä kirjoittaessa (alkukirjaimet ensin), valitse listasta. */
+function PlayerSelect({ players, value, onChange, placeholder = 'Kirjoita nimeä…', exclude }: { players: Pick<Player, 'id' | 'name' | 'team'>[]; value?: number; onChange: (id?: number) => void; placeholder?: string; exclude?: Set<number> }) {
   const sel = players.find((p) => p.id === value);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
+  const big = players.length > 60;
   const hits = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return (s ? players.filter((p) => p.name.toLowerCase().includes(s)) : players).slice(0, 40);
-  }, [q, players]);
+    const s = norm(q.trim());
+    const list = players.filter((p) => !exclude?.has(p.id));
+    if (!s) return big ? [] : list;
+    const words = (p: { name: string }) => norm(p.name).split(/\s+/);
+    return list
+      .filter((p) => norm(`${p.name} ${p.team ?? ''}`).includes(s))
+      .sort((a, b) => Number(!words(a).some((w) => w.startsWith(s))) - Number(!words(b).some((w) => w.startsWith(s))))
+      .slice(0, 40);
+  }, [q, players, exclude, big]);
   if (sel) return (
     <div className="flex items-center gap-2 rounded-xl border border-ice-400/30 bg-ice-500/10 px-3 py-2 text-sm">
       <span className="flex-1 font-semibold text-white">{sel.name} <span className="text-xs font-normal text-slate-400">{sel.team}</span></span>
@@ -47,6 +57,37 @@ function PlayerSelect({ players, value, onChange, placeholder = 'Kirjoita nimeä
           ))}
         </ul>
       )}
+      {open && big && !q.trim() && <p className="absolute z-20 mt-1 w-full rounded-xl border border-white/10 bg-rink-850 px-3 py-2 text-xs text-slate-400 shadow-2xl">Ala kirjoittaa nimeä tai joukkuetta…</p>}
+      {open && q.trim() && !hits.length && <p className="absolute z-20 mt-1 w-full rounded-xl border border-white/10 bg-rink-850 px-3 py-2 text-xs text-slate-400 shadow-2xl">Ei osumia</p>}
+    </div>
+  );
+}
+
+/** Dynaaminen toivelista: valitut järjestyksessä + aina yksi tyhjä kenttä uudelle. */
+function WishList({ items, setItems, pool, min, label }: { items: number[]; setItems: (v: number[]) => void; pool: Pick<Player, 'id' | 'name' | 'team'>[]; min: number; label: string }) {
+  const byId = new Map(pool.map((p) => [p.id, p]));
+  const move = (i: number, d: number) => { const j = i + d; if (j < 0 || j >= items.length) return; const o = [...items]; [o[i], o[j]] = [o[j], o[i]]; setItems(o); };
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="label mb-0">{label}</span>
+        <span className={`text-xs ${items.length >= min ? 'text-emerald-400' : 'text-amber-300'}`}>{items.length} valittu · vähintään {min}</span>
+      </div>
+      <ol className="space-y-1.5">
+        {items.map((id, i) => (
+          <li key={id} className="flex items-center gap-2 rounded-xl border border-ice-400/30 bg-ice-500/10 px-3 py-1.5 text-sm">
+            <span className="scoreboard w-6 text-right text-xs">{i + 1}.</span>
+            <span className="flex-1 font-semibold text-white">{byId.get(id)?.name ?? `#${id}`} <span className="text-xs font-normal text-slate-400">{byId.get(id)?.team}</span></span>
+            <button type="button" className="px-1 text-slate-400 hover:text-white disabled:opacity-20" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Ylös">▲</button>
+            <button type="button" className="px-1 text-slate-400 hover:text-white disabled:opacity-20" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Alas">▼</button>
+            <button type="button" className="px-1 text-slate-400 hover:text-goal" onClick={() => setItems(items.filter((x) => x !== id))} aria-label="Poista">✕</button>
+          </li>
+        ))}
+        <li className="flex items-center gap-2">
+          <span className="w-6 text-right font-mono text-xs text-slate-500">{items.length + 1}.</span>
+          <div className="flex-1"><PlayerSelect players={pool} exclude={new Set(items)} onChange={(v) => v && setItems([...items, v])} placeholder={items.length ? 'Lisää seuraava toive…' : 'Kirjoita nimeä…'} /></div>
+        </li>
+      </ol>
     </div>
   );
 }
@@ -57,6 +98,8 @@ export default function Register() {
   const [order, setOrder] = useState<string[]>([]);
   const [top, setTop] = useState<Record<string, number | undefined>>({});
   const [cats, setCats] = useState<Record<string, number | undefined>>({});
+  const [wish, setWish] = useState<Record<Position, number[]>>({ F: [], D: [], G: [], C: [] });
+  const [posOrder, setPosOrder] = useState<Position[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -71,14 +114,27 @@ export default function Register() {
     const o = [...order]; [o[i], o[j]] = [o[j], o[i]]; setOrder(o);
   };
   const skaters = data.players.filter((p) => p.role !== 'MV');
-  const pool = (k: string) => k === 'shutouts' ? data.players.filter((p) => p.role === 'MV') : k === 'dPoints' ? data.players.filter((p) => p.role === 'P') : skaters;
   const p = data.season.scoring.prediction;
   const reg = data.registration;
+  const roster = data.season.roster;
+  const hasCoaches = data.coaches.length > 0;
+  const wishPool: Record<Position, Pick<Player, 'id' | 'name' | 'team'>[]> = {
+    F: data.players.filter((x) => x.role !== 'P' && x.role !== 'MV'), D: data.players.filter((x) => x.role === 'P'),
+    G: data.players.filter((x) => x.role === 'MV'), C: data.coaches,
+  };
+  const orderTotal = POSITIONS.reduce((s, x) => s + (roster[x] ?? 0), 0);
+  const left = (x: Position) => (roster[x] ?? 0) - posOrder.filter((y) => y === x).length;
+  const missing = [
+    ...POSITIONS.filter((x) => (x !== 'C' || hasCoaches) && wish[x].length < (roster[x] ?? 0)).map((x) => `toivelista: ${POS_LABEL[x].toLowerCase()}`),
+    ...(posOrder.length < orderTotal ? ['draftin valintajärjestys'] : []),
+  ];
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setErr(null);
+    e.preventDefault();
+    if (missing.length) { setErr(`Täydennä vielä: ${missing.join(', ')}`); return; }
+    setBusy(true); setErr(null);
     try {
-      await api('/public/registration', { body: { ...form, standings: order, top_scorers: top, categories: cats } });
+      await api('/public/registration', { body: { ...form, standings: order, top_scorers: top, categories: cats, rankings: wish, position_order: posOrder } });
       setDone(true); window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
   };
@@ -187,11 +243,43 @@ export default function Register() {
             <p className="px-5 pt-4 text-xs text-slate-400">{p && `Oikein ${p.category[0]} p, top 3 ${p.category[1]} p, top 5 ${p.category[2]} p. Nollapelit puolitetuilla pisteillä.`}</p>
             <div className="grid gap-3 p-5 sm:grid-cols-2">
               {Object.entries(CATEGORY_LABEL).map(([k, l]) => (
-                <div key={k}><label className="label">{l}</label><PlayerSelect players={pool(k)} value={cats[k]} onChange={(v) => setCats({ ...cats, [k]: v })} /></div>
+                <div key={k}><label className="label">{l}</label><PlayerSelect players={data.players} value={cats[k]} onChange={(v) => setCats({ ...cats, [k]: v })} /></div>
               ))}
             </div>
           </Card>
 
+          <Card title="4) All-Stars-toivelista *">
+            <p className="px-5 pt-4 text-xs text-slate-400">Listaa pelaajat toivejärjestyksessä jokaiseen pelipaikkaan. Kun valitset nimen, alle aukeaa uusi kenttä. Draftissa valitaan listaltasi ylin vielä vapaana oleva. Listaa useampi kuin minimi, sillä suosikit voivat mennä muille.</p>
+            <div className="grid gap-6 p-5 md:grid-cols-2">
+              {(['F', 'D', 'G', 'C'] as Position[]).filter((x) => x !== 'C' || hasCoaches).map((x) => (
+                <WishList key={x} label={POS_LABEL[x]} items={wish[x]} setItems={(v) => setWish({ ...wish, [x]: v })} pool={wishPool[x]} min={roster[x] ?? 0} />
+              ))}
+            </div>
+          </Card>
+
+          <Card title="5) Draftin valintajärjestys *">
+            <p className="px-5 pt-4 text-xs text-slate-400">Valitse, minkä pelipaikan pelaajan otat milloinkin vuorollasi ({POSITIONS.map((x) => `${roster[x]} ${POS_LABEL[x].toLowerCase()}`).join(', ')}).</p>
+            <div className="space-y-3 p-5">
+              <ol className="flex flex-wrap gap-2">
+                {Array.from({ length: orderTotal }, (_, i) => (
+                  <li key={i} className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 text-sm ${posOrder[i] ? 'border-ice-400/30 bg-ice-500/10 text-white' : 'border-dashed border-white/15 text-slate-500'}`}>
+                    <span className="font-mono text-xs text-slate-400">{i + 1}.</span>
+                    {posOrder[i] ? <>{POS_LABEL[posOrder[i]]}<button type="button" className="ml-1 text-slate-400 hover:text-goal" onClick={() => setPosOrder(posOrder.filter((_, j) => j !== i))} aria-label="Poista">✕</button></> : '—'}
+                  </li>
+                ))}
+              </ol>
+              {posOrder.length < orderTotal && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="self-center text-xs text-slate-400">Kierros {posOrder.length + 1}:</span>
+                  {POSITIONS.filter((x) => left(x) > 0).map((x) => (
+                    <button key={x} type="button" className="btn btn-ghost px-3 py-1.5 text-sm" onClick={() => setPosOrder([...posOrder, x])}>{POS_LABEL[x]} <span className="text-xs text-slate-500">({left(x)})</span></button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {missing.length > 0 && <p className="text-xs text-amber-300">Puuttuu vielä: {missing.join(', ')}</p>}
           {err && <ErrorBox error={err} />}
           <button className="btn btn-primary w-full py-3 text-base" disabled={busy}>{busy ? 'Lähetetään…' : 'Lähetä ilmoittautuminen'}</button>
         </div>

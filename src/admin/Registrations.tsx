@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fmtDateTime, type Season } from '../api';
+import { fmtDateTime, POS_LABEL, POSITIONS, type Position, type Season } from '../api';
 import { useApi } from '../auth';
 import { CATEGORY_LABEL, fmtDeadline } from '../pages/Register';
 import { Card, Empty, Modal, PageHeader, Spinner } from '../ui';
@@ -9,6 +9,7 @@ interface Reg {
   id: number; name: string; phone: string | null; email: string; status: 'new' | 'accepted' | 'rejected';
   standings: string[]; top_scorers: Record<string, number>; categories: Record<string, number>;
   guru_name: string | null; created_at: string; updated_at: string;
+  position_order?: Position[]; rankings?: Partial<Record<Position, number[]>>;
 }
 interface Team { id: string; name: string }
 interface Player { id: number; name: string }
@@ -18,7 +19,7 @@ const STATUS = { new: ['Uusi', 'bg-ice-500/15 text-ice-300'], accepted: ['Hyväk
 export default function Registrations() {
   const ov = useApi<{ season: Season }>('/admin/overview');
   const regs = useApi<Reg[]>('/admin/registrations');
-  const meta = useApi<{ teams: Team[]; players: Player[] }>('/public/registration');
+  const meta = useApi<{ teams: Team[]; players: Player[]; coaches: Player[] }>('/public/registration');
   const { run } = useAdmin();
   const [s, setS] = useState<Season | null>(null);
   const [view, setView] = useState<Reg | null>(null);
@@ -119,6 +120,17 @@ export default function Registrations() {
                 <ul className="space-y-0.5">{Object.entries(CATEGORY_LABEL).map(([k, l]) => <li key={k}><span className="text-slate-400">{l}:</span> <span className="text-white">{player(view.categories[k])}</span></li>)}</ul>
               </div>
             </div>
+            <div className="sm:col-span-2">
+              <p className="label">Draftin valintajärjestys</p>
+              <p className="text-white">{view.position_order?.length ? view.position_order.map((x, i) => `${i + 1}. ${POS_LABEL[x]}`).join(' · ') : '–'}</p>
+            </div>
+            {POSITIONS.map((x) => (
+              <div key={x}>
+                <p className="label">Toivelista: {POS_LABEL[x]}</p>
+                <ol className="space-y-0.5">{(view.rankings?.[x] ?? []).map((id, i) => <li key={id}><span className="scoreboard mr-2 inline-block w-6 text-right">{i + 1}.</span>{x === 'C' ? meta.data?.coaches?.find((c) => c.id === id)?.name ?? `#${id}` : player(id)}</li>)}</ol>
+                {!view.rankings?.[x]?.length && <p className="text-slate-500">–</p>}
+              </div>
+            ))}
           </div>
         )}
       </Modal>
