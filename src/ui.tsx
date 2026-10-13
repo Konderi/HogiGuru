@@ -87,15 +87,15 @@ export function Countdown({ date }: { date: string }) {
   );
 }
 
-export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, [onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-[10vh] backdrop-blur-sm" onClick={onClose}>
-      <div className="card w-full max-w-lg animate-in" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-[8vh] backdrop-blur-sm" onClick={onClose}>
+      <div className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} animate-in`} onClick={(e) => e.stopPropagation()}>
         <header className="card-header"><h2 className="card-title">{title}</h2><button className="text-slate-400 hover:text-white" onClick={onClose} aria-label="Sulje">✕</button></header>
         <div className="p-5">{children}</div>
       </div>

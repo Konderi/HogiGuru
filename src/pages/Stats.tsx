@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { fmt, POS_PLURAL, type Position } from '../api';
 import { useApi } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import PlayerCard, { type CardSeed } from '../components/PlayerCard';
 
 interface PlayerStat {
   id: number; name: string; team: string; picture: string | null; games: number; goals: number; assists: number; pim: number;
@@ -24,6 +25,7 @@ export default function Stats() {
   const players = useApi<{ maxPicks: number; players: PlayerStat[] }>(pos === 'C' ? null : `/stats?pos=${pos}`, [pos]);
   const coaches = useApi<CoachStat[]>(pos === 'C' ? '/coaches' : null, [pos]);
   const max = players.data?.maxPicks ?? 5;
+  const [card, setCard] = useState<CardSeed | null>(null);
 
   const rows = useMemo(() => (players.data?.players ?? [])
     .filter((p) => (p.name + p.team).toLowerCase().includes(q.toLowerCase()))
@@ -82,12 +84,13 @@ export default function Stats() {
               </thead>
               <tbody>
                 {rows.slice(0, 200).map((p, i) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="cursor-pointer" title="Avaa pelaajakortti"
+                    onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max, goalie: pos === 'G' })}>
                     <td className="font-display text-slate-500">{i + 1}</td>
                     <td>
                       <span className="flex items-center gap-3">
                         <Avatar src={p.picture} name={p.name} />
-                        <span><span className="block font-semibold text-white">{p.name}</span><span className="text-xs text-slate-400">{p.team}</span></span>
+                        <span><span className="block font-semibold text-white underline-offset-2 hover:underline">{p.name}</span><span className="text-xs text-slate-400">{p.team}</span></span>
                       </span>
                     </td>
                     <td className="num">{p.games}</td>
@@ -103,7 +106,8 @@ export default function Stats() {
           </div>
         )}
       </Card>
-      <p className="mt-4 text-xs text-slate-500">Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa.</p>
+      <p className="mt-4 text-xs text-slate-500">Klikkaa pelaajaa avataksesi pelaajakortin. Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa.</p>
+      <PlayerCard seed={card} onClose={() => setCard(null)} />
     </>
   );
 }

@@ -1,0 +1,123 @@
+import { useMemo, useState } from 'react';
+import { fmt } from '../api';
+import { useApi } from '../auth';
+import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+
+interface Hof { id: number; season_name: string; rank: number; name: string; points: number | null; note: string | null }
+interface Marathon { name: string; seasons: number; titles: number; medals: number; best: number; points: number; years: string[] }
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+
+export default function HallOfFame() {
+  const { data, error, loading } = useApi<Hof[]>('/hall-of-fame');
+  const [tab, setTab] = useState<'marathon' | 'seasons'>('marathon');
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState<string | null>(null);
+
+  const { seasons, marathon, champions } = useMemo(() => {
+    const rows = data ?? [];
+    const seasons = [...new Set(rows.map((r) => r.season_name))].sort().reverse();
+    const m = new Map<string, Marathon>();
+    for (const r of rows) {
+      const x = m.get(r.name) ?? { name: r.name, seasons: 0, titles: 0, medals: 0, best: 999, points: 0, years: [] };
+      x.seasons++; x.points += r.points ?? 0; x.best = Math.min(x.best, r.rank);
+      if (r.rank === 1) { x.titles++; x.years.push(r.season_name.slice(2, 4) + '–' + r.season_name.slice(-2)); }
+      if (r.rank <= 3) x.medals++;
+      m.set(r.name, x);
+    }
+    const marathon = [...m.values()].sort((a, b) => b.points - a.points);
+    const champions = marathon.filter((x) => x.titles).sort((a, b) => b.titles - a.titles || b.points - a.points);
+    return { seasons, marathon, champions };
+  }, [data]);
+
+  const rankOf = new Map(marathon.map((x, i) => [x.name, i + 1]));
+  const shown = marathon.filter((x) => x.name.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <>
+      <PageHeader kicker={seasons.length ? `${seasons.length} kautta · ${marathon.length} gurua` : 'Legendat'} title="Hall of Fame" />
+      <ErrorBox error={error} />
+      {loading && !data ? <Spinner /> : !seasons.length ? <Card><Empty>Hall of Fame täyttyy pian – aiempien kausien tulokset ovat tulossa.</Empty></Card> : (
+        <div className="space-y-6">
+          {/* Mestarit */}
+          <Card title="Mestarit">
+            <div className="flex flex-wrap gap-3 p-5">
+              {champions.map((c, i) => (
+                <div key={c.name} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${i === 0 ? 'border-amber-400/40 bg-amber-400/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                  <span className="text-2xl">{i === 0 ? '👑' : '🏆'}</span>
+                  <span>
+                    <span className="block font-semibold text-white">{c.name} <span className="scoreboard ml-1">{c.titles}×</span></span>
+                    <span className="text-xs text-slate-400">{c.years.join(', ')}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
+              {([['marathon', 'Maratontaulukko'], ['seasons', 'Kausittain']] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider transition ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
+              ))}
+            </div>
+            {tab === 'marathon' && <input className="input max-w-xs" placeholder="Hae gurua…" value={q} onChange={(e) => setQ(e.target.value)} />}
+          </div>
+
+          {tab === 'marathon' ? (
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Kaudet</th><th className="num">🥇</th><th className="num">Mitalit</th><th className="num">Paras</th><th className="num">Maratonpisteet</th></tr></thead>
+                  <tbody>
+                    {shown.map((x) => {
+                      const r = rankOf.get(x.name)!;
+                      return (
+                        <tr key={x.name}>
+                          <td className="font-display text-slate-400">{MEDAL[r - 1] ?? r}</td>
+                          <td className="font-semibold text-white">{x.name}</td>
+                          <td className="num">{x.seasons}</td>
+                          <td className="num">{x.titles || '–'}</td>
+                          <td className="num">{x.medals || '–'}</td>
+                          <td className="num">{x.best}.</td>
+                          <td className="num scoreboard">{fmt(x.points)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="border-t border-white/5 px-5 py-3 text-xs text-slate-500">Maratonpisteet kaudelta = (osallistujat + 1 − sija) / osallistujat × 100. Voittaja saa aina 100 p.</p>
+            </Card>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {seasons.map((s) => {
+                const rows = data!.filter((r) => r.season_name === s).sort((a, b) => a.rank - b.rank);
+                const all = open === s;
+                const venue = rows.find((r) => r.note)?.note;
+                return (
+                  <Card key={s} title={s} action={<span className="text-xs text-slate-400">{rows.length} gurua</span>}>
+                    {venue && <p className="px-5 pt-3 text-xs text-slate-400">🎉 Gaala: {venue}</p>}
+                    <ol className="divide-y divide-white/5">
+                      {(all ? rows : rows.slice(0, 3)).map((r) => (
+                        <li key={r.id} className="flex items-center gap-3 px-5 py-2.5">
+                          <span className="w-7 text-center text-lg">{MEDAL[r.rank - 1] ?? <span className="font-display text-sm text-slate-500">{r.rank}</span>}</span>
+                          <span className={`flex-1 ${r.rank <= 3 ? 'font-semibold text-white' : 'text-slate-300'}`}>{r.name}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    {rows.length > 3 && (
+                      <button onClick={() => setOpen(all ? null : s)} className="w-full border-t border-white/5 py-2.5 text-xs font-semibold text-ice-300 hover:bg-white/[0.03]">
+                        {all ? 'Näytä vähemmän' : `Näytä kaikki ${rows.length}`}
+                      </button>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

@@ -125,6 +125,48 @@ app.get('/coaches', async (c) => {
   })));
 });
 
+/** Pelaajakortti: liiga.fi:n pelaajatiedot (välimuistissa 6 h) */
+app.get('/players/:id/info', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'Virheellinen pelaaja' }, 400);
+  const url = `https://liiga.fi/api/v2/players/info/${id}`;
+  const cache = caches.default;
+  const key = new Request(url);
+  let res = await cache.match(key);
+  if (!res) {
+    const r = await fetch(url, { headers: { 'User-Agent': 'HogiGuru/1.0 (+https://guru.konderi.fi)' } });
+    if (!r.ok) return c.json({ error: 'Pelaajatietoja ei saatu liiga.fi:stä' }, 502);
+    res = new Response(r.body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=21600' } });
+    c.executionCtx.waitUntil(cache.put(key, res.clone()));
+  }
+  type Hist = Record<string, string | number> & { season: number; tournament: string; teamName: string; teamShortName: string };
+  type Info = {
+    firstName: string; lastName: string; dateOfBirth: string | null; height: number | null; weight: number | null; handedness: string | null;
+    nationality?: { code: string }; birthLocality?: { name?: string; country?: { code: string } };
+    teams?: Record<string, { season: number; jersey: number | null; teamName: string; imageUrl: string | null; position: string | null }>;
+    historical?: { regular?: Hist[] };
+  };
+  const d = await res.json<Info>();
+  const seasons = Object.values(d.teams ?? {}).sort((a, b) => b.season - a.season);
+  const cur = seasons[0];
+  const num = (v: unknown) => (typeof v === 'string' ? Number(v.replace(',', '.')) : Number(v ?? 0));
+  const history = (d.historical?.regular ?? [])
+    .filter((h) => h.tournament === 'RUNKOSARJA' && num(h.games) > 0)
+    .sort((a, b) => b.season - a.season)
+    .map((h) => ({
+      season: h.season, team: h.teamShortName || h.teamName, games: num(h.games), goals: num(h.goals), assists: num(h.assists),
+      points: num(h.points), pim: num(h.penaltyMinutes), plusMinus: num(h.plusMinus),
+      saves: num(h.saves), savePct: num(h.savePercentage), gaa: num(h.goalsAgainstAverage), shutouts: num(h.shutOut), gkWins: num(h.gkWins),
+    }));
+  return c.json({
+    id, name: `${d.firstName} ${d.lastName}`, dateOfBirth: d.dateOfBirth, height: d.height, weight: d.weight, handedness: d.handedness,
+    nationality: d.nationality?.code ?? null, birthplace: [d.birthLocality?.name, d.birthLocality?.country?.code].filter(Boolean).join(', ') || null,
+    team: cur?.teamName ?? null, jersey: cur?.jersey ?? null, position: cur?.position ?? null,
+    picture: seasons.find((s) => s.imageUrl)?.imageUrl ?? null,
+    history,
+  });
+});
+
 app.get('/swap-days', async (c) => {
   const res = await c.env.DB.prepare('SELECT * FROM swap_days WHERE season_id = ? ORDER BY date').bind(c.get('season').id).all();
   return c.json(res.results);
