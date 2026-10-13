@@ -7,6 +7,8 @@ import {
 } from './data';
 import { autoPick, draftState, finalizeDraft, makePick, swapSlot } from './draft';
 import { syncLiiga } from './liiga';
+import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
+import { entityName } from './data';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
 
 interface Env { DB: D1Database }
@@ -119,7 +121,7 @@ app.get('/coaches', async (c) => {
   ]);
   return c.json(res.results.map((r) => ({
     ...r, hg: Math.round((r.team_points ?? 0) * season.scoring.C.teamPoints * 100) / 100,
-    reserved: usage.get(usageKey('C', r.id)) ?? 0,
+    reserved: usage.get(usageKey('C', r.id)) ?? 0, max: maxFor(season, 'C'),
   })));
 });
 
@@ -193,8 +195,11 @@ app.get('/players/search', requireUser, async (c) => {
   const res = await c.env.DB.prepare(
     `SELECT id, first_name || ' ' || last_name AS name, team_name AS team, role, picture FROM players
      WHERE (first_name || ' ' || last_name) LIKE ? ${role} ORDER BY last_name LIMIT 25`,
-  ).bind(q).all();
-  return c.json(res.results);
+  ).bind(q).all<{ id: number; role: string }>();
+  const season = c.get('season');
+  const usage = await usageCounts(c.env.DB, season.id);
+  const posOf = (r: string): Position => pos ?? (r === 'MV' ? 'G' : r === 'P' ? 'D' : 'F');
+  return c.json(res.results.map((r) => ({ ...r, reserved: usage.get(usageKey(posOf(r.role), r.id)) ?? 0, max: maxFor(season, posOf(r.role)) })));
 });
 
 // ================= KIRJAUTUMINEN =================
@@ -299,6 +304,75 @@ async function savePrefs(c: C, guruId: number, body: { positionOrder: Position[]
 }
 
 app.get('/draft', requireUser, async (c) => c.json(await draftState(c.env.DB, c.get('season'))));
+
+// --- Vaihtotoiveet
+async function myGuru(c: C) {
+  return c.env.DB.prepare('SELECT id, name, draft_number FROM gurus WHERE user_id = ? AND season_id = ?').bind(c.get('user')!.id, c.get('season').id)
+    .first<{ id: number; name: string; draft_number: number | null }>();
+}
+
+app.get('/me/swaps', requireUser, async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const g = await myGuru(c);
+  if (!g) return c.json({ guru: null });
+  const day = await nextOpenSwapDay(db, season);
+  const used = await db.prepare('SELECT COUNT(*) AS n FROM roster_slots WHERE guru_id = ? AND replaced_slot_id IS NOT NULL').bind(g.id).first<{ n: number }>();
+  const history = await db.prepare(
+    `SELECT r.*, d.date FROM swap_requests r JOIN swap_days d ON d.id = r.swap_day_id WHERE r.guru_id = ? AND d.processed_at IS NOT NULL ORDER BY d.date DESC, r.priority`,
+  ).bind(g.id).all<{ candidates: string }>();
+  let requests: unknown[] = []; let position = null; let reversed = false; let dayNumber = 0;
+  if (day) {
+    const po = await priorityOrder(db, season, day);
+    reversed = po.reversed; dayNumber = po.dayNumber;
+    position = po.order.findIndex((x) => x.id === g.id) + 1 || null;
+    const r = await db.prepare('SELECT slot_id, candidates FROM swap_requests WHERE swap_day_id = ? AND guru_id = ? ORDER BY priority').bind(day.id, g.id).all<{ slot_id: number; candidates: string }>();
+    requests = r.results.map((x) => ({ slot_id: x.slot_id, candidates: JSON.parse(x.candidates) }));
+  }
+  return c.json({
+    guru: g, day, deadline: day ? deadlineOf(day) : null, now: helsinkiNow(), position, reversed, dayNumber,
+    gurus: (await db.prepare('SELECT COUNT(*) AS n FROM gurus WHERE season_id = ?').bind(season.id).first<{ n: number }>())?.n ?? 0,
+    swaps: { used: used?.n ?? 0, max: season.max_swaps },
+    requests, history: history.results.map((h) => ({ ...h, candidates: JSON.parse(h.candidates) })),
+  });
+});
+
+app.put('/me/swaps', requireUser, async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const g = await myGuru(c);
+  if (!g) throw new Error('Et ole mukana tällä kaudella');
+  if (season.draft_status !== 'done') throw new Error('Vaihtotoiveita voi tehdä vasta draftin jälkeen');
+  const day = await nextOpenSwapDay(db, season);
+  if (!day) throw new Error('Ei avointa vaihtopäivää');
+  const body = await c.req.json<{ requests: { slot_id: number; candidates: number[] }[] }>();
+  const reqs = (body.requests ?? []).slice(0, 10);
+  const slots = await db.prepare('SELECT id, position FROM roster_slots WHERE guru_id = ? AND end_date IS NULL').bind(g.id).all<{ id: number; position: Position }>();
+  const mine = new Map(slots.results.map((s) => [s.id, s.position]));
+  const seen = new Set<number>();
+  for (const r of reqs) {
+    if (!mine.has(Number(r.slot_id))) throw new Error('Virheellinen paikka');
+    if (seen.has(Number(r.slot_id))) throw new Error('Sama pelaaja ei voi lähteä kahdesti');
+    seen.add(Number(r.slot_id));
+    if (!r.candidates?.length) throw new Error('Valitse jokaiseen vaihtoon vähintään yksi tulija');
+  }
+  await db.batch([
+    db.prepare('DELETE FROM swap_requests WHERE swap_day_id = ? AND guru_id = ?').bind(day.id, g.id),
+    ...reqs.map((r, i) => db.prepare('INSERT INTO swap_requests (swap_day_id, guru_id, priority, slot_id, candidates) VALUES (?,?,?,?,?)')
+      .bind(day.id, g.id, i + 1, Number(r.slot_id), JSON.stringify(r.candidates.map(Number).filter(Boolean).slice(0, 10)))),
+  ]);
+  return c.json({ ok: true });
+});
+
+/** Käsitellyt vaihdot julkisesti. */
+app.get('/public/swaps', async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const ctx = await loadContext(db, season);
+  const res = await db.prepare(
+    `SELECT d.date, g.name AS guru, s.position, s.entity_id AS out_id, r.result_entity_id AS in_id, r.status, r.result_note
+     FROM swap_requests r JOIN swap_days d ON d.id = r.swap_day_id JOIN gurus g ON g.id = r.guru_id JOIN roster_slots s ON s.id = r.slot_id
+     WHERE d.season_id = ? AND d.processed_at IS NOT NULL AND r.status = 'done' ORDER BY d.date DESC, g.name`,
+  ).bind(season.id).all<{ position: Position; out_id: number; in_id: number }>();
+  return c.json(res.results.map((r) => ({ ...r, out_name: entityName(ctx, r.position, r.out_id).name, in_name: entityName(ctx, r.position, r.in_id).name })));
+});
 
 // ================= YLLÄPITO =================
 const admin = new Hono<App>();
@@ -478,6 +552,35 @@ admin.get('/swaps', async (c) => {
   const name = (p: Position, id: number) => (p === 'C' ? ctx.names.coach.get(id)?.name : ctx.names.player.get(id)?.name) ?? `#${id}`;
   return c.json(res.results.map((r) => ({ ...r, in_name: name(r.position, r.in_id), out_name: name(r.position, r.out_id) })));
 });
+
+// Vaihtotoiveiden käsittely
+async function swapDayById(c: C) {
+  const d = await c.env.DB.prepare('SELECT * FROM swap_days WHERE id = ? AND season_id = ?').bind(Number(c.req.param('id')), c.get('season').id).first<SwapDay>();
+  if (!d) throw new Error('Vaihtopäivää ei löydy');
+  return d;
+}
+admin.get('/swap-days/:id/preview', async (c) => {
+  const day = await swapDayById(c);
+  if (day.processed_at) {
+    const db = c.env.DB; const season = c.get('season');
+    const ctx = await loadContext(db, season);
+    const po = await priorityOrder(db, season, day);
+    const res = await db.prepare(
+      `SELECT r.*, g.name AS guru, s.position, s.entity_id AS out_id FROM swap_requests r JOIN gurus g ON g.id = r.guru_id JOIN roster_slots s ON s.id = r.slot_id
+       WHERE r.swap_day_id = ? ORDER BY r.priority, g.name`,
+    ).bind(day.id).all<{ id: number; guru_id: number; guru: string; priority: number; slot_id: number; position: Position; out_id: number; result_entity_id: number | null; status: string; result_note: string | null }>();
+    const pos = new Map(po.order.map((g, i) => [g.id, i]));
+    const results = res.results.sort((a, b) => a.priority - b.priority || (pos.get(a.guru_id) ?? 0) - (pos.get(b.guru_id) ?? 0)).map((r) => ({
+      request_id: r.id, guru_id: r.guru_id, guru: r.guru, round: r.priority, slot_id: r.slot_id, position: r.position,
+      out_id: r.out_id, out_name: entityName(ctx, r.position, r.out_id).name,
+      in_id: r.result_entity_id, in_name: r.result_entity_id ? entityName(ctx, r.position, r.result_entity_id).name : null,
+      ok: r.status === 'done', note: r.result_note ?? '',
+    }));
+    return c.json({ day, dayNumber: po.dayNumber, reversed: po.reversed, order: po.order.map((g, i) => ({ pos: i + 1, id: g.id, name: g.name, draft_number: g.draft_number, requests: 0 })), results });
+  }
+  return c.json(await previewSwapDay(c.env.DB, c.get('season'), day));
+});
+admin.post('/swap-days/:id/process', async (c) => c.json(await processSwapDay(c.env.DB, c.get('season'), await swapDayById(c))));
 admin.post('/swaps/:id/undo', async (c) => {
   const db = c.env.DB;
   const s = await db.prepare('SELECT id, replaced_slot_id FROM roster_slots WHERE id = ?').bind(Number(c.req.param('id'))).first<{ id: number; replaced_slot_id: number | null }>();

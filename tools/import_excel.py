@@ -192,6 +192,8 @@ for col in cols:
         if v not in (None, "") and float(v) != 0:
             out.append(f"INSERT INTO adjustments (guru_id, points, reason) VALUES ({G}, {float(v)}, 'Valmentajan potkut (Excel-tuonti)');")
 
+out.append(f"UPDATE seasons SET draft_status = 'done' WHERE id = {SEASON_ID};")
+out.append(f"UPDATE swap_days SET processed_at = CURRENT_TIMESTAMP WHERE season_id = {SEASON_ID} AND date <= '{SWAP_DATE}' AND processed_at IS NULL;")
 print("\n".join(out))
 print(f"-- Gurut: {len(cols)}, valmentajat: {len(coaches)}", file=sys.stderr)
 for w in warnings:

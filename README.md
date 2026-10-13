@@ -6,6 +6,7 @@ Sivusto korvaa aiemman Excel-laskimen ja paperisen osallistumiskaavakkeen: tilas
 
 🌐 **Tuotanto:** https://guru.konderi.fi
 📦 **Repo:** https://github.com/Konderi/HogiGuru
+📘 **Ohjeet:** [Gurut](docs/kayttoohje.md) · [Ylläpitäjät](docs/yllapitajan-ohje.md)
 
 ---
 
@@ -239,9 +240,16 @@ Tarkistukset: pelaaja listalla, paikka ei täynnä, ei tuplavalintaa, paikkakoht
 
 ## Vaihdot
 
-1. Vaihtopäivät ovat valmiina (Ylläpito → Vaihdot); etusivulla lähtölaskenta seuraavan vaihtoikkunan alkuun.
-2. Gurut etsivät vapaita pelaajia Tilastot-sivulta.
-3. Ylläpito → **Gurut** → ⇄ Vaihda. Järjestelmä tarkistaa valintarajat ja 4 vaihdon maksimin.
+Vaihdot tehdään sivustolla **vaihtotoiveina**. Kellon kanssa ei tarvitse kilpailla.
+
+1. Guru avaa **Oma joukkue → Vaihtotoiveet** ja lisää toiveet seuraavaan vaihtopäivään: lähtevä pelaaja + tulija ja halutessaan varavaihtoehdot järjestyksessä. Useamman vaihdon keskinäisen järjestyksen voi asettaa. Toiveita voi muokata vaihtopäivän loppuun (klo 21.00) asti, eivätkä muut näe niitä.
+2. Vaihtopäivän päätyttyä ylläpito avaa **Ylläpito → Vaihdot → Toiveet**, näkee esikatselun ja painaa **Hyväksy ja toteuta**.
+3. Käsittely tehdään **kierroksittain**: ensin jokaisen gurun 1. toive vuorojärjestyksessä, sitten 2. toive jne.
+4. **Vuorojärjestys = draft-järjestys; joka toisena vaihtopäivänä käänteinen** (1. normaali, 2. käänteinen, 3. normaali, 4. käänteinen).
+5. Jos tulija on jo täynnä (tai gurulla jo), otetaan seuraava varavaihtoehto. Jos mikään ei käy, vaihto ei toteudu eikä vaihtokertaa kulu. Edellisen gurun vaihdossa vapautunut pelaaja on heti seuraavien valittavissa.
+6. Vaihtokiintiö (4) tarkistetaan; yksittäisen vaihdon voi perua vaihtolokista.
+
+Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vaihda**), esim. valmentajan potkujen yhteydessä.
 
 **Potkut:** Valmentajat → Potkut (−10 p), sitten tarvittaessa vaihto.
 
@@ -321,19 +329,13 @@ Tuo gurut, kentälliset, vaihdot, valmentajat ja potkut. Nimet yhdistetään lii
 
 ## Ylläpitäjän ohje
 
-**Ennen kautta:**
-1. Pisteytys & kausi → tarkista säännöt.
-2. Ilmoittautuminen → avaa lomake.
-3. Hyväksy ilmoittautuneet guruiksi.
-4. Päivitä tilastot.
-5. Lisää valmentajat.
-6. Kokoa draft-listat ja arvo järjestys.
+📘 **Käyttöohjeet:**
+- [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, draft, vaihtotoiveet, varaustilanne
+- [Ylläpitäjän ohje](docs/yllapitajan-ohje.md): kauden valmistelu, draft, vaihtopäivän käsittely, potkut, korjaukset, kertoimien muutos kesken kauden, ongelmatilanteet
 
-**Draft-iltana:** ▶ Aloita → avaa `/draft` isolle näytölle → valinnat → ✓ Vie kentällisiin.
+Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset → valmentajat → draft. Kauden aikana tilastot päivittyvät itsestään, ja vaihtopäivien toiveet käsitellään esikatselun kautta. Kauden lopussa mitalistit Hall of Fameen.
 
-**Kauden aikana:** tilastot päivittyvät itsestään. Vaihtopäivinä vaihdot; tarvittaessa potkut ja korjaukset.
-
-**Kauden lopussa:** mitalistit Hall of Fameen.
+⚠️ Pistekertoimet vaikuttavat **taannehtivasti** koko kauden pisteisiin. Älä muuta niitä kesken kauden; ks. [ohjeen kohta 6](docs/yllapitajan-ohje.md#6-️-pistekertoimien-muuttaminen-kesken-kauden).
 
 ---
 

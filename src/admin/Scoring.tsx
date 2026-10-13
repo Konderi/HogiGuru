@@ -25,6 +25,9 @@ export default function Scoring() {
     <>
       <PageHeader kicker={`Kausi ${s.name}`} title="Pisteytys & kausi"><button className="btn btn-primary" onClick={save}>Tallenna muutokset</button></PageHeader>
 
+      <div className="mb-6 rounded-lg border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-200">
+        ⚠️ Kertoimet vaikuttavat <b>taannehtivasti</b> koko kauden pisteisiin. Vaihdoissa jäädytetyt pisteet on laskettu vanhoilla kertoimilla, joten muutos kesken kauden voi vääristää vaihdettujen pelaajien pisteitä. Muuta vain ennen kauden alkua tai HG-komitean päätöksellä (ota ensin varmuuskopio).
+      </div>
       <div className="grid gap-6 xl:grid-cols-2">
         {(['F', 'D', 'G', 'C'] as const).map((g) => (
           <Card key={g} title={`${POS_LABEL[g as Position]} – kertoimet`}>

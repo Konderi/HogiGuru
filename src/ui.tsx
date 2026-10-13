@@ -103,7 +103,13 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   );
 }
 
-export interface SearchHit { id: number; name: string; team: string | null; picture?: string | null }
+export interface SearchHit { id: number; name: string; team: string | null; picture?: string | null; reserved?: number; max?: number }
+
+/** Varaustilanne-merkki: 2/5 (vihreä), 4/5 (keltainen), 5/5 täynnä (punainen). */
+export function ReservedBadge({ n, max }: { n: number; max: number }) {
+  const cls = n >= max ? 'bg-goal/20 text-goal' : n >= max - 1 ? 'bg-amber-400/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300';
+  return <span title={n >= max ? 'Täynnä' : `${max - n} vapaana`} className={`rounded-md px-1.5 py-0.5 font-mono text-[11px] font-semibold ${cls}`}>{n}/{max}</span>;
+}
 
 /** Pelaajahaku liiga-datasta. Valmentajille annetaan valmis lista `options`. */
 export function EntityPicker({ pos, onPick, options, placeholder }: {
@@ -124,10 +130,11 @@ export function EntityPicker({ pos, onPick, options, placeholder }: {
         <ul className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-rink-950/80">
           {hits.map((h) => (
             <li key={h.id}>
-              <button className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ice-500/10" onClick={() => { onPick(h); setQ(''); }}>
+              <button className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ice-500/10 ${h.max != null && (h.reserved ?? 0) >= h.max ? 'opacity-50' : ''}`} onClick={() => { onPick(h); setQ(''); }}>
                 <Avatar src={h.picture} name={h.name} size="h-7 w-7" />
                 <span className="flex-1 text-sm text-white">{h.name}</span>
                 <span className="text-xs text-slate-400">{h.team}</span>
+                {h.max != null && <ReservedBadge n={h.reserved ?? 0} max={h.max} />}
               </button>
             </li>
           ))}

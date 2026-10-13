@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, fmt, fmtDate, POS_LABEL, type Position, type Slot } from '../api';
 import { useApi } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
+import { SwapRequests } from '../components/SwapRequests';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, RankBadge, Spinner } from '../ui';
 
 interface TeamResp {
@@ -28,7 +29,7 @@ function PlayerTile({ s }: { s?: Slot }) {
 export default function MyTeam() {
   const team = useApi<TeamResp>('/me/team');
   const draft = useApi<DraftResp>('/draft');
-  const [tab, setTab] = useState<'team' | 'prefs'>('team');
+  const [tab, setTab] = useState<'team' | 'prefs' | 'swaps'>('team');
 
   if (team.loading && !team.data) return <Spinner />;
   if (!team.data?.guru) return <><PageHeader title="Oma joukkue" /><Card><Empty>Tunnustasi ei ole vielä liitetty tämän kauden guruun. Ota yhteys ylläpitoon.</Empty></Card></>;
@@ -48,17 +49,17 @@ export default function MyTeam() {
         </div>
       </PageHeader>
 
-      {draft.data?.status === 'setup' && (
+      {draft.data && draft.data.status !== 'live' && (
         <div className="mb-6 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
-          {(['team', 'prefs'] as const).map((t) => (
+          {(['team', draft.data.status === 'setup' ? 'prefs' : 'swaps'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider ${tab === t ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>
-              {t === 'team' ? 'Kentällinen' : 'Draft-ennakkolista'}
+              {t === 'team' ? 'Kentällinen' : t === 'prefs' ? 'Draft-ennakkolista' : 'Vaihtotoiveet'}
             </button>
           ))}
         </div>
       )}
 
-      {tab === 'prefs' && draft.data ? (
+      {tab === 'swaps' ? <SwapRequests slots={slots} /> : tab === 'prefs' && draft.data ? (
         <Card title="Draft-ennakkolista" ><div className="p-5"><DraftPrefsEditor endpoint="/me/draft-prefs" pool={draft.data.pool} roster={draft.data.roster} /></div></Card>
       ) : (
         <div className="space-y-6">
