@@ -61,6 +61,8 @@
   .table td { @apply border-t border-white/5 px-3 py-2.5; }
   .table tbody tr { @apply transition hover:bg-white/[0.03]; }
   .num { @apply text-right font-mono tabular-nums; }
+  /* Numerosarakkeet tiiviiksi ja oikealle (myös otsikot); nimisarake vie loput tilasta */
+  .table th.num, .table td.num { @apply w-px whitespace-nowrap text-right; }
   .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider; }
   .scoreboard {
     @apply font-mono font-bold tabular-nums text-ice-300;
