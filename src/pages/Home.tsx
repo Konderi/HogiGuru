@@ -44,8 +44,8 @@ export default function Home() {
         <div className="relative grid gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-center">
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-ice-400">Kausi {data.season.name}</p>
-            <h1 className="text-5xl leading-[0.95] sm:text-7xl">Liigan<br /><span className="bg-gradient-to-r from-ice-200 to-ice-500 bg-clip-text text-transparent">All-Stars</span><br />veikkaus</h1>
-            <p className="mt-5 max-w-md text-slate-300">Draftaa oma tähtikentällisesi, seuraa pisteiden kertymistä joka ilta ja nouse Gurujen kärkeen.</p>
+            <h1 className="text-5xl leading-[0.95] sm:text-7xl">HogiGuru<br /><span className="bg-gradient-to-r from-ice-200 to-ice-500 bg-clip-text text-transparent">Liiga</span><br />veikkaus</h1>
+            <p className="mt-5 max-w-md text-slate-300">Veikkaa runkosarjan lopputulos, joukkueiden parhaat pistemiehet ja pörssien voittajat, draftaa oma All-Stars-kentällisesi ja nouse Gurujen kärkeen.</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link to="/leaderboard" className="btn btn-primary">Koko leaderboard</Link>
               <Link to="/tilastot" className="btn btn-ghost">Pelaajatilastot</Link>

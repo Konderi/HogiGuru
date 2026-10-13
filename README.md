@@ -1,6 +1,6 @@
 # 🏒 HogiGuru
 
-**Liigan All-Stars-veikkaus verkossa.** HogiGuru on kaveriporukan jääkiekkokisa, jossa jokainen kisaaja eli *guru* kokoaa kauden alussa draftissa oman All-Stars-kentällisensä Liigan pelaajista ja valmentajista. Kentällinen kerää pisteitä koko runkosarjan ajan pelaajien oikeiden tilastojen perusteella. Kauden aikana kentällistä voi muuttaa sovittuina vaihtopäivinä. Lisäksi kauden alussa veikataan sarjataulukko, joukkueiden parhaat pistemiehet ja pörssien voittajat.
+**HogiGuru – Liiga-veikkaus verkossa.** HogiGuru on kaveriporukan jääkiekkokisa, jossa kisaajat eli *gurut* veikkaavat kauden alussa runkosarjan lopputuloksen, joukkueiden parhaat pistemiehet ja pörssien voittajat. Lisäksi jokainen kokoaa draftissa oman All-Stars-kentällisensä Liigan pelaajista ja valmentajista. Kentällinen kerää pisteitä koko runkosarjan ajan pelaajien oikeiden tilastojen perusteella, ja sitä voi muuttaa sovittuina vaihtopäivinä.
 
 Sivusto korvaa aiemman Excel-laskimen ja paperisen osallistumiskaavakkeen: tilastot päivittyvät automaattisesti suoraan liiga.fi:stä, ilmoittautuminen ja veikkaukset tehdään verkossa, gurut näkevät oman joukkueensa kirjautumalla, ja ylläpito hoitaa draftin, vaihdot ja pisteytyksen selaimessa.
 

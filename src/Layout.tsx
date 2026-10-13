@@ -74,7 +74,7 @@ export default function Layout() {
       <footer className="border-t border-white/6 py-8 text-center text-xs text-slate-500">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4">
           <span className="font-display tracking-widest text-slate-400">HOGIGURU</span>
-          <span>Liigan All-Stars-veikkaus</span>
+          <span>Liiga-veikkaus</span>
           <span>Tilastot: liiga.fi</span>
         </div>
       </footer>
