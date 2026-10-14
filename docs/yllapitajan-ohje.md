@@ -132,3 +132,17 @@ Kentällisen koon, valintarajojen ja vaihtojen määrän muutos koskee vain tule
 | Guru ei pääse sisään | Käyttäjät → aseta uusi salasana; tarkista liitos guruun |
 | Väärä vaihto toteutui | Vaihtoloki → ↶ Peru, tee oikea vaihto käsin |
 | Kanta pitää palauttaa | D1 Time Travel (30 pv) tai varmuuskopio |
+
+## Gaalaesitys
+
+**Kokonaistulokset**-sivulla (tai Ylläpito → Kokonaistulokset) ylläpitäjä näkee napin **🎬 Gaalaesitys**. Se avaa koko näytön esityksen, joka paljastaa tulokset vaiheittain rauhallisella esiintulolla:
+
+1. Sijat 31– (huonoimmasta alkaen, yksi kerrallaan nopeahkosti)
+2. Sijat 21–30
+3. Sijat 11–20
+4. Sijat 10, 9, … 2 yksi kerrallaan
+5. Voittaja
+
+Ohjaus: **välilyönti / → / Enter** = seuraava, **←** = takaisin, **Esc** = sulje, **↺ Alusta** = alkuun, **⛶** = koko näyttö.
+
+**Harjoittelu:** esitys toimii myös ennen julkaisua (merkintä "harjoitus") eikä paljasta mitään muille. Viimeisen vaiheen jälkeen napista **📣 Julkaise tulokset kaikille** tulokset aukeavat julkiselle sivulle.

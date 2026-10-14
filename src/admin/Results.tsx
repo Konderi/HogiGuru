@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { type Season } from '../api';
 import { useApi } from '../auth';
 import ResultsView, { type Results } from '../components/ResultsView';
+import GalaReveal from '../components/GalaReveal';
 import { Card, PageHeader, Spinner } from '../ui';
 import { api, useAdmin } from './AdminLayout';
 
@@ -10,6 +11,7 @@ export default function AdminResults() {
   const res = useApi<Results>('/admin/results');
   const { run } = useAdmin();
   const [override, setOverride] = useState('');
+  const [gala, setGala] = useState(false);
   useEffect(() => { if (ov.data) setOverride(JSON.stringify(ov.data.season.results_override ?? {}, null, 2)); }, [ov.data]);
   if (!ov.data) return <Spinner />;
   const s = ov.data.season;
@@ -27,8 +29,10 @@ export default function AdminResults() {
   return (
     <>
       <PageHeader kicker={`Kausi ${s.name}`} title="Kokonaistulokset">
+        <button className="btn btn-ghost" onClick={() => setGala(true)}>🎬 Gaalaesitys{!published && ' (harjoitus)'}</button>
         <button className={`btn ${published ? 'btn-ghost' : 'btn-primary'}`} onClick={toggle}>{published ? '🔒 Piilota tulokset' : '🏆 Julkaise kokonaistulokset'}</button>
       </PageHeader>
+      {gala && <GalaReveal onClose={() => setGala(false)} onPublish={!published ? async () => { await api('/admin/season', { method: 'PUT', body: { results_published: 1 } }); ov.reload(); setGala(false); } : undefined} />}
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Card title="Tila">
           <div className="space-y-3 p-5 text-sm text-slate-300">
