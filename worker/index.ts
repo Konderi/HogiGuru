@@ -760,6 +760,8 @@ admin.delete('/adjustments/:id', async (c) => {
 // Valmentajat
 admin.post('/coaches', async (c) => {
   const b = await c.req.json<{ name: string; team_id: string }>();
+  const same = await c.env.DB.prepare('SELECT 1 FROM coaches WHERE season_id = ? AND team_id = ? AND lower(name) = lower(?)').bind(c.get('season').id, b.team_id, b.name.trim()).first();
+  if (same) throw new Error('Valmentaja on jo lisätty tälle joukkueelle');
   await c.env.DB.prepare('INSERT INTO coaches (season_id, name, team_id) VALUES (?,?,?)').bind(c.get('season').id, b.name.trim(), b.team_id).run();
   return c.json({ ok: true });
 });
