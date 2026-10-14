@@ -82,9 +82,36 @@ export default function GalaReveal({ onClose, onPublish }: { onClose: () => void
             <div className="gala-in"><p className="text-7xl">🏆</p><p className="mt-6 font-display text-5xl text-white">Kausi {data.season}</p>
               <p className="mt-3 text-slate-400">{data.rows.length} gurua · All-Stars + veikkaukset</p></div>
           </div>
-        ) : (
+        ) : (<>
+          {cut <= 3 && (
+            /* Palkintokoroke: 2. vasemmalla, 1. keskellä korkeimmalla, 3. oikealla */
+            <div className="mx-auto mb-8 grid max-w-4xl grid-cols-3 items-end gap-3 pt-6 sm:gap-6">
+              {([2, 1, 3] as const).map((place) => {
+                const r = data.rows.find((x) => x.rank === place) ?? (place === 3 ? data.rows.filter((x) => x.rank <= 3)[2] : undefined);
+                const shown = !!r && r.rank >= cut;
+                const isNew = shown && batch.includes(r!.id);
+                const h = place === 1 ? 'h-48 sm:h-56' : place === 2 ? 'h-36 sm:h-40' : 'h-28 sm:h-32';
+                const tone = place === 1 ? 'from-yellow-300/50 to-yellow-600/20 border-yellow-300/60' : place === 2 ? 'from-slate-200/40 to-slate-500/15 border-slate-200/50' : 'from-amber-600/45 to-amber-900/20 border-amber-600/50';
+                return (
+                  <div key={place} className="flex flex-col items-center">
+                    <div className={`mb-3 min-h-[120px] w-full text-center ${shown ? (isNew ? (place === 1 ? 'gala-glow rounded-2xl' : 'gala-in') : '') : 'opacity-0'}`}>
+                      {shown && <>
+                        <p className={place === 1 ? 'text-6xl' : 'text-5xl'}>{place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉'}</p>
+                        <p className={`mt-2 font-display leading-tight text-white ${place === 1 ? 'text-3xl sm:text-5xl' : 'text-2xl sm:text-3xl'}`}>{r!.name}</p>
+                        <p className={`scoreboard mt-1 ${place === 1 ? 'text-4xl' : 'text-2xl'}`}>{fmt(r!.total)}</p>
+                        <p className="mt-1 hidden text-xs text-slate-400 sm:block">All-Stars {fmt(r!.allstars)} · Veikkaukset {fmt(r!.standings + r!.topScorers + r!.categories)}</p>
+                      </>}
+                    </div>
+                    <div className={`flex w-full items-start justify-center rounded-t-2xl border border-b-0 bg-gradient-to-b pt-3 shadow-2xl ${h} ${tone}`}>
+                      <span className="font-display text-5xl text-white/80 sm:text-7xl">{place}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <ol className={`mx-auto grid max-w-5xl gap-2 ${top ? '' : 'md:grid-cols-2'}`}>
-            {[...visible].sort((a, b) => a.rank - b.rank).map((r) => {
+            {[...visible].filter((r) => cut > 3 || r.rank > 3).sort((a, b) => a.rank - b.rank).map((r) => {
               const i = batch.indexOf(r.id);
               const isNew = i >= 0;
               const big = r.rank <= 3 && r.rank >= cut;
@@ -100,7 +127,7 @@ export default function GalaReveal({ onClose, onPublish }: { onClose: () => void
               );
             })}
           </ol>
-        )}
+        </>)}
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 flex items-center justify-center gap-3 bg-gradient-to-t from-rink-950 to-transparent px-6 pb-6 pt-10">
