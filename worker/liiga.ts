@@ -126,7 +126,7 @@ export async function syncGames(db: D1Database, y: number, max = 12): Promise<nu
       const oppByJersey = new Map((oppPlayers ?? []).filter((p) => p.line != null).map((p) => [String(p.jersey), p.id as number]));
       const row = new Map<number, { goals: number; assists: number; pim: number; pm: number; saves: number; ga: number; so: number; win: number }>();
       const get = (id: number) => { let r = row.get(id); if (!r) { r = { goals: 0, assists: 0, pim: 0, pm: 0, saves: 0, ga: 0, so: 0, win: 0 }; row.set(id, r); } return r; };
-      for (const p of played) get(p.id);
+      for (const p of played) if (p.role !== 'GOALIE') get(p.id);
       for (const ev of t.goalEvents ?? []) {
         if (ev.scorerPlayerId && row.has(ev.scorerPlayerId)) get(ev.scorerPlayerId).goals++;
         for (const a of ev.assistantPlayerIds ?? []) if (row.has(a)) get(a).assists++;
@@ -137,13 +137,26 @@ export async function syncGames(db: D1Database, y: number, max = 12): Promise<nu
       }
       void oppByJersey;
       for (const ev of t.penaltyEvents ?? []) if (ev.playerId && row.has(ev.playerId)) get(ev.playerId).pim += ev.penaltyMinutes ?? 0;
-      // Maalivahti: aloittaja (line 1)
-      const gk = played.find((p) => p.role === 'GOALIE' && p.line === 1);
-      if (gk) {
-        const oppPeriods = st ? (st[s.opp] as ApiPlayer[]) ?? [] : [];
-        const shotsAgainst = oppPeriods.reduce((a, p) => a + (p.shots ?? 0), 0);
-        const r = get(gk.id);
-        r.ga = ga; r.saves = Math.max(0, shotsAgainst - ga); r.so = ga === 0 ? 1 : 0; r.win = won ? 1 : 0;
+      // Maalivahdit: tarkat erätilastot (torjunnat, päästetyt, peliaika) – vain kentällä olleet
+      const gkStats = new Map<number, { saves: number; ga: number; toi: number }>();
+      for (const per of (st ? (st[s.key] as ApiPlayer[]) ?? [] : [])) {
+        for (const gs of (per.goaliePeriodStats ?? []) as ApiPlayer[]) {
+          const x = gkStats.get(gs.playerId) ?? { saves: 0, ga: 0, toi: 0 };
+          x.saves += gs.period?.saves ?? 0; x.ga += gs.period?.goalsAllowed ?? 0; x.toi += gs.period?.timeofice ?? 0;
+          gkStats.set(gs.playerId, x);
+        }
+      }
+      const gks = [...gkStats.entries()].filter(([, x]) => x.toi > 0);
+      if (!gks.length) { // varalla: aloittaja (line 1) ilman torjuntoja
+        const gk = played.find((p) => p.role === 'GOALIE' && p.line === 1);
+        if (gk) gks.push([gk.id, { saves: 0, ga, toi: 1 }]);
+      }
+      const mainGk = gks.reduce<number | null>((best, [id, x]) => (best == null || x.toi > gkStats.get(best)!.toi ? id : best), null);
+      for (const [id, x] of gks) {
+        const r = get(id);
+        r.saves = x.saves; r.ga = x.ga;
+        r.so = gks.length === 1 && ga === 0 ? 1 : 0;
+        r.win = won && id === mainGk ? 1 : 0;
       }
       for (const [pid, r] of row) {
         stmts.push(db.prepare(
