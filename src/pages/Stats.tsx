@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { fmt, POS_PLURAL, type Position } from '../api';
+import { fmt, matchName, POS_PLURAL, type Position } from '../api';
 import { useApi } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 import PlayerCard, { type CardSeed } from '../components/PlayerCard';
@@ -28,7 +28,7 @@ export default function Stats() {
   const [card, setCard] = useState<CardSeed | null>(null);
 
   const rows = useMemo(() => (players.data?.players ?? [])
-    .filter((p) => (p.name + p.team).toLowerCase().includes(q.toLowerCase()))
+    .filter((p) => matchName(`${p.name} ${p.team}`, q))
     .filter((p) => !onlyFree || p.reserved < max), [players.data, q, onlyFree, max]);
 
   return (
@@ -58,7 +58,7 @@ export default function Stats() {
             <table className="table">
               <thead><tr><th>Valmentaja</th><th>Joukkue</th><th className="num">Joukkueen P</th><th className="num">Varattu</th><th className="num">HG</th></tr></thead>
               <tbody>
-                {coaches.data.filter((c) => (c.name + c.team).toLowerCase().includes(q.toLowerCase())).sort((a, b) => b.hg - a.hg).map((c) => (
+                {coaches.data.filter((c) => matchName(`${c.name} ${c.team}`, q)).sort((a, b) => b.hg - a.hg).map((c) => (
                   <tr key={c.id}>
                     <td className="font-semibold text-white">{c.name}{c.fired ? <span className="chip ml-2 bg-goal/20 text-red-300">Potkut</span> : null}</td>
                     <td><span className="flex items-center gap-2">{c.logo && <img src={c.logo} className="h-5 w-5" alt="" />}{c.team}</span></td>

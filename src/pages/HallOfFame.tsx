@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { fmt } from '../api';
+import { fmt, matchName } from '../api';
 import { useApi } from '../auth';
 import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 
@@ -40,7 +40,7 @@ export default function HallOfFame() {
   }, [data]);
 
   const rankOf = new Map(marathon.map((x, i) => [x.name, i + 1]));
-  const filtered = marathon.filter((x) => x.name.toLowerCase().includes(q.toLowerCase()));
+  const filtered = marathon.filter((x) => matchName(x.name, q));
   const shown = q || showAll ? filtered : filtered.slice(0, 20);
   const champsShown = allChamps ? champions : champions.slice(0, 6);
 

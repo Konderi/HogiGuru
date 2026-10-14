@@ -42,6 +42,14 @@ export interface Season {
   results_published?: number; selection_mode?: 'draft' | 'baskets'; baskets?: string[][];
 }
 
+/** Ääkkös- ja kirjainkoko-riippumaton vertailumuoto. */
+export const normName = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+/** Nimihaku: jokaisen hakusanan pitää löytyä tekstistä, järjestyksellä ei väliä ("lööke", "jens lööke", "lööke jens"). */
+export const matchName = (text: string, q: string) => {
+  const t = normName(text);
+  return normName(q).split(/\s+/).filter(Boolean).every((w) => t.includes(w));
+};
+
 export const fmt = (n: number | null | undefined, d = 1) =>
   n == null ? '–' : n.toLocaleString('fi-FI', { minimumFractionDigits: d, maximumFractionDigits: d });
 export const fmtDate = (s: string | null | undefined) =>

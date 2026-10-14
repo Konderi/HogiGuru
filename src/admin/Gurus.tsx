@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fmt, fmtDate, POS_LABEL, POSITIONS, type Position, type Slot } from '../api';
+import { fmt, fmtDate, matchName, POS_LABEL, POSITIONS, type Position, type Slot } from '../api';
 import { useApi } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
 import { Card, Empty, EntityPicker, Modal, PageHeader, PosBadge, Spinner, type SearchHit } from '../ui';
@@ -192,7 +192,7 @@ export default function Gurus() {
         <Card>
           <div className="p-3"><input className="input" placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
           <ul className="max-h-[70vh] overflow-y-auto">
-            {data.filter((g) => g.name.toLowerCase().includes(q.toLowerCase())).map((g) => (
+            {data.filter((g) => matchName(g.name, q)).map((g) => (
               <li key={g.id} className={`flex items-center gap-2 border-t border-white/5 px-4 py-2 ${sel === g.id ? 'bg-ice-500/10' : ''}`}>
                 <button className="flex flex-1 items-center gap-3 text-left" onClick={() => setSel(g.id)}>
                   <span className="w-6 text-center font-display text-xs text-slate-500">{g.draft_number ?? '–'}</span>

@@ -271,13 +271,15 @@ app.post('/public/registration', async (c) => {
 const POS_FI: Record<Position, string> = { F: 'hyökkääjä', D: 'puolustaja', G: 'maalivahti', C: 'valmentaja' };
 
 app.get('/players/search', requireUser, async (c) => {
-  const q = `%${(c.req.query('q') ?? '').trim()}%`;
+  // Jokaisen hakusanan pitää löytyä nimestä (tai joukkueesta) – järjestyksellä ei väliä (esim. "lööke", "lööke jens")
+  const words = (c.req.query('q') ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 4);
   const pos = c.req.query('pos') as Position | undefined;
   const role = pos === 'G' ? "AND role = 'MV'" : pos === 'D' ? "AND role = 'P'" : pos === 'F' ? "AND role NOT IN ('MV','P')" : '';
+  const where = words.map(() => "(first_name || ' ' || last_name || ' ' || COALESCE(team_name, '')) LIKE ?").join(' AND ') || '1';
   const res = await c.env.DB.prepare(
     `SELECT id, first_name || ' ' || last_name AS name, team_name AS team, role, picture FROM players
-     WHERE (first_name || ' ' || last_name) LIKE ? ${role} ORDER BY last_name LIMIT 25`,
-  ).bind(q).all<{ id: number; role: string }>();
+     WHERE ${where} ${role} ORDER BY last_name LIMIT 25`,
+  ).bind(...words.map((w) => `%${w}%`)).all<{ id: number; role: string }>();
   const season = c.get('season');
   const usage = await usageCounts(c.env.DB, season.id);
   const posOf = (r: string): Position => pos ?? (r === 'MV' ? 'G' : r === 'P' ? 'D' : 'F');

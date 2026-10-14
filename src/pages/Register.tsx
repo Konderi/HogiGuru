@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { api, fmt, fmtDate, POS_LABEL, POSITIONS, type Position, type Scoring } from '../api';
+import { api, fmt, fmtDate, matchName, POS_LABEL, POSITIONS, type Position, type Scoring } from '../api';
 import { useApi } from '../auth';
 import { Card, ErrorBox, PageHeader, Spinner } from '../ui';
 
@@ -35,7 +35,7 @@ function PlayerSelect({ players, value, onChange, placeholder = 'Kirjoita nimeä
     if (!s) return big ? [] : list;
     const words = (p: { name: string }) => norm(p.name).split(/\s+/);
     return list
-      .filter((p) => norm(`${p.name} ${p.team ?? ''}`).includes(s))
+      .filter((p) => matchName(`${p.name} ${p.team ?? ''}`, q))
       .sort((a, b) => Number(!words(a).some((w) => w.startsWith(s))) - Number(!words(b).some((w) => w.startsWith(s))))
       .slice(0, 40);
   }, [q, players, exclude, big]);

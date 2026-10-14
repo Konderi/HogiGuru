@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
+import { matchName, POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
 import { useApi } from '../auth';
 import { DraftGrid, type DraftState } from '../pages/DraftBoard';
 import { Card, Empty, EntityPicker, PageHeader, PosBadge, Spinner } from '../ui';
@@ -24,7 +24,7 @@ export default function Draft() {
 
   const act = async (fn: () => Promise<unknown>, ok?: string) => { setBusy(true); await run(fn, ok); setBusy(false); reload(); };
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
-  const pool = st.pool.filter((p) => p.position === pos && (p.name + (p.team ?? '')).toLowerCase().includes(q.toLowerCase()));
+  const pool = st.pool.filter((p) => p.position === pos && matchName(`${p.name} ${p.team ?? ''}`, q));
   const statusLabel = { setup: 'Valmistelu', live: 'Käynnissä', done: 'Viety kentällisiin' }[st.status];
 
   return (

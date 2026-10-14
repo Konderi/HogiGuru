@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { fmt, type LeaderRow } from '../api';
+import { fmt, matchName, type LeaderRow } from '../api';
 import { useApi, useAuth } from '../auth';
 import { Card, Empty, ErrorBox, PageHeader, RankBadge, RankDelta, Spinner } from '../ui';
 
@@ -7,7 +7,7 @@ export default function Leaderboard() {
   const { data, error, loading } = useApi<LeaderRow[]>('/leaderboard');
   const { me } = useAuth();
   const [q, setQ] = useState('');
-  const rows = useMemo(() => (data ?? []).filter((r) => r.name.toLowerCase().includes(q.toLowerCase())), [data, q]);
+  const rows = useMemo(() => (data ?? []).filter((r) => matchName(r.name, q)), [data, q]);
   const leader = data?.[0]?.points ?? 0;
 
   return (

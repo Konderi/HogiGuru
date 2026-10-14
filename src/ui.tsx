@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { api, POS_SHORT, type Position } from './api';
+import { api, matchName, POS_SHORT, type Position } from './api';
 
 export function Logo({ className = 'h-9 w-9' }: { className?: string }) {
   return (
@@ -118,7 +118,7 @@ export function EntityPicker({ pos, onPick, options, placeholder }: {
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
   useEffect(() => {
-    if (options) { setHits(options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase())).slice(0, 30)); return; }
+    if (options) { setHits(options.filter((o) => matchName(o.name, q)).slice(0, 30)); return; }
     if (q.trim().length < 2) { setHits([]); return; }
     const t = setTimeout(() => api<SearchHit[]>(`/players/search?pos=${pos}&q=${encodeURIComponent(q)}`).then(setHits).catch(() => {}), 200);
     return () => clearTimeout(t);
