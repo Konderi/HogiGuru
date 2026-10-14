@@ -213,6 +213,9 @@ Kaikki kertoimet: Ylläpito → Pisteytys & kausi. Koodi: [`worker/scoring.ts`](
 | Kenttäpelaajat | `https://liiga.fi/api/v2/players/stats/summed/{kausi}/{kausi}/runkosarja/true?dataType=basicStats` |
 | Maalivahdit | `…?dataType=basicStatsGk` |
 | Sarjataulukko | `https://liiga.fi/api/v2/standings/?season={kausi}` |
+| Ottelut (pelilokiin) | `…/games?tournament=runkosarja&season={kausi}`, `…/games/{kausi}/{id}`, `…/games/stats/{kausi}/{id}` |
+
+Ottelukohtainen loki: synkka käsittelee enintään 12 uutta päättynyttä ottelua kerrallaan tauluihin `game_stats` (pelaajat), `team_games` (joukkueen pisteet, valmentajille) ja `games_synced` (migraatio 0006). Frontend hakee `GET /api/game-log/:id?pos=F|D|G|C`. Maalivahdin torjunnat = vastustajan laukaukset − päästetyt.
 
 `{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan Suomen aikaa klo 17.00–23.00 puolen tunnin välein, sen jälkeen 6 h välein (05.00 ja 11.00) sekä napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
 

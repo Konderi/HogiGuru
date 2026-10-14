@@ -180,6 +180,24 @@ app.get('/hall-of-fame', async (c) => {
 
 app.get('/teams', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM teams ORDER BY name').all()).results));
 
+/** Ottelukohtaiset HG-pisteet: ?pos=F|D|G|C (C = valmentajan id, muuten pelaajan id). */
+app.get('/game-log/:id', async (c) => {
+  const season = c.get('season'); const sc = season.scoring; const id = Number(c.req.param('id'));
+  const pos = (c.req.query('pos') ?? 'F') as Position;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  if (pos === 'C') {
+    const coach = await c.env.DB.prepare('SELECT team_id FROM coaches WHERE id = ?').bind(id).first<{ team_id: string }>();
+    if (!coach) return c.json([]);
+    const rows = (await c.env.DB.prepare('SELECT * FROM team_games WHERE season = ? AND team_id = ? ORDER BY date').bind(season.liiga_season, coach.team_id).all<Record<string, number | string>>()).results;
+    return c.json(rows.map((r) => ({ ...r, hg: r2(Number(r.points) * sc.C.teamPoints) })));
+  }
+  const rows = (await c.env.DB.prepare('SELECT * FROM game_stats WHERE season = ? AND player_id = ? ORDER BY date').bind(season.liiga_season, id).all<StatRow & { date: string; shutout: number; win: number; plus_minus: number }>()).results;
+  return c.json(rows.map((r) => {
+    const s: StatRow = { games: 1, goals: r.goals, assists: r.assists, pim: r.pim, plus_minus: r.plus_minus, shutouts: r.shutout, saves: r.saves, goals_against: r.goals_against, wins: r.win };
+    return { ...r, hg: pos === 'G' ? goaliePoints(s, sc.G) : skaterPoints(s, sc[pos === 'D' ? 'D' : 'F']) };
+  }));
+});
+
 app.get('/results', async (c) => {
   const season = c.get('season');
   if (!season.results_published) return c.json({ published: false, season: season.name });

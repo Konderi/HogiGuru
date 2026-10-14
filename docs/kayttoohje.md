@@ -46,6 +46,7 @@ Draftia voi seurata livenä sivulla **Draft**.
 **Oma joukkue → Kentällinen** näyttää:
 
 - Nykyiset pelaajat omilla paikoillaan puolikaukalolla (punaviivasta omaan päätyyn): hyökkääjät keskialueella, puolustajat päädyn aloitusympyröillä ja maalivahti maalillaan. Valmentaja on kaukalon alla vaihtopenkillä. Jokaisen kortissa näkyy kerätyt HG-pisteet.
+- Klikkaa pelaajaa (kortti, valmentaja tai rivi taulukossa), niin näet **ottelukohtaiset HG-pisteet** pylväskaaviona ja taulukkona. Siitä näkee heti, tuleeko pisteitä tasaisesti vai yksittäisistä huippupeleistä. Ottelut, joissa pelaaja ei ollut kentällisessäsi, näkyvät himmennettyinä.
 - Vaihdetut (poistuneet) pelaajat. Heidän pisteensä jäävät sinulle.
 - Pistekorjaukset (esim. valmentajan potkut −10).
 - Kokonaispisteet ja sijoitus.

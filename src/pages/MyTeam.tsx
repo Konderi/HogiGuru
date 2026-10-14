@@ -4,7 +4,8 @@ import { useApi } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
 import { SwapRequests } from '../components/SwapRequests';
 import HalfRink from '../components/HalfRink';
-import { Avatar, Card, Empty, ErrorBox, PageHeader, RankBadge, Spinner } from '../ui';
+import GameLog from '../components/GameLog';
+import { Avatar, Card, Empty, ErrorBox, Modal, PageHeader, RankBadge, Spinner } from '../ui';
 
 interface TeamResp {
   guru: { id: number; name: string } | null;
@@ -15,15 +16,15 @@ interface TeamResp {
 }
 interface DraftResp { status: 'setup' | 'live' | 'done'; roster: Record<Position, number>; pool: PoolItem[] }
 
-function PlayerTile({ s }: { s?: Slot }) {
+function PlayerTile({ s, onOpen }: { s?: Slot; onOpen?: (s: Slot) => void }) {
   if (!s) return <div className="flex h-24 w-[74px] items-center justify-center rounded-2xl border border-dashed border-slate-500/60 bg-rink-950/40 text-xs text-slate-300 sm:h-36 sm:w-32">Tyhjä</div>;
   return (
-    <div className="group flex w-[74px] flex-col items-center rounded-xl border border-white/10 bg-rink-950/85 p-1.5 text-center shadow-xl shadow-rink-950/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-ice-400/50 sm:w-32 sm:rounded-2xl sm:p-3">
+    <button type="button" onClick={() => onOpen?.(s)} title="Näytä ottelukohtaiset HG-pisteet" className="group flex w-[74px] cursor-pointer flex-col items-center rounded-xl border border-white/10 bg-rink-950/85 p-1.5 text-center shadow-xl shadow-rink-950/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-ice-400/50 sm:w-32 sm:rounded-2xl sm:p-3">
       <Avatar src={s.picture} name={s.name} size="h-9 w-9 sm:h-14 sm:w-14" />
       <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-tight text-white sm:mt-2 sm:text-xs">{s.name}</p>
       <p className="hidden text-[10px] uppercase tracking-wider text-slate-500 sm:block">{s.team}</p>
       <p className={`scoreboard mt-0.5 text-sm sm:mt-1 sm:text-lg ${s.value < 0 ? '!text-goal' : ''}`}>{fmt(s.value)}</p>
-    </div>
+    </button>
   );
 }
 
@@ -31,6 +32,7 @@ export default function MyTeam() {
   const team = useApi<TeamResp>('/me/team');
   const draft = useApi<DraftResp>('/draft');
   const [tab, setTab] = useState<'team' | 'prefs' | 'swaps'>('team');
+  const [sel, setSel] = useState<Slot | null>(null);
 
   if (team.loading && !team.data) return <Spinner />;
   if (!team.data?.guru) return <><PageHeader title="Oma joukkue" /><Card><Empty>Tunnustasi ei ole vielä liitetty tämän kauden guruun. Ota yhteys ylläpitoon.</Empty></Card></>;
@@ -76,7 +78,7 @@ export default function MyTeam() {
               const list = slotsFor(pos, n);
               const xs = list.length === 3 ? [20, 50, 80] : list.length === 2 ? [26, 74] : list.length === 1 ? [50] : list.map((_, i) => ((i + 1) * 100) / (list.length + 1));
               return list.map((s, i) => (
-                <div key={`${pos}${i}`} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${xs[i]}%`, top: `${y}%` }}><PlayerTile s={s} /></div>
+                <div key={`${pos}${i}`} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${xs[i]}%`, top: `${y}%` }}><PlayerTile s={s} onOpen={setSel} /></div>
               ));
             })}
           </section>
@@ -85,11 +87,11 @@ export default function MyTeam() {
           <section className="flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-white/10 bg-rink-850/60 px-5 py-4">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valmentaja</span>
             {byPos('C').length ? byPos('C').map((s) => (
-              <span key={s.id} className="flex items-center gap-3">
+              <button key={s.id} type="button" onClick={() => setSel(s)} title="Näytä ottelukohtaiset HG-pisteet" className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-white/5">
                 <span className="font-semibold text-white">{s.name}</span>
                 <span className="text-sm text-slate-400">{s.team}</span>
                 <span className="scoreboard font-mono">{fmt(s.value)}</span>
-              </span>
+              </button>
             )) : <span className="text-sm text-slate-500">Ei valmentajaa</span>}
           </section>
 
@@ -99,7 +101,7 @@ export default function MyTeam() {
                 <thead><tr><th>Paikka</th><th>Nimi</th><th className="num">Alku</th><th className="num">Nyt</th><th className="num">HG</th></tr></thead>
                 <tbody>
                   {active.map((s) => (
-                    <tr key={s.id}><td className="text-xs text-slate-400">{POS_LABEL[s.position]}</td><td className="text-white">{s.name}</td><td className="num text-slate-500">{fmt(s.start_points)}</td><td className="num">{fmt(s.current)}</td><td className="num scoreboard">{fmt(s.value)}</td></tr>
+                    <tr key={s.id} className="cursor-pointer hover:bg-white/5" onClick={() => setSel(s)}><td className="text-xs text-slate-400">{POS_LABEL[s.position]}</td><td className="text-white">{s.name}</td><td className="num text-slate-500">{fmt(s.start_points)}</td><td className="num">{fmt(s.current)}</td><td className="num scoreboard">{fmt(s.value)}</td></tr>
                   ))}
                   {adjustments.map((a) => <tr key={`a${a.id}`}><td className="text-xs text-slate-400">Korjaus</td><td className="text-white" colSpan={3}>{a.reason}</td><td className="num text-goal">{fmt(a.points)}</td></tr>)}
                 </tbody>
@@ -112,12 +114,15 @@ export default function MyTeam() {
               <table className="table">
                 <thead><tr><th>Nimi</th><th>Paikka</th><th>Kentällisessä</th><th className="num">Kerätyt HG</th></tr></thead>
                 <tbody>
-                  {history.map((s) => <tr key={s.id}><td className="text-white">{s.name}</td><td className="text-slate-400">{POS_LABEL[s.position]}</td><td className="text-slate-400">{fmtDate(s.start_date)} – {fmtDate(s.end_date)}</td><td className="num scoreboard">{fmt(s.value)}</td></tr>)}
+                  {history.map((s) => <tr key={s.id} className="cursor-pointer hover:bg-white/5" onClick={() => setSel(s)}><td className="text-white">{s.name}</td><td className="text-slate-400">{POS_LABEL[s.position]}</td><td className="text-slate-400">{fmtDate(s.start_date)} – {fmtDate(s.end_date)}</td><td className="num scoreboard">{fmt(s.value)}</td></tr>)}
                 </tbody>
               </table>
             </Card>
           )}
           <ChangePassword />
+          <Modal open={!!sel} onClose={() => setSel(null)} title={`${sel?.name ?? ''} · ottelukohtaiset HG-pisteet`} wide>
+            {sel && <GameLog slot={sel} />}
+          </Modal>
         </div>
       )}
     </>

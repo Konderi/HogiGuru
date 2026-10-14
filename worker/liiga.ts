@@ -72,11 +72,82 @@ export async function syncLiiga(db: D1Database): Promise<string> {
     ).bind(date, g.id, g.points, g.rank)));
 
     const msg = `${skaters.length} pelaajaa, ${goalies.length} maalivahtia, ${standings.season?.length ?? 0} joukkuetta`;
-    await db.prepare('UPDATE sync_log SET finished_at=?, ok=1, message=? WHERE id=?').bind(new Date().toISOString(), msg, log!.id).run();
-    return msg;
+    let gmsg = '';
+    try { const n = await syncGames(db, y); if (n) gmsg = `, ${n} ottelua`; } catch (e) { gmsg = `, ottelut: ${(e as Error).message}`; }
+    await db.prepare('UPDATE sync_log SET finished_at=?, ok=1, message=? WHERE id=?').bind(new Date().toISOString(), msg + gmsg, log!.id).run();
+    return msg + gmsg;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await db.prepare('UPDATE sync_log SET finished_at=?, ok=0, message=? WHERE id=?').bind(new Date().toISOString(), msg, log!.id).run();
     throw e;
   }
+}
+
+/**
+ * Ottelukohtaiset tilastot: käsittelee päättyneet, vielä käsittelemättömät ottelut (max `max` kpl / ajo,
+ * jotta Workerin alipyyntöraja ei ylity – loput jatkuvat seuraavalla ajolla).
+ * Pelanneet = kokoonpanossa rivillä (line ≠ null). +/- jäsennetään maalitapahtumien numeroista.
+ * Maalivahdeista aloittaja (line 1) saa koko ottelun torjunnat/päästetyt (vaihdot ovat harvinaisia).
+ */
+export async function syncGames(db: D1Database, y: number, max = 12): Promise<number> {
+  const list = await getJson<ApiPlayer[]>(`${BASE}/games?tournament=runkosarja&season=${y}`);
+  const done = new Set((await db.prepare('SELECT game_id FROM games_synced WHERE season = ?').bind(y).all<{ game_id: number }>()).results.map((r) => r.game_id));
+  const todo = list.filter((g) => g.ended && !done.has(g.id)).sort((a, b) => String(a.start).localeCompare(String(b.start))).slice(0, max);
+  for (const g of todo) {
+    const [det, st] = await Promise.all([
+      getJson<ApiPlayer>(`${BASE}/games/${y}/${g.id}`),
+      getJson<ApiPlayer>(`${BASE}/games/stats/${y}/${g.id}`).catch(() => null),
+    ]);
+    const game = det.game;
+    const date = helsinkiDate(new Date(game.start));
+    const sides = [
+      { key: 'homeTeam', opp: 'awayTeam', players: det.homeTeamPlayers as ApiPlayer[], home: 1 },
+      { key: 'awayTeam', opp: 'homeTeam', players: det.awayTeamPlayers as ApiPlayer[], home: 0 },
+    ] as const;
+    const extended = game.finishedType && game.finishedType !== 'ENDED_DURING_REGULAR_GAME_TIME';
+    const stmts: D1PreparedStatement[] = [];
+    for (const s of sides) {
+      const t = game[s.key], o = game[s.opp];
+      const gf = t.goals ?? 0, ga = o.goals ?? 0;
+      const won = gf > ga;
+      const pts = won ? (extended ? 2 : 3) : extended ? 1 : 0;
+      stmts.push(db.prepare('INSERT OR REPLACE INTO team_games (season, game_id, date, team_id, opponent, home, gf, ga, points) VALUES (?,?,?,?,?,?,?,?,?)')
+        .bind(y, g.id, date, String(t.teamId), o.teamName ?? null, s.home, gf, ga, pts));
+
+      const played = (s.players ?? []).filter((p) => p.line != null && !p.removed);
+      const byJersey = new Map(played.map((p) => [String(p.jersey), p.id as number]));
+      const oppPlayers = (s.key === 'homeTeam' ? det.awayTeamPlayers : det.homeTeamPlayers) as ApiPlayer[];
+      const oppByJersey = new Map((oppPlayers ?? []).filter((p) => p.line != null).map((p) => [String(p.jersey), p.id as number]));
+      const row = new Map<number, { goals: number; assists: number; pim: number; pm: number; saves: number; ga: number; so: number; win: number }>();
+      const get = (id: number) => { let r = row.get(id); if (!r) { r = { goals: 0, assists: 0, pim: 0, pm: 0, saves: 0, ga: 0, so: 0, win: 0 }; row.set(id, r); } return r; };
+      for (const p of played) get(p.id);
+      for (const ev of t.goalEvents ?? []) {
+        if (ev.scorerPlayerId && row.has(ev.scorerPlayerId)) get(ev.scorerPlayerId).goals++;
+        for (const a of ev.assistantPlayerIds ?? []) if (row.has(a)) get(a).assists++;
+        for (const j of String(ev.plusPlayerIds ?? '').split(/\s+/).filter(Boolean)) { const id = byJersey.get(j); if (id) get(id).pm++; }
+      }
+      for (const ev of o.goalEvents ?? []) {
+        for (const j of String(ev.minusPlayerIds ?? '').split(/\s+/).filter(Boolean)) { const id = byJersey.get(j); if (id) get(id).pm--; }
+      }
+      void oppByJersey;
+      for (const ev of t.penaltyEvents ?? []) if (ev.playerId && row.has(ev.playerId)) get(ev.playerId).pim += ev.penaltyMinutes ?? 0;
+      // Maalivahti: aloittaja (line 1)
+      const gk = played.find((p) => p.role === 'GOALIE' && p.line === 1);
+      if (gk) {
+        const oppPeriods = st ? (st[s.opp] as ApiPlayer[]) ?? [] : [];
+        const shotsAgainst = oppPeriods.reduce((a, p) => a + (p.shots ?? 0), 0);
+        const r = get(gk.id);
+        r.ga = ga; r.saves = Math.max(0, shotsAgainst - ga); r.so = ga === 0 ? 1 : 0; r.win = won ? 1 : 0;
+      }
+      for (const [pid, r] of row) {
+        stmts.push(db.prepare(
+          `INSERT OR REPLACE INTO game_stats (season, game_id, date, player_id, team_id, opponent, home, goals, assists, pim, plus_minus, saves, goals_against, shutout, win)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ).bind(y, g.id, date, pid, String(t.teamId), o.teamName ?? null, s.home, r.goals, r.assists, r.pim, r.pm, r.saves, r.ga, r.so, r.win));
+      }
+    }
+    stmts.push(db.prepare('INSERT OR REPLACE INTO games_synced (game_id, season, synced_at) VALUES (?,?,?)').bind(g.id, y, new Date().toISOString()));
+    await chunked(db, stmts);
+  }
+  return todo.length;
 }
