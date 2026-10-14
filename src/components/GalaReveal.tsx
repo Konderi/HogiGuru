@@ -3,6 +3,13 @@ import { fmt } from '../api';
 import { useApi } from '../auth';
 import type { Results } from './ResultsView';
 import { Logo, Spinner } from '../ui';
+import GoldConfetti from './GoldConfetti';
+
+function DelayedConfetti() {
+  const [on, setOn] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setOn(true), 1200); return () => clearTimeout(t); }, []);
+  return on ? <GoldConfetti duration={10000} /> : null;
+}
 
 /**
  * Gaalaesitys: paljastaa kokonaistulokset vaiheittain.
@@ -50,9 +57,12 @@ export default function GalaReveal({ onClose, onPublish }: { onClose: () => void
   const batch = visible.filter((r) => r.rank < prevCut).sort((a, b) => b.rank - a.rank).map((r) => r.id);
   const step = batch.length > 1 ? Math.min(1.1, 9 / batch.length) : 0;
   const top = cut <= 10;
+  // Voittajan paljastus: kultainen konfetti + ilotulitus ~10 s (pieni viive, jotta nimi ehtii esiin)
+  const winner = stage > 0 && stages[stage - 1]?.cut === 1;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-gradient-to-b from-rink-950 via-rink-900 to-rink-950">
+      {winner && <DelayedConfetti key={stage} />}
       <header className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3"><Logo className="h-10 w-10" /><div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-ice-300">HogiGuru-gaala {data.season}</p>

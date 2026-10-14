@@ -141,7 +141,7 @@ Kentällisen koon, valintarajojen ja vaihtojen määrän muutos koskee vain tule
 2. Sijat 21–30
 3. Sijat 11–20
 4. Sijat 10, 9, … 2 yksi kerrallaan
-5. Voittaja
+5. Voittaja – kultainen konfettisade ja ilotulitus n. 10 s
 
 Ohjaus: **välilyönti / → / Enter** = seuraava, **←** = takaisin, **Esc** = sulje, **↺ Alusta** = alkuun, **⛶** = koko näyttö.
 
