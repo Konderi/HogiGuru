@@ -828,7 +828,14 @@ app.notFound((c) => c.json({ error: 'Ei löydy' }, 404));
 
 export default {
   fetch: app.fetch,
-  async scheduled(_e: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(e: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Cron herää 30 min välein; ajo rajataan Suomen ajan mukaan (kesä-/talviaika huomioiden):
+    // klo 17.00–23.00 joka puoli tuntia, sen jälkeen 6 h välein (05.00 ja 11.00).
+    const [h, m] = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Helsinki', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .format(new Date(e.scheduledTime)).split(':').map(Number);
+    const mins = h * 60 + m;
+    const run = (mins >= 17 * 60 && mins <= 23 * 60) || (m < 15 && (h === 5 || h === 11));
+    if (!run) return;
     ctx.waitUntil(syncLiiga(env.DB).then(() => env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()).run()));
   },
 } satisfies ExportedHandler<Env>;

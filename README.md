@@ -97,7 +97,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
   Selain ──────────▶│  Cloudflare Worker  (guru.konderi.fi)        │
                     │  /*        → staattiset tiedostot (React SPA)│
                     │  /api/*    → Hono-API (worker/index.ts)      │
-                    │  cron      → syncLiiga() iltaisin + yöllä    │
+                    │  cron      → syncLiiga() illat + 6 h välein│
                     └──────────────┬───────────────────┬───────────┘
                             ┌──────▼──────┐     ┌──────▼─────────┐
                             │ Cloudflare  │     │ liiga.fi       │
@@ -110,7 +110,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Frontend | React 19, React Router, Vite, Tailwind CSS v4 |
 | Backend | Cloudflare Workers + [Hono](https://hono.dev) |
 | Tietokanta | Cloudflare D1 (SQLite) |
-| Ajastus | Workers Cron Triggers (`*/30 18-21 * * *` ja `0 2 * * *` UTC) |
+| Ajastus | Workers Cron Triggers (`*/30 * * * *`); worker rajaa ajot Suomen aikaan: 17.00–23.00 puolen tunnin välein, sitten 6 h välein (05.00, 11.00) |
 | Kirjautuminen | PBKDF2-salasanat + HttpOnly-istuntoeväste |
 | Build | `@cloudflare/vite-plugin` |
 
@@ -214,7 +214,7 @@ Kaikki kertoimet: Ylläpito → Pisteytys & kausi. Koodi: [`worker/scoring.ts`](
 | Maalivahdit | `…?dataType=basicStatsGk` |
 | Sarjataulukko | `https://liiga.fi/api/v2/standings/?season={kausi}` |
 
-`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan iltaisin 30 min välein (n. klo 21–01 Suomen aikaa), kerran yöllä (n. klo 05) ja napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
+`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan Suomen aikaa klo 17.00–23.00 puolen tunnin välein, sen jälkeen 6 h välein (05.00 ja 11.00) sekä napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
 
 ---
 

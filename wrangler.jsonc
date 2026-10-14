@@ -17,8 +17,8 @@
     }
   ],
   // Tilastopäivitys: tunnin välein (UTC)
-  // UTC-aikoja. Iltaisin pelien jälkeen 30 min välein (n. klo 20–24 Suomen aikaa) + varmistusajo yöllä (n. klo 4–5).
-  "triggers": { "crons": ["*/30 18-21 * * *", "0 2 * * *"] },
+  // Herätys 30 min välein; worker ajaa päivityksen vain Suomen aikaa klo 17.00–23.00 (30 min välein) sekä klo 05.00 ja 11.00.
+  "triggers": { "crons": ["*/30 * * * *"] },
   "routes": [{ "pattern": "guru.konderi.fi", "custom_domain": true }],
   "observability": { "enabled": true }
 }

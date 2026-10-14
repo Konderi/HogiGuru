@@ -80,7 +80,7 @@ Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylity
 
 ## 5. Kauden aikana
 
-- **Tilastot päivittyvät automaattisesti** pelipäivien iltoina 30 min välein ja joka yö. **Yleiskatsaus → Päivitysloki** näyttää onnistumiset. **Päivitä tilastot** -nappi pakottaa päivityksen.
+- **Tilastot päivittyvät automaattisesti** klo 17.00–23.00 puolen tunnin välein ja sen jälkeen 6 tunnin välein (klo 05 ja 11). **Yleiskatsaus → Päivitysloki** näyttää onnistumiset. **Päivitä tilastot** -nappi pakottaa päivityksen.
 - **Pistekorjaukset:** Gurut → guru → Korjaus (+/− pisteet ja selite). Näkyy gurulle.
 - **Kentällisen korjaus:** Gurut → paikan muokkaus (esim. väärä pelaaja tai päivämäärä).
 
