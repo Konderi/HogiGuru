@@ -6,7 +6,7 @@ import {
   type Season, type SlotRow,
 } from './data';
 import { autoPick, draftState, finalizeDraft, makePick, swapSlot } from './draft';
-import { syncLiiga } from './liiga';
+import { syncGamesOnly, syncLiiga } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
 import { entityName } from './data';
 import { computeResults } from './predictions';
@@ -891,7 +891,8 @@ export default {
       .format(new Date(e.scheduledTime)).split(':').map(Number);
     const mins = h * 60 + m;
     const run = (mins >= 17 * 60 && mins <= 23 * 60) || (m < 15 && (h === 5 || h === 11));
-    if (!run) return;
+    // Muulloin täydennetään vain ottelulokia (käsittelemättömät ottelut, max 12 / ajo)
+    if (!run) { ctx.waitUntil(syncGamesOnly(env.DB).catch((err) => { console.error('syncGames', err); return 0; })); return; }
     ctx.waitUntil(syncLiiga(env.DB).then(() => env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()).run()));
   },
 } satisfies ExportedHandler<Env>;

@@ -16,6 +16,12 @@ async function chunked(db: D1Database, stmts: D1PreparedStatement[], size = 80) 
   for (let i = 0; i < stmts.length; i += size) await db.batch(stmts.slice(i, i + size));
 }
 
+/** Pelkkä ottelulokin täydennys (cron-ajot tilastopäivitysten välissä → historia täyttyy nopeasti). */
+export async function syncGamesOnly(db: D1Database): Promise<number> {
+  const season = await getActiveSeason(db);
+  return season ? syncGames(db, season.liiga_season) : 0;
+}
+
 /** Hakee pelaajat, maalivahdit ja sarjataulukon liiga.fi:stä ja päivittää kannan. */
 export async function syncLiiga(db: D1Database): Promise<string> {
   const started = new Date().toISOString();
