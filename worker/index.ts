@@ -506,20 +506,54 @@ admin.get('/registrations', async (c) => {
   ).bind(c.get('season').id).all<Record<string, string>>();
   return c.json(res.results.map((r) => ({ ...r, standings: JSON.parse(r.standings), top_scorers: JSON.parse(r.top_scorers), categories: JSON.parse(r.categories), position_order: JSON.parse(r.position_order ?? '[]'), rankings: JSON.parse(r.rankings ?? '{}'), basket_picks: JSON.parse(r.basket_picks ?? '[]') })));
 });
+/** Aiemmat gurunimet (Hall of Fame + aiemmat kaudet), joihin ilmoittautuja voidaan liittää. */
+async function knownGuruNames(db: D1Database) {
+  const r = await db.prepare('SELECT name FROM hall_of_fame UNION SELECT name FROM gurus').all<{ name: string }>();
+  return [...new Set(r.results.map((x) => x.name.trim()))];
+}
+const normN = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim();
+function lev(a: string, b: string) {
+  const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let p = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, p + (a[i - 1] === b[j - 1] ? 0 : 1)); p = t; }
+  }
+  return d[b.length];
+}
+function nameMatches(name: string, known: string[]) {
+  const n = normN(name); const nw = n.split(' ');
+  const exact = known.find((k) => normN(k) === n) ?? null;
+  const similar = known.filter((k) => {
+    if (k === exact) return false;
+    const m = normN(k); const mw = m.split(' ');
+    return lev(n, m) <= 2 || m.includes(n) || n.includes(m) || (nw.length > 1 && mw.length > 1 && nw.at(-1) === mw.at(-1) && nw[0][0] === mw[0][0]) ||
+      nw.some((w) => w.length > 3 && mw.includes(w));
+  }).slice(0, 8);
+  return { exact, similar };
+}
+admin.get('/registrations/:id/matches', async (c) => {
+  const r = await c.env.DB.prepare('SELECT name FROM registrations WHERE id = ?').bind(Number(c.req.param('id'))).first<{ name: string }>();
+  if (!r) throw new Error('Ilmoittautumista ei löydy');
+  return c.json(nameMatches(r.name, await knownGuruNames(c.env.DB)));
+});
+
 /** Hyväksyntä: luo gurun (tai liittää samannimiseen) ja halutessa käyttäjätunnuksen. */
 admin.post('/registrations/:id/accept', async (c) => {
   const db = c.env.DB; const season = c.get('season');
-  const { password } = await c.req.json<{ password?: string }>().catch(() => ({ password: undefined }));
+  const { password, name: chosen } = await c.req.json<{ password?: string; name?: string }>().catch(() => ({ password: undefined, name: undefined }));
   const r = await db.prepare('SELECT * FROM registrations WHERE id = ? AND season_id = ?').bind(Number(c.req.param('id')), season.id).first<{ id: number; name: string; email: string }>();
   if (!r) throw new Error('Ilmoittautumista ei löydy');
-  let guru = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND lower(name) = lower(?)').bind(season.id, r.name).first<{ id: number }>();
-  if (!guru) guru = await db.prepare('INSERT INTO gurus (season_id, name) VALUES (?,?) RETURNING id').bind(season.id, r.name).first<{ id: number }>();
-  if (password) {
+  // Nimi: ylläpidon valitsema aiempi nimi > automaattinen täsmäys aiempaan guruun > lomakkeen nimi
+  const guruName = chosen?.trim() || nameMatches(r.name, await knownGuruNames(db)).exact || r.name;
+  let guru = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND lower(name) = lower(?)').bind(season.id, guruName).first<{ id: number }>();
+  if (!guru) guru = await db.prepare('INSERT INTO gurus (season_id, name) VALUES (?,?) RETURNING id').bind(season.id, guruName).first<{ id: number }>();
+  // Olemassa oleva tunnus liitetään aina sähköpostin perusteella
+  let u = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(r.email.toLowerCase()).first<{ id: number }>();
+  if (!u && password) {
     if (password.length < 8) throw new Error('Salasanan pitää olla vähintään 8 merkkiä');
-    let u = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(r.email.toLowerCase()).first<{ id: number }>();
-    if (!u) u = await db.prepare("INSERT INTO users (email, name, password_hash, role) VALUES (?,?,?,'guru') RETURNING id").bind(r.email, r.name, await hashPassword(password)).first<{ id: number }>();
-    await db.prepare('UPDATE gurus SET user_id = ? WHERE id = ?').bind(u!.id, guru!.id).run();
+    u = await db.prepare("INSERT INTO users (email, name, password_hash, role) VALUES (?,?,?,'guru') RETURNING id").bind(r.email, guruName, await hashPassword(password)).first<{ id: number }>();
   }
+  if (u) await db.prepare('UPDATE gurus SET user_id = ? WHERE id = ?').bind(u.id, guru!.id).run();
   await db.prepare("UPDATE registrations SET status = 'accepted', guru_id = ? WHERE id = ?").bind(guru!.id, r.id).run();
   // Lomakkeen toivelista ja valintajärjestys gurun draft-ennakkolistaksi (ei ylikirjoiteta olemassa olevaa)
   const reg = r as unknown as { position_order?: string; rankings?: string };

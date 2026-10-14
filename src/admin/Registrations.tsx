@@ -25,6 +25,13 @@ export default function Registrations() {
   const [view, setView] = useState<Reg | null>(null);
   const [accept, setAccept] = useState<Reg | null>(null);
   const [pw, setPw] = useState('');
+  const [matches, setMatches] = useState<{ exact: string | null; similar: string[] } | null>(null);
+  const [linkName, setLinkName] = useState('');
+  useEffect(() => {
+    if (!accept) return;
+    setMatches(null);
+    api<{ exact: string | null; similar: string[] }>(`/admin/registrations/${accept.id}/matches`).then((m) => { setMatches(m); setLinkName(m.exact ?? ''); });
+  }, [accept]);
   useEffect(() => { if (ov.data) setS(ov.data.season); }, [ov.data]);
   if (!s) return <Spinner />;
 
@@ -134,12 +141,25 @@ export default function Registrations() {
       <Modal open={!!accept} onClose={() => setAccept(null)} title={`Hyväksy: ${accept?.name}`}>
         <form className="space-y-4" onSubmit={async (e) => {
           e.preventDefault();
-          const ok = await run(() => api(`/admin/registrations/${accept!.id}/accept`, { body: { password: pw || undefined } }), `${accept!.name} lisätty guruksi`);
+          const ok = await run(() => api(`/admin/registrations/${accept!.id}/accept`, { body: { password: pw || undefined, name: linkName || undefined } }), `${linkName || accept!.name} lisätty guruksi`);
           if (ok) { setAccept(null); regs.reload(); }
         }}>
-          <p className="text-sm text-slate-300">Guru <b className="text-white">{accept?.name}</b> lisätään kauden kisaajiin (tai liitetään samannimiseen guruun).</p>
-          <div><label className="label">Salasana tunnukselle {accept?.email} (valinnainen)</label>
-            <input className="input" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Tyhjä = ei luoda tunnusta nyt" /></div>
+          {!matches ? <Spinner /> : (
+            <div className="space-y-2">
+              <p className="label">Liitä aiempaan guruun (Hall of Fame -tilastot)</p>
+              {matches.exact && <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">✓ Löytyi aiempi guru samalla nimellä: <b>{matches.exact}</b></p>}
+              <select className="input" value={linkName} onChange={(e) => setLinkName(e.target.value)}>
+                {matches.exact && <option value={matches.exact}>{matches.exact} (aiempi guru)</option>}
+                {matches.similar.map((n) => <option key={n} value={n}>{n} (samankaltainen aiempi nimi)</option>)}
+                <option value="">Uusi guru: {accept?.name}</option>
+              </select>
+              {!matches.exact && matches.similar.length > 0 && <p className="text-xs text-amber-300">Samankaltaisia aiempia nimiä löytyi – valitse oikea, jos kyseessä on sama henkilö.</p>}
+              {!matches.exact && !matches.similar.length && <p className="text-xs text-slate-400">Aiempaa gurua ei löytynyt – luodaan uusi.</p>}
+            </div>
+          )}
+          <div><label className="label">Salasana uudelle tunnukselle {accept?.email} (valinnainen)</label>
+            <input className="input" minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Tyhjä = ei luoda tunnusta nyt" />
+            <p className="mt-1 text-xs text-slate-500">Jos sähköpostilla on jo tunnus, guru liitetään siihen automaattisesti.</p></div>
           <button className="btn btn-primary w-full">Hyväksy</button>
         </form>
       </Modal>

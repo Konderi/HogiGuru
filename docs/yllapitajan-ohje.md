@@ -146,3 +146,13 @@ Kentällisen koon, valintarajojen ja vaihtojen määrän muutos koskee vain tule
 Ohjaus: **välilyönti / → / Enter** = seuraava, **←** = takaisin, **Esc** = sulje, **↺ Alusta** = alkuun, **⛶** = koko näyttö.
 
 **Harjoittelu:** esitys toimii myös ennen julkaisua (merkintä "harjoitus") eikä paljasta mitään muille. Viimeisen vaiheen jälkeen napista **📣 Julkaise tulokset kaikille** tulokset aukeavat julkiselle sivulle.
+
+## Ilmoittautuneen liittäminen aiempaan guruun
+
+Hyväksyttäessä järjestelmä vertaa nimeä kaikkiin aiempiin guruihin (Hall of Fame + aiemmat kaudet):
+
+- **Sama nimi** (kirjainkoosta ja ääkkösistä riippumatta) → liitetään automaattisesti, ja nimi kirjoitetaan aiemmassa muodossa, jolloin Hall of Fame -tilastot jatkuvat samalla rivillä.
+- **Samankaltaisia nimiä** (kirjoitusvirhe, sama sukunimi + etukirjain, lyhenne) → ikkuna listaa ne; valitse oikea, jos kyseessä on sama henkilö.
+- **Ei osumaa** → luodaan uusi guru lomakkeen nimellä.
+
+Jos ilmoittautumisen sähköpostilla on jo käyttäjätunnus, guru liitetään siihen automaattisesti (salasanaa ei tarvitse antaa).
