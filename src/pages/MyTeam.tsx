@@ -5,6 +5,7 @@ import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
 import { SwapRequests } from '../components/SwapRequests';
 import HalfRink from '../components/HalfRink';
 import GameLog from '../components/GameLog';
+import CoachReplace from '../components/CoachReplace';
 import { Avatar, Card, Empty, ErrorBox, Modal, PageHeader, RankBadge, Spinner } from '../ui';
 
 interface TeamResp {
@@ -13,6 +14,7 @@ interface TeamResp {
   adjustments: { id: number; points: number; reason: string; created_at: string }[];
   standing: { rank: number; points: number } | null;
   swaps: { used: number; max: number | null };
+  firedCoachSlot?: number | null;
 }
 interface DraftResp { status: 'setup' | 'live' | 'done'; roster: Record<Position, number>; pool: PoolItem[] }
 
@@ -84,6 +86,7 @@ export default function MyTeam() {
           </section>
 
           {/* Valmentaja vaihtopenkillä */}
+          {team.data.firedCoachSlot && <CoachReplace onDone={team.reload} />}
           <section className="flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-white/10 bg-rink-850/60 px-5 py-4">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valmentaja</span>
             {byPos('C').length ? byPos('C').map((s) => (

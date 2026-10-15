@@ -91,7 +91,9 @@ Kaikki pelaajat ja vapaat paikat näet sivulla **Tilastot**. Valitse sieltä **"
 Lopputuloksen näet **Vaihtotoiveet**-sivun historiasta ja kentällisestäsi.
 
 ### Valmentajan potkut
-Jos valmentajasi saa potkut, saat −10 p. Voit vaihtaa valmentajan potkujen yhteydessä ottamalla yhteyttä ylläpitoon. Jos et vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
+Jos valmentajasi saa potkut, saat −10 p. Voit valita uuden valmentajan heti itse: **Oma joukkue** -sivulle ilmestyy valintalaatikko, kun ylläpito on merkinnyt potkut. Valinta ei vaadi vaihtopäivää eikä kuluta vaihtojasi, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Jos et vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
+
+Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihdetaan normaalisti seuraavana vaihtopäivänä.
 
 ---
 

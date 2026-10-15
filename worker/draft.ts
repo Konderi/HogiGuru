@@ -102,6 +102,11 @@ export async function finalizeDraft(db: D1Database, season: Season) {
   ]);
 }
 
+/** Vaihtokiintiöön laskettavat vaihdot (alias s). Erotetun valmentajan korvaaminen on ilmainen. */
+export const COUNTED_SWAP = `s.replaced_slot_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM roster_slots o JOIN coaches c ON c.id = o.entity_id
+  WHERE o.id = s.replaced_slot_id AND o.position = 'C' AND c.fired = 1)`;
+
 /** Vaihto: suljetaan vanha paikka nykyisillä pisteillä ja avataan uusi. */
 export async function swapSlot(db: D1Database, season: Season, slotId: number, entityId: number, date: string) {
   const slot = await db.prepare(
@@ -115,8 +120,10 @@ export async function swapSlot(db: D1Database, season: Season, slotId: number, e
   const dup = await db.prepare('SELECT 1 FROM roster_slots WHERE guru_id = ? AND position = ? AND entity_id = ? AND end_date IS NULL')
     .bind(slot.guru_id, slot.position, entityId).first();
   if (dup) throw new Error('Gurulla on jo tämä valinta');
-  if (season.max_swaps != null) {
-    const n = await db.prepare('SELECT COUNT(*) AS n FROM roster_slots WHERE guru_id = ? AND replaced_slot_id IS NOT NULL').bind(slot.guru_id).first<{ n: number }>();
+  const freeCoach = slot.position === 'C'
+    && !!(await db.prepare('SELECT 1 FROM coaches WHERE id = ? AND fired = 1').bind(slot.entity_id).first());
+  if (season.max_swaps != null && !freeCoach) {
+    const n = await db.prepare(`SELECT COUNT(*) AS n FROM roster_slots s WHERE s.guru_id = ? AND ${COUNTED_SWAP}`).bind(slot.guru_id).first<{ n: number }>();
     if ((n?.n ?? 0) >= season.max_swaps) throw new Error(`Vaihdot käytetty (${season.max_swaps})`);
   }
   const ctx = await loadContext(db, season);

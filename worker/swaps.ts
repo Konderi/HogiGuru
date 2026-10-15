@@ -1,5 +1,5 @@
 import { entityName, helsinkiDate, loadContext, maxFor, usageCounts, usageKey, type Season } from './data';
-import { swapSlot } from './draft';
+import { COUNTED_SWAP, swapSlot } from './draft';
 import type { Position } from './scoring';
 
 export interface SwapDay { id: number; date: string; start_time: string; end_time: string; note: string | null; processed_at: string | null }
@@ -39,7 +39,7 @@ export async function previewSwapDay(db: D1Database, season: Season, day: SwapDa
     priorityOrder(db, season, day),
     db.prepare('SELECT * FROM swap_requests WHERE swap_day_id = ? ORDER BY guru_id, priority').bind(day.id).all<Req>(),
     db.prepare('SELECT s.id, s.guru_id, s.position, s.entity_id FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.end_date IS NULL').bind(season.id).all<ActiveSlot>(),
-    db.prepare('SELECT s.guru_id, COUNT(*) AS n FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.replaced_slot_id IS NOT NULL GROUP BY s.guru_id').bind(season.id).all<{ guru_id: number; n: number }>(),
+    db.prepare(`SELECT s.guru_id, COUNT(*) AS n FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND ${COUNTED_SWAP} GROUP BY s.guru_id`).bind(season.id).all<{ guru_id: number; n: number }>(),
     usageCounts(db, season.id),
     loadContext(db, season),
   ]);

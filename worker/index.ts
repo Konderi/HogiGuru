@@ -5,7 +5,7 @@ import {
   computeLeaderboard, getActiveSeason, helsinkiDate, loadContext, maxFor, slotView, usageCounts, usageKey,
   type Season, type SlotRow,
 } from './data';
-import { autoPick, draftState, finalizeDraft, makePick, swapSlot } from './draft';
+import { autoPick, COUNTED_SWAP, draftState, finalizeDraft, makePick, swapSlot } from './draft';
 import { syncGamesOnly, syncLiiga } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
 import { entityName } from './data';
@@ -359,17 +359,29 @@ app.post('/setup', async (c) => {
 async function guruTeam(c: C, guruId: number) {
   const db = c.env.DB; const season = c.get('season');
   const ctx = await loadContext(db, season);
-  const [slots, adj, lb] = await Promise.all([
+  const [slots, adj, lb, firedR] = await Promise.all([
     db.prepare('SELECT * FROM roster_slots WHERE guru_id = ? ORDER BY position, start_date').bind(guruId).all<SlotRow>(),
     db.prepare('SELECT * FROM adjustments WHERE guru_id = ? ORDER BY created_at').bind(guruId).all(),
     computeLeaderboard(db, season, ctx),
+    db.prepare('SELECT id FROM coaches WHERE season_id = ? AND fired = 1').bind(season.id).all<{ id: number }>(),
   ]);
-  const usedSwaps = slots.results.filter((s) => (s as SlotRow & { replaced_slot_id: number | null }).replaced_slot_id != null).length;
+  const fired = new Set(firedR.results.map((r) => r.id));
+  type Row = SlotRow & { id: number; replaced_slot_id: number | null; end_date: string | null };
+  const rows = slots.results as Row[];
+  const byId = new Map(rows.map((s) => [s.id, s]));
+  // Erotetun valmentajan korvaaminen ei kuluta vaihtoja
+  const usedSwaps = rows.filter((s) => {
+    if (s.replaced_slot_id == null) return false;
+    const old = byId.get(s.replaced_slot_id);
+    return !(old && old.position === 'C' && fired.has(old.entity_id));
+  }).length;
+  const firedCoach = rows.find((s) => s.position === 'C' && s.end_date == null && fired.has(s.entity_id));
   return {
     slots: slots.results.map((s) => slotView(s, season, ctx)),
     adjustments: adj.results,
     standing: lb.find((r) => r.id === guruId) ?? null,
     swaps: { used: usedSwaps, max: season.max_swaps },
+    firedCoachSlot: firedCoach?.id ?? null,
   };
 }
 
@@ -377,6 +389,23 @@ app.get('/me/team', requireUser, async (c) => {
   const g = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE user_id = ? AND season_id = ?').bind(c.get('user')!.id, c.get('season').id).first<{ id: number; name: string }>();
   if (!g) return c.json({ guru: null });
   return c.json({ guru: g, ...(await guruTeam(c, g.id)) });
+});
+
+// Valmentaja sai potkut → guru valitsee uuden heti (ei vaihtopäivää, ei kuluta vaihtoja)
+app.post('/me/coach', requireUser, async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const g = await myGuru(c);
+  if (!g) throw new Error('Et ole mukana tällä kaudella');
+  const { coach_id } = await c.req.json<{ coach_id: number }>();
+  const slot = await db.prepare(
+    `SELECT s.id FROM roster_slots s JOIN coaches c ON c.id = s.entity_id
+     WHERE s.guru_id = ? AND s.position = 'C' AND s.end_date IS NULL AND c.fired = 1`,
+  ).bind(g.id).first<{ id: number }>();
+  if (!slot) throw new Error('Valmentajasi ei ole saanut potkuja');
+  const nc = await db.prepare('SELECT fired FROM coaches WHERE id = ? AND season_id = ?').bind(Number(coach_id), season.id).first<{ fired: number }>();
+  if (!nc || nc.fired) throw new Error('Valitse toimessa oleva valmentaja');
+  await swapSlot(db, season, slot.id, Number(coach_id), helsinkiDate());
+  return c.json({ ok: true });
 });
 
 app.get('/me/draft-prefs', requireUser, async (c) => {
@@ -418,7 +447,7 @@ app.get('/me/swaps', requireUser, async (c) => {
   const g = await myGuru(c);
   if (!g) return c.json({ guru: null });
   const day = await nextOpenSwapDay(db, season);
-  const used = await db.prepare('SELECT COUNT(*) AS n FROM roster_slots WHERE guru_id = ? AND replaced_slot_id IS NOT NULL').bind(g.id).first<{ n: number }>();
+  const used = await db.prepare(`SELECT COUNT(*) AS n FROM roster_slots s WHERE s.guru_id = ? AND ${COUNTED_SWAP}`).bind(g.id).first<{ n: number }>();
   const history = await db.prepare(
     `SELECT r.*, d.date FROM swap_requests r JOIN swap_days d ON d.id = r.swap_day_id WHERE r.guru_id = ? AND d.processed_at IS NOT NULL ORDER BY d.date DESC, r.priority`,
   ).bind(g.id).all<{ candidates: string }>();
