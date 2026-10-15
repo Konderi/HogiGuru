@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { api, fmt, fmtDate, POS_LABEL, type Position, type Slot } from '../api';
-import { useApi } from '../auth';
+import { useApi, useAuth } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
 import { SwapRequests } from '../components/SwapRequests';
 import HalfRink from '../components/HalfRink';
@@ -122,6 +123,7 @@ export default function MyTeam() {
               </table>
             </Card>
           )}
+          <FavTeam />
           <EmailPrefs />
           <ChangePassword />
           <Modal open={!!sel} onClose={() => setSel(null)} title={`${sel?.name ?? ''} · ottelukohtaiset HG-pisteet`} wide>
@@ -130,6 +132,28 @@ export default function MyTeam() {
         </div>
       )}
     </>
+  );
+}
+
+function FavTeam() {
+  const { me, refresh } = useAuth();
+  const teams = useApi<{ id: string; name: string; logo: string | null }[]>('/teams');
+  const [saving, setSaving] = useState(false);
+  const cur = me?.favTeam?.id ?? null;
+  const pick = async (id: string | null) => { setSaving(true); await api('/me/fav-team', { method: 'PUT', body: { team_id: id } }).catch(() => {}); await refresh(); setSaving(false); };
+  return (
+    <Card title="Liiga-lempijoukkue" action={cur ? <Link to={`/joukkue/${encodeURIComponent(cur)}`} className="text-xs text-ice-300 hover:underline">Avaa joukkuesivu →</Link> : null}>
+      <p className="px-5 pt-4 text-sm text-slate-400">Valitse suosikkisi – sen logo ilmestyy valikkoon ja avaa joukkueen oman sivun (ottelut, tilastot, vire).</p>
+      <div className="grid grid-cols-4 gap-2 p-5 sm:grid-cols-6 lg:grid-cols-8">
+        {(teams.data ?? []).map((t) => (
+          <button key={t.id} disabled={saving} title={t.name} onClick={() => pick(cur === t.id ? null : t.id)}
+            className={`flex flex-col items-center gap-1 rounded-xl border p-2 transition hover:-translate-y-0.5 ${cur === t.id ? 'border-ice-400 bg-ice-500/15 shadow-[0_0_24px_rgba(56,189,248,0.3)]' : 'border-white/10 bg-white/[0.02] hover:border-white/30'}`}>
+            {t.logo ? <img src={t.logo} alt="" className="h-10 w-10 object-contain" /> : <span className="h-10 w-10" />}
+            <span className="w-full truncate text-center text-[10px] text-slate-300">{t.name}</span>
+          </button>
+        ))}
+      </div>
+    </Card>
   );
 }
 

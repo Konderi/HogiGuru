@@ -403,7 +403,122 @@ app.get('/auth/me', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ user: null, needsSetup: !(await c.env.DB.prepare('SELECT 1 FROM users LIMIT 1').first()) });
   const guru = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE user_id = ? AND season_id = ?').bind(user.id, c.get('season').id).first();
-  return c.json({ user, guru });
+  const favTeam = await c.env.DB.prepare('SELECT t.id, t.name, t.short_name, t.logo FROM users u JOIN teams t ON t.id = u.fav_team WHERE u.id = ?').bind(user.id).first();
+  return c.json({ user, guru, favTeam });
+});
+
+app.put('/me/fav-team', requireUser, async (c) => {
+  const { team_id } = await c.req.json<{ team_id: string | null }>();
+  if (team_id && !(await c.env.DB.prepare('SELECT 1 FROM teams WHERE id = ?').bind(team_id).first())) throw new Error('Tuntematon joukkue');
+  await c.env.DB.prepare('UPDATE users SET fav_team = ? WHERE id = ?').bind(team_id || null, c.get('user')!.id).run();
+  return c.json({ ok: true });
+});
+
+/** Liigan otteluohjelma (välimuistissa 10 min) */
+async function liigaGames(waitUntil: (p: Promise<unknown>) => void, y: number) {
+  const url = `https://liiga.fi/api/v2/games?tournament=runkosarja&season=${y}`;
+  const key = new Request(url);
+  let res = await caches.default.match(key);
+  if (!res) {
+    const r = await fetch(url, { headers: { 'User-Agent': 'HogiGuru/1.0 (+https://guru.konderi.fi)', Accept: 'application/json' } });
+    if (!r.ok) return [];
+    res = new Response(r.body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' } });
+    waitUntil(caches.default.put(key, res.clone()));
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return res.json<any[]>().catch(() => []);
+}
+
+/** Joukkuesivu: sarjatilanne, ottelut, vire, pistepörssi, maalivahdit, valmentaja ja HogiGuru-kulma. */
+app.get('/teams/:id/overview', async (c) => {
+  const db = c.env.DB; const season = c.get('season'); const y = season.liiga_season;
+  const id = c.req.param('id');
+  const pid = id.split(':')[0]; // pelaajien team_id on pelkkä numero-osa
+  const team = await db.prepare('SELECT * FROM teams WHERE id = ?').bind(id).first<{ id: string; name: string; short_name: string | null; logo: string | null }>();
+  if (!team) return c.json({ error: 'Joukkuetta ei löydy' }, 404);
+  const [teamsR, standingsR, playersR, tgR, coachR, fansR, pickedR, list] = await Promise.all([
+    db.prepare('SELECT id, name, short_name, logo FROM teams').all<{ id: string; name: string; short_name: string | null; logo: string | null }>(),
+    standingsQuery(db, season),
+    db.prepare(
+      `SELECT p.id, p.first_name, p.last_name, p.role, p.jersey, p.picture, s.games, s.goals, s.assists, s.pim, s.plus_minus,
+              s.saves, s.goals_against, s.shutouts, s.wins, s.save_pct
+       FROM players p JOIN player_stats s ON s.player_id = p.id AND s.season = ? WHERE p.team_id IN (?, ?)`,
+    ).bind(y, id, pid).all<Record<string, number | string | null>>(),
+    db.prepare('SELECT date, opponent, home, gf, ga, points FROM team_games WHERE team_id = ? AND season = ? ORDER BY date DESC, game_id DESC').bind(id, y)
+      .all<{ date: string; opponent: string; home: number; gf: number; ga: number; points: number }>(),
+    db.prepare('SELECT name, fired FROM coaches WHERE team_id = ? AND season_id = ? ORDER BY fired, id DESC').bind(id, season.id).all<{ name: string; fired: number }>(),
+    db.prepare('SELECT COUNT(*) AS n FROM users WHERE fav_team = ?').bind(id).first<{ n: number }>(),
+    db.prepare(
+      `SELECT s.position, s.entity_id, COUNT(*) AS n FROM roster_slots s JOIN gurus g ON g.id = s.guru_id
+       WHERE g.season_id = ?1 AND s.end_date IS NULL AND (
+         (s.position = 'C' AND s.entity_id IN (SELECT id FROM coaches WHERE team_id = ?2)) OR
+         (s.position <> 'C' AND s.entity_id IN (SELECT id FROM players WHERE team_id IN (?2, ?3))))
+       GROUP BY s.position, s.entity_id`,
+    ).bind(season.id, id, pid).all<{ position: string; entity_id: number; n: number }>(),
+    liigaGames((p) => c.executionCtx.waitUntil(p), y),
+  ]);
+  const byId = new Map(teamsR.results.map((t) => [t.id, t]));
+  const byName = new Map(teamsR.results.map((t) => [t.name, t]));
+  const teamOf = (side: { teamId?: string | number; teamName?: string }) => byId.get(String(side?.teamId)) ?? byName.get(side?.teamName ?? '') ?? null;
+
+  // Ottelut liiga.fi:stä (tuleva ohjelma + tulokset)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mine = list.filter((g: any) => String(g.homeTeam?.teamId) === id || String(g.awayTeam?.teamId) === id
+    || g.homeTeam?.teamName === team.name || g.awayTeam?.teamName === team.name)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((g: any) => {
+      const home = String(g.homeTeam?.teamId) === id || g.homeTeam?.teamName === team.name;
+      const opp = home ? g.awayTeam : g.homeTeam;
+      const o = teamOf(opp);
+      return {
+        id: g.id, start: g.start, home, ended: !!g.ended, started: !!g.started,
+        opponent: o?.name ?? opp?.teamName ?? '?', opponentLogo: o?.logo ?? null, opponentId: o?.id ?? null,
+        gf: (home ? g.homeTeam?.goals : g.awayTeam?.goals) ?? null, ga: (home ? g.awayTeam?.goals : g.homeTeam?.goals) ?? null,
+        extra: g.ended && g.finishedType && g.finishedType !== 'ENDED_DURING_REGULAR_GAME_TIME' ? (String(g.finishedType).includes('WINNING_SHOT') ? 'VL' : 'JA') : null,
+        venue: typeof g.iceRink === 'object' ? g.iceRink?.name ?? null : null, tickets: g.buyTicketsUrl || null,
+      };
+    })
+    .sort((a: { start: string }, b: { start: string }) => String(a.start).localeCompare(String(b.start)));
+  const upcoming = mine.filter((g: { ended: boolean }) => !g.ended).slice(0, 8);
+  const recent = mine.filter((g: { ended: boolean }) => g.ended).slice(-10).reverse();
+
+  // Vire omasta ottelulokista (varalla, jos liiga.fi:n lista ei vastaa)
+  const tg = tgR.results;
+  const res = (g: { gf: number; ga: number; points: number }) => (g.gf > g.ga ? (g.points === 3 ? 'V' : 'JV') : g.points === 1 ? 'JH' : 'H');
+  let streak = 0;
+  for (const g of tg) { if ((g.gf > g.ga) === (tg[0].gf > tg[0].ga)) streak++; else break; }
+  const split = (h: number) => {
+    const r = tg.filter((g) => g.home === h);
+    return { games: r.length, points: r.reduce((a, g) => a + g.points, 0), gf: r.reduce((a, g) => a + g.gf, 0), ga: r.reduce((a, g) => a + g.ga, 0) };
+  };
+
+  const ps = playersR.results.map((p) => ({
+    id: Number(p.id), name: `${p.first_name} ${p.last_name}`, role: String(p.role ?? ''), jersey: p.jersey, picture: p.picture,
+    games: Number(p.games), goals: Number(p.goals), assists: Number(p.assists), points: Number(p.goals) + Number(p.assists),
+    pim: Number(p.pim), plusMinus: Number(p.plus_minus), saves: Number(p.saves), goalsAgainst: Number(p.goals_against),
+    shutouts: Number(p.shutouts), wins: Number(p.wins), savePct: p.save_pct == null ? null : Number(p.save_pct),
+  }));
+  const skaters = ps.filter((p) => p.role !== 'MV');
+  const top = (k: 'points' | 'goals' | 'assists' | 'pim' | 'plusMinus', n = 5) => [...skaters].sort((a, b) => b[k] - a[k] || b.points - a.points).slice(0, n);
+  const picked = pickedR.results;
+  const nameOf = (pos: string, eid: number) => pos === 'C' ? coachR.results[0]?.name ?? 'Valmentaja' : ps.find((p) => p.id === eid)?.name ?? `#${eid}`;
+
+  return c.json({
+    team,
+    standing: (standingsR as { team_id: string }[]).find((s) => s.team_id === id) ?? null,
+    standings: standingsR,
+    upcoming, recent,
+    form: tg.slice(0, 10).map((g) => ({ ...g, result: res(g), opponentLogo: byName.get(g.opponent)?.logo ?? null })),
+    streak: tg.length ? { n: streak, win: tg[0].gf > tg[0].ga } : null,
+    homeAway: { home: split(1), away: split(0) },
+    leaders: { points: top('points', 10), goals: top('goals'), assists: top('assists'), plusMinus: top('plusMinus'), pim: top('pim') },
+    goalies: ps.filter((p) => p.role === 'MV' && p.games > 0).sort((a, b) => b.games - a.games),
+    coach: coachR.results.find((x) => !x.fired) ?? coachR.results[0] ?? null,
+    hogiguru: {
+      fans: fansR?.n ?? 0,
+      picks: picked.map((p) => ({ position: p.position, name: nameOf(p.position, p.entity_id), n: p.n })).sort((a, b) => b.n - a.n),
+    },
+  });
 });
 
 // Vertailuhash: tuntemattomalle käyttäjälle tehdään sama PBKDF2-laskenta, ettei vasteaika paljasta tunnuksia

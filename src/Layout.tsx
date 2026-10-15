@@ -23,8 +23,13 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const user = me?.user;
-  const extra = [
-    ...(user ? [{ to: '/oma-joukkue', label: 'Oma joukkue' }, { to: '/draft', label: 'Draft' }] : []),
+  const fav = me?.favTeam;
+  const extra: { to: string; label: string; logo?: string | null }[] = [
+    ...(user ? [
+      { to: '/oma-joukkue', label: 'Oma joukkue' },
+      ...(fav ? [{ to: `/joukkue/${encodeURIComponent(fav.id)}`, label: fav.name, logo: fav.logo }] : []),
+      { to: '/draft', label: 'Draft' },
+    ] : []),
     ...(isAdminRole(user?.role) ? [{ to: '/admin', label: 'Ylläpito' }] : []),
   ];
 
@@ -39,7 +44,9 @@ export default function Layout() {
           <nav className="hidden flex-1 items-center gap-0.5 lg:flex">
             {nav.map((n) => <NavLink key={n.to} to={n.to} end={'end' in n} className={linkCls}>{n.label}</NavLink>)}
             {extra.length > 0 && <span className="mx-2 h-5 w-px bg-white/10" />}
-            {extra.map((n) => <NavLink key={n.to} to={n.to} className={linkCls}>{n.label}</NavLink>)}
+            {extra.map((n) => n.logo
+              ? <NavLink key={n.to} to={n.to} title={n.label} aria-label={n.label} className={({ isActive }) => `mx-1 grid h-9 w-9 place-items-center rounded-full transition hover:scale-110 hover:bg-white/5 ${isActive ? 'bg-white/10 ring-1 ring-ice-400/50' : ''}`}><img src={n.logo} alt={n.label} className="h-7 w-7 object-contain" /></NavLink>
+              : <NavLink key={n.to} to={n.to} className={linkCls}>{n.label}</NavLink>)}
           </nav>
           <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
             {user ? (
@@ -60,7 +67,7 @@ export default function Layout() {
         {open && (
           <nav className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/6 px-4 py-3 lg:hidden" onClick={() => setOpen(false)}>
             {[...nav, ...extra].map((n) => (
-              <NavLink key={n.to} to={n.to} end={'end' in n} className={({ isActive }) => `block rounded-lg px-3 py-3 font-semibold ${isActive ? 'bg-ice-500/10 text-ice-300' : 'text-slate-300'}`}>{n.label}</NavLink>
+              <NavLink key={n.to} to={n.to} end={'end' in n} className={({ isActive }) => `flex items-center gap-2 rounded-lg px-3 py-3 font-semibold ${isActive ? 'bg-ice-500/10 text-ice-300' : 'text-slate-300'}`}>{'logo' in n && n.logo ? <img src={n.logo} alt="" className="h-6 w-6 object-contain" /> : null}{n.label}</NavLink>
             ))}
             {user
               ? <button className="mt-2 w-full rounded-lg px-3 py-3 text-left font-semibold text-slate-400" onClick={async () => { await logout(); navigate('/'); }}>Kirjaudu ulos{me?.guru ? ` (${me.guru.name})` : ''}</button>

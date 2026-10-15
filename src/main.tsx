@@ -10,6 +10,7 @@ import Gurukierros from './pages/Gurukierros';
 import Standings from './pages/Standings';
 import Stats from './pages/Stats';
 import Privacy from './pages/Privacy';
+import Team from './pages/Team';
 import HallOfFame from './pages/HallOfFame';
 import Login from './pages/Login';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
@@ -53,6 +54,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="sarjataulukko" element={<Standings />} />
             <Route path="tilastot" element={<Stats />} />
             <Route path="tietosuoja" element={<Privacy />} />
+            <Route path="joukkue/:id" element={<Team />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />
             <Route path="kokonaistulokset" element={<Results />} />
             <Route path="kirjaudu" element={<Login />} />
