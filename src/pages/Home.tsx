@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { fmt, fmtDate, fmtDateTime, type LeaderRow } from '../api';
-import { useApi } from '../auth';
+import { useApi, useAuth } from '../auth';
+import { GameRow, type Game } from './Games';
 import { Card, Countdown, Empty, ErrorBox, RankBadge, RankDelta, Spinner } from '../ui';
 import { StandingsTable, type StandingRow } from './Standings';
 import { fmtDeadline, type RegInfo } from './Register';
@@ -109,9 +110,40 @@ export default function Home() {
         </div>
       </div>
 
+      <HomeGames />
+
       <Card title="Liigan sarjataulukko" action={<Link to="/sarjataulukko" className="text-sm font-semibold text-ice-400 hover:text-ice-300">Koko taulukko →</Link>}>
         <StandingsTable rows={data.standings} compact />
       </Card>
     </div>
+  );
+}
+
+/** Edellisen pelipäivän tulokset ja seuraavan pelipäivän ottelut. */
+function HomeGames() {
+  const { me } = useAuth();
+  const { data } = useApi<{ games: Game[] }>('/games');
+  const po = useApi<{ games: Game[] }>('/games?tournament=playoffs');
+  const all = [...(data?.games ?? []), ...(po.data?.games ?? [])].sort((a, b) => a.start.localeCompare(b.start));
+  if (!all.length) return null;
+  const day = (s: string) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Helsinki', dateStyle: 'short' }).format(new Date(s));
+  const today = day(new Date().toISOString());
+  const nextDay = all.find((g) => day(g.start) >= today && !g.ended) ? day(all.find((g) => day(g.start) >= today && !g.ended)!.start) : null;
+  const lastDay = [...all].reverse().find((g) => g.ended && day(g.start) !== nextDay);
+  const prevDay = lastDay ? day(lastDay.start) : null;
+  const label = (d: string) => (d === today ? 'Tänään' : new Date(`${d}T12:00`).toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'numeric' }));
+  const col = (d: string | null, title: string) => d && (
+    <div className="min-w-0">
+      <h3 className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">{title} · {label(d)}</h3>
+      {all.filter((g) => day(g.start) === d).map((g) => <GameRow key={g.id} g={g} fav={me?.favTeam?.id} />)}
+    </div>
+  );
+  return (
+    <Card title="Ottelut" action={<Link to="/ottelut" className="text-sm font-semibold text-ice-400 hover:text-ice-300">Kaikki ottelut →</Link>}>
+      <div className="grid gap-4 p-3 md:grid-cols-2">
+        {col(prevDay, 'Tulokset')}
+        {col(nextDay, 'Seuraavaksi')}
+      </div>
+    </Card>
   );
 }

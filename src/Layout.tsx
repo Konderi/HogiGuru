@@ -7,6 +7,7 @@ const nav = [
   { to: '/', label: 'Etusivu', end: true },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/gurukierros', label: 'Gurukierros' },
+  { to: '/ottelut', label: 'Ottelut' },
   { to: '/sarjataulukko', label: 'Sarjataulukko' },
   { to: '/tilastot', label: 'Tilastot' },
   { to: '/kokonaistulokset', label: 'Kokonaistulokset' },

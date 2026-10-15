@@ -377,7 +377,16 @@ Varmistus on koko kannan SQL-dump (rakenne + data, istunnot pois lukien). Lisäk
 
 ---
 
-## Play-Offs-kisa
+## Ottelut
+
+- **`/ottelut`**: runkosarjan ja Play-Offsin otteluohjelma ja tulokset (liiga.fi, välimuisti 2 min). Suodatus joukkueittain, suosikkijoukkue korostettuna.
+- **`/ottelut/:id`**: ottelun pelaajatilastot joukkueittain (`game_stats` / `playoff_game_stats`) ja HG-pisteet kauden säännöillä. ⭐ merkitsee kirjautuneen gurun omat pelaajat.
+- Etusivulla kortti: edellisen pelipäivän tulokset ja seuraavat ottelut.
+- Koodi: `worker/games.ts`, `src/pages/Games.tsx`; API `GET /api/games?tournament=runkosarja|playoffs`, `GET /api/games/:id`.
+
+---
+
+$1
 
 Erillinen sivukisa pudotuspeleihin (`/playoff`, toistaiseksi näkyvissä vain ylläpitäjille). Ks. [suunnitelma](docs/playoff-suunnitelma.md).
 

@@ -9,6 +9,7 @@ import Leaderboard from './pages/Leaderboard';
 import Gurukierros from './pages/Gurukierros';
 import Standings from './pages/Standings';
 import Stats from './pages/Stats';
+import Games, { GameDetail } from './pages/Games';
 import Privacy from './pages/Privacy';
 import Team from './pages/Team';
 import HallOfFame from './pages/HallOfFame';
@@ -55,6 +56,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="gurukierros" element={<Gurukierros />} />
             <Route path="sarjataulukko" element={<Standings />} />
             <Route path="tilastot" element={<Stats />} />
+            <Route path="ottelut" element={<Games />} />
+            <Route path="ottelut/:id" element={<GameDetail />} />
             <Route path="tietosuoja" element={<Privacy />} />
             <Route path="joukkue/:id" element={<Team />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />

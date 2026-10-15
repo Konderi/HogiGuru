@@ -17,6 +17,7 @@ import { esc, layout, sendMail, SITE } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 import { aliveTeams, fetchBracket } from './playoff';
 import { leaderboard as poLeaderboard, limitsOf, loadContext as poContext, playoffSeasonOf, PO_POS, PO_ROSTER, posOfRole, reservedCounts, rosterOf, swapWindow, today, type PoPos } from './playoffGame';
+import { fetchGames, gameDetail, type Tournament } from './games';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
@@ -124,6 +125,38 @@ app.put('/me/email-prefs', requireUser, async (c) => {
   const prefs = { weekly: !!b.weekly, swaps: !!b.swaps, coach: !!b.coach };
   await c.env.DB.prepare('UPDATE users SET email_prefs = ? WHERE id = ?').bind(JSON.stringify(prefs), c.get('user')!.id).run();
   return c.json(prefs);
+});
+
+// ---------- Ottelut (julkinen) ----------
+app.get('/games', async (c) => {
+  const season = c.get('season');
+  const t: Tournament = c.req.query('tournament') === 'playoffs' ? 'playoffs' : 'runkosarja';
+  const y = Number(c.req.query('season')) || season.liiga_season;
+  try {
+    return c.json({ season: y, tournament: t, games: await fetchGames(y, t, (p) => c.executionCtx.waitUntil(p)) });
+  } catch (e) { return c.json({ error: (e as Error).message }, 502); }
+});
+
+app.get('/games/:id', async (c) => {
+  const db = c.env.DB; const season = c.get('season'); const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const wu = (p: Promise<unknown>) => c.executionCtx.waitUntil(p);
+  let game = null;
+  for (const t of ['runkosarja', 'playoffs'] as const) {
+    try { game = (await fetchGames(season.liiga_season, t, wu)).find((g) => g.id === id) ?? null; } catch { /* ohitetaan */ }
+    if (game) break;
+  }
+  const mine = new Set<number>();
+  if (user) {
+    const [a, b] = await db.batch([
+      db.prepare("SELECT s.entity_id AS id FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.user_id = ? AND g.season_id = ? AND s.position <> 'C' AND s.end_date IS NULL").bind(user.id, season.id),
+      db.prepare("SELECT s.player_id AS id FROM playoff_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.user_id = ? AND s.end_date IS NULL AND g.season_id IN (SELECT id FROM seasons WHERE parent_season_id = ?)").bind(user.id, season.id),
+    ]);
+    for (const r of [...a.results, ...b.results] as { id: number }[]) mine.add(r.id);
+  }
+  const players = await gameDetail(db, id, season.scoring, mine);
+  if (!game && !players.length) return c.json({ error: 'Ottelua ei löytynyt' }, 404);
+  return c.json({ game, players });
 });
 
 app.get('/public/overview', async (c) => {
