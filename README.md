@@ -6,7 +6,7 @@ Sivusto korvaa aiemman Excel-laskimen ja paperisen osallistumiskaavakkeen: tilas
 
 🌐 **Tuotanto:** https://guru.konderi.fi
 📦 **Repo:** https://github.com/Konderi/HogiGuru
-📘 **Ohjeet:** [Gurut](docs/kayttoohje.md) · [Ylläpitäjät](docs/yllapitajan-ohje.md)
+📘 **Ohjeet:** [Gurut](docs/kayttoohje.md) · [Ylläpitäjät](docs/yllapitajan-ohje.md) · [Domainin vaihto](docs/domainin-vaihto.md)
 
 ---
 
@@ -147,6 +147,7 @@ HogiGuru-app/
 ├── docs/
 │   ├── kayttoohje.md            käyttöohje guruille
 │   ├── yllapitajan-ohje.md      ylläpitäjän ohje
+│   ├── domainin-vaihto.md       tarkistuslista oman domainin käyttöönottoon
 │   └── excel-analyysi.md        alkuperäisen Excelin analyysi
 └── data/                        EI versionhallinnassa (Excelit, kaavake)
 ```
@@ -365,6 +366,7 @@ Tuo kaikkien kausien (2001–2026) sijoitukset ja gaalapaikat. Kauden maratonpis
 📘 **Käyttöohjeet:**
 - [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, draft, vaihtotoiveet, varaustilanne
 - [Ylläpitäjän ohje](docs/yllapitajan-ohje.md): kauden valmistelu, draft, vaihtopäivän käsittely, potkut, korjaukset, kertoimien muutos kesken kauden, ongelmatilanteet
+- [Domainin vaihto](docs/domainin-vaihto.md): siirto guru.konderi.fi → oma domain (Cloudflare, Resend, uudelleenohjaus, istunnot, testaus)
 
 Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset → valmentajat → draft. Kauden aikana tilastot päivittyvät itsestään, ja vaihtopäivien toiveet käsitellään esikatselun kautta. Kauden lopussa mitalistit Hall of Fameen.
 
