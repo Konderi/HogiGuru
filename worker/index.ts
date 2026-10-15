@@ -976,6 +976,20 @@ admin.post('/playoff/season', async (c) => {
   ).bind(parent.id).run();
   return c.json({ ok: true });
 });
+/** Play-Off-kisan lopputulos Hall of Fameen (top 3, kausinimi "<kausi> Play-Off"). */
+admin.post('/playoff/hall-of-fame', async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ error: 'Ei kisaa' }, 404);
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const rows = poLeaderboard(ctx).filter((r) => r.rank <= 3);
+  const name = po.name.includes('Play-Off') ? po.name : `${po.name} Play-Off`;
+  await db.batch([
+    db.prepare('DELETE FROM hall_of_fame WHERE season_name = ?').bind(name),
+    ...rows.map((r) => db.prepare('INSERT INTO hall_of_fame (season_name, rank, name, points, note) VALUES (?,?,?,?,?)').bind(name, r.rank, r.name, r.points, 'Play-Off')),
+  ]);
+  return c.json({ ok: true, count: rows.length });
+});
 admin.put('/playoff/season', async (c) => {
   const db = c.env.DB;
   const po = await playoffSeasonOf(db, c.get('season').id);

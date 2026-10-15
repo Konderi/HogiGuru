@@ -199,6 +199,19 @@ Ohjaus: **välilyönti / → / Enter** = seuraava, **←** = takaisin, **Esc** =
 
 **Harjoittelu:** esitys toimii myös ennen julkaisua (merkintä "harjoitus") eikä paljasta mitään muille. Viimeisen vaiheen jälkeen napista **📣 Julkaise tulokset kaikille** tulokset aukeavat julkiselle sivulle.
 
+## Play-Off-kisa
+
+Sivu **Play-Off** (toistaiseksi vain ylläpitäjille) → välilehti **Hallinta**:
+
+1. **Luo Play-Off-kisa**: luo kisan kuluvan kauden pisteytyksellä.
+2. Rasti **Ilmoittautuminen auki**. Gurut liittyvät ja veikkaavat mestaria (Oma joukkue -välilehti).
+3. **Draft-lomake → Auki**, kun puolivälieräparit ovat selvillä. Gurut valitsevat 3 H, 2 P ja 1 MV. Tarvittaessa muuta valintarajoja (vaihtoihin ne eivät vaikuta).
+4. **Draft-lomake → Lukittu** ennen ensimmäistä puolivälieräottelua. Kokoonpanot tulevat kaikkien nähtäville.
+5. Vaihtoikkunat toimivat automaattisesti. Poikkeustilanteessa valitse **Vaihdot → Pakko auki / Pakko kiinni** ja palauta lopuksi **Automaattinen**.
+6. Finaalin jälkeen **🏆 Tallenna Hall of Fameen** (top 3). Play-Offissa ei ole gaalaa.
+
+Tilastot päivittyvät normaalin synkronoinnin mukana.
+
 ## Ilmoittautuneen liittäminen aiempaan guruun
 
 Hyväksyttäessä järjestelmä vertaa nimeä kaikkiin aiempiin guruihin (Hall of Fame + aiemmat kaudet):

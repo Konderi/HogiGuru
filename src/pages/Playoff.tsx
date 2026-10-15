@@ -130,6 +130,10 @@ function AdminCompetition() {
               ))}
               <span className="text-xs text-slate-500">(vaihdoissa ei rajoja)</span>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button className="btn btn-ghost" onClick={() => confirm('Tallennetaanko nykyinen top 3 Hall of Fameen? (korvaa aiemman Play-Off-merkinnän)') && run(async () => { const r = await api<{ count: number }>('/admin/playoff/hall-of-fame', { method: 'POST' }); alert(`Tallennettu ${r.count} riviä Hall of Fameen.`); })}>🏆 Tallenna Hall of Fameen</button>
+              <span className="text-xs text-slate-500">Tee finaalin jälkeen. Play-Offissa ei ole gaalaa.</span>
+            </div>
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Ilmoittautuneet ({data.entries.length})</h3>
               {!data.entries.length ? <p className="text-sm text-slate-500">Ei vielä ilmoittautuneita.</p> : (

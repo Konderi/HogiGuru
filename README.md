@@ -164,7 +164,10 @@ HogiGuru-app/
 │   ├── 0011_draft_lottery.sql   animoitu arvonta (aloitusaika, arvontajärjestys)
 │   ├── 0012_fav_team.sql        käyttäjän suosikkijoukkue
 │   ├── 0013_lottery_pause.sql   arvonnan tauko
-│   └── 0014_draft_nav.sql       Draft-linkin näkyvyys yläpalkissa
+│   ├── 0014_draft_nav.sql       Draft-linkin näkyvyys yläpalkissa
+│   ├── 0015_playoff.sql         pudotuspelitilastot, kauden tyyppi (playoff)
+│   ├── 0016_playoff_reg.sql     Play-Off-ilmoittautuminen, mestariveikkaus
+│   └── 0017_playoff_rosters.sql Play-Off-kokoonpanot, ottelutilastot, vaihtoikkuna
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
@@ -371,6 +374,19 @@ Varmistus on koko kannan SQL-dump (rakenne + data, istunnot pois lukien). Lisäk
 - **Ylläpito → Kokonaistulokset:** esikatselu eriteltynä, julkaisukytkin, käsikorjaukset oikeisiin vastauksiin (`results_override`, JSON) ja tallennus Hall of Fameen.
 - **Gaalaesitys** 🎬: koko näytön vaiheittainen tulosten paljastus, ks. [ylläpitäjän ohje](docs/yllapitajan-ohje.md#gaalaesitys).
 - **Valintatapa** (Ylläpito → Ilmoittautuminen): `draft` (toivelistat + valintajärjestys) tai `baskets` (korit: yksi valinta per kori, kentällinen syntyy suoraan hyväksynnässä).
+
+---
+
+## Play-Off-kisa
+
+Erillinen sivukisa pudotuspeleihin (`/playoff`, toistaiseksi näkyvissä vain ylläpitäjille). Ks. [suunnitelma](docs/playoff-suunnitelma.md).
+
+- **Kausi:** oma `seasons`-rivi (`kind = 'playoff'`, `parent_season_id`), pisteytys kopioidaan emokaudelta.
+- **Joukkue:** 3 H, 2 P, 1 MV, valinta lomakkeella (`draft_status`: `setup` → `live` → `done`). Draftissa valintarajat (oletus H 8 / P 8 / MV 12), vaihdoissa ei.
+- **Pisteet:** `playoff_game_stats`, vain puolivälierät, välierät ja finaali (liigan vaiheet 2, 3, 5). Lasketaan `playoff_slots`-rivien voimassaoloajalta.
+- **Vaihdot:** 4 kpl + ilmaiset pudonneen joukkueen pelaajista. Ikkuna aukeaa automaattisesti kun kierroksen sarjat ovat ratkenneet, sulkeutuu 2 h ennen seuraavan kierroksen 1. ottelua (`swap_open` ylikirjoittaa: 1 auki / −1 kiinni).
+- **Mestariveikkaus** on kunniakysymys. Ei gaalaa – top 3 tallennetaan Hall of Fameen Hallinta-välilehdeltä.
+- Koodi: `worker/playoff.ts` (hakemistopuu), `worker/playoffGame.ts` (kokoonpanot, pisteet, leaderboard, vaihtoikkuna), `src/pages/Playoff.tsx`.
 
 ---
 
