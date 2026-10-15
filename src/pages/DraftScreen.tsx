@@ -31,6 +31,9 @@ export default function DraftScreen() {
   const { me } = useAuth();
   const offset = useRef(0);
   useEffect(() => { if (st?.lottery && !st.lottery.paused && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
+  const start = demo ? demoRes.start
+    : isAdminRole(me?.user?.role) ? async () => { await api('/admin/draft/shuffle', { body: { animate: true } }).catch(() => {}); reload(); }
+    : undefined;
   const toggle = demo ? demoRes.toggle
     : isAdminRole(me?.user?.role) ? async () => { await api('/admin/draft/lottery', { body: { action: st?.lottery?.paused ? 'resume' : 'pause' } }).catch(() => {}); reload(); }
     : undefined;
@@ -74,7 +77,7 @@ export default function DraftScreen() {
       </header>
 
       {st.lottery ? <Lottery st={st} offset={offset.current} onToggle={toggle} />
-        : st.status === 'setup' ? <Lobby st={st} />
+        : st.status === 'setup' ? <Lobby st={st} onStart={start} />
         : <Live st={st} />}
 
       {flash && (
@@ -91,20 +94,21 @@ export default function DraftScreen() {
 }
 
 /** Harjoitustila (?harjoitus): arvonta oikeilla guruilla vain selaimessa – ei tallenna mitään. */
-function useDemo(real: DraftState | null): { st: DraftState | null; toggle: () => void } {
+function useDemo(real: DraftState | null): { st: DraftState | null; toggle: () => void; start: () => void } {
   const [base, setBase] = useState<DraftState | null>(null);
   const [over, setOver] = useState(false);
+  const [started, setStarted] = useState(false);
   useEffect(() => {
-    if (!real || base) return;
+    if (!real || base || !started) return;
     const rnd = (n: number) => [...Array(n).keys()].map((i) => ({ i, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.i);
     const nums = rnd(real.gurus.length), order = rnd(real.gurus.length);
     const gurus = real.gurus.map((g, i) => ({ ...g, draft_number: nums[i] + 1 }));
-    const at = Date.now() + 3000;
+    const at = Date.now() + 10_000;
     setBase({
       ...real, status: 'setup', picks: [], gurus: [...gurus].sort((a, b) => a.draft_number - b.draft_number),
       lottery: { at, now: Date.now(), step: 10_000, reveal: 4_000, paused: false, order: order.map((i) => ({ id: gurus[i].id, name: gurus[i].name, draft_number: gurus[i].draft_number })) },
     });
-  }, [real, base]);
+  }, [real, base, started]);
   useEffect(() => {
     if (!base?.lottery || base.lottery.paused) return;
     const t = setTimeout(() => setOver(true), base.lottery.at - Date.now() + base.gurus.length * 10_000 + 1500);
@@ -115,7 +119,7 @@ function useDemo(real: DraftState | null): { st: DraftState | null; toggle: () =
     const L = b.lottery, now = Date.now();
     return { ...b, lottery: L.paused ? { ...L, paused: false, at: L.at + (now - L.now), now } : { ...L, paused: true, now } };
   });
-  return { st: base && over ? { ...base, lottery: null } : base, toggle };
+  return { st: !started ? (real ? { ...real, status: 'setup', picks: [], lottery: null, gurus: real.gurus.map((g) => ({ ...g, draft_number: null })) } : null) : base && over ? { ...base, lottery: null } : base, toggle, start: () => setStarted(true) };
 }
 
 function Clock() {
@@ -185,11 +189,17 @@ function Lottery({ st, offset, onToggle }: { st: DraftState; offset: number; onT
 }
 
 /* ---------- Ennen draftia ---------- */
-function Lobby({ st }: { st: DraftState }) {
+function Lobby({ st, onStart }: { st: DraftState; onStart?: () => void }) {
   const ready = st.gurus.every((g) => g.draft_number != null);
   return (
     <main className="mx-auto max-w-6xl p-8">
       <p className="text-center text-2xl uppercase tracking-[0.4em] text-ice-300">{ready ? 'Valintajärjestys' : 'Draft alkaa pian'}</p>
+      {onStart && !ready && (
+        <div className="mt-6 text-center">
+          <button onClick={onStart} className="btn btn-primary px-10 py-4 text-2xl shadow-[0_0_60px_rgba(56,189,248,0.35)]">🎲 Aloita arvonta</button>
+          <p className="mt-2 text-sm text-slate-400">Arvonta alkaa 10 sekunnin lähtölaskennalla.</p>
+        </div>
+      )}
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {st.gurus.map((g) => (
           <div key={g.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-rink-850/80 px-5 py-4">

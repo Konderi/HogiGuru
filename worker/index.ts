@@ -1169,7 +1169,7 @@ admin.post('/draft/shuffle', async (c) => {
   await db.batch([
     ...order.map((o, i) => db.prepare('UPDATE gurus SET draft_number = ? WHERE id = ?').bind(i + 1, o.g.id)),
     ...reveal.map((o, i) => db.prepare('UPDATE gurus SET lottery_order = ? WHERE id = ?').bind(i, o.g.id)),
-    db.prepare('UPDATE seasons SET draft_lottery_at = ?, draft_lottery_paused = NULL WHERE id = ?').bind(animate ? Date.now() + 3000 : null, season.id),
+    db.prepare('UPDATE seasons SET draft_lottery_at = ?, draft_lottery_paused = NULL WHERE id = ?').bind(animate ? Date.now() + 10_000 : null, season.id),
   ]);
   return c.json({ ok: true });
 });
