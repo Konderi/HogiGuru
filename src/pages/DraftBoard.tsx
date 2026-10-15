@@ -11,7 +11,7 @@ export interface DraftState {
   hasPrefs: number[];
   picks: { id: number; pick_no: number; guru_id: number; position: Position; entity_id: number; name: string; team: string | null; auto: number }[];
   pool: { position: Position; entity_id: number; name: string; team: string | null; used: number }[];
-  lottery: { at: number; now: number; step: number; reveal: number; order: { id: number; name: string; draft_number: number | null }[] } | null;
+  lottery: { at: number; now: number; step: number; reveal: number; paused?: boolean; order: { id: number; name: string; draft_number: number | null }[] } | null;
 }
 
 /** Draft-taulu: gurut riveinä, kierrokset sarakkeina. Numero ja nimi pysyvät näkyvissä vieritettäessä;

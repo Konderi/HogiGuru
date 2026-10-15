@@ -1169,8 +1169,19 @@ admin.post('/draft/shuffle', async (c) => {
   await db.batch([
     ...order.map((o, i) => db.prepare('UPDATE gurus SET draft_number = ? WHERE id = ?').bind(i + 1, o.g.id)),
     ...reveal.map((o, i) => db.prepare('UPDATE gurus SET lottery_order = ? WHERE id = ?').bind(i, o.g.id)),
-    db.prepare('UPDATE seasons SET draft_lottery_at = ? WHERE id = ?').bind(animate ? Date.now() + 3000 : null, season.id),
+    db.prepare('UPDATE seasons SET draft_lottery_at = ?, draft_lottery_paused = NULL WHERE id = ?').bind(animate ? Date.now() + 3000 : null, season.id),
   ]);
+  return c.json({ ok: true });
+});
+admin.post('/draft/lottery', async (c) => {
+  const { action } = await c.req.json<{ action: 'pause' | 'resume' }>();
+  const s = c.get('season');
+  if (!s.draft_lottery_at) throw new Error('Arvonta ei ole käynnissä');
+  const now = Date.now();
+  if (action === 'pause' && s.draft_lottery_paused == null)
+    await c.env.DB.prepare('UPDATE seasons SET draft_lottery_paused = ? WHERE id = ?').bind(now, s.id).run();
+  if (action === 'resume' && s.draft_lottery_paused != null)
+    await c.env.DB.prepare('UPDATE seasons SET draft_lottery_at = draft_lottery_at + ?, draft_lottery_paused = NULL WHERE id = ?').bind(now - s.draft_lottery_paused, s.id).run();
   return c.json({ ok: true });
 });
 admin.post('/draft/attendance', async (c) => {

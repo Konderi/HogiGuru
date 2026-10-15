@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
-import { useApi } from '../auth';
+import { api, POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
+import { isAdminRole, useApi, useAuth } from '../auth';
 import { Logo, PosBadge, Spinner } from '../ui';
 import { DraftGrid, type DraftState } from './DraftBoard';
 
@@ -26,10 +26,14 @@ function useNow(ms: number) {
 export default function DraftScreen() {
   const { data: real, reload } = useApi<DraftState>('/draft');
   const demo = new URLSearchParams(location.search).has('harjoitus');
-  const demoSt = useDemo(demo ? real : null);
-  const st = demo ? demoSt : real;
+  const demoRes = useDemo(demo ? real : null);
+  const st = demo ? demoRes.st : real;
+  const { me } = useAuth();
   const offset = useRef(0);
-  useEffect(() => { if (st?.lottery && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
+  useEffect(() => { if (st?.lottery && !st.lottery.paused && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
+  const toggle = demo ? demoRes.toggle
+    : isAdminRole(me?.user?.role) ? async () => { await api('/admin/draft/lottery', { body: { action: st?.lottery?.paused ? 'resume' : 'pause' } }).catch(() => {}); reload(); }
+    : undefined;
   useEffect(() => {
     if (demo) return;
     const t = setInterval(reload, st?.lottery ? 1000 : 3000);
@@ -69,7 +73,7 @@ export default function DraftScreen() {
         </div>
       </header>
 
-      {st.lottery ? <Lottery st={st} offset={offset.current} />
+      {st.lottery ? <Lottery st={st} offset={offset.current} onToggle={toggle} />
         : st.status === 'setup' ? <Lobby st={st} />
         : <Live st={st} />}
 
@@ -87,7 +91,7 @@ export default function DraftScreen() {
 }
 
 /** Harjoitustila (?harjoitus): arvonta oikeilla guruilla vain selaimessa – ei tallenna mitään. */
-function useDemo(real: DraftState | null): DraftState | null {
+function useDemo(real: DraftState | null): { st: DraftState | null; toggle: () => void } {
   const [base, setBase] = useState<DraftState | null>(null);
   const [over, setOver] = useState(false);
   useEffect(() => {
@@ -98,15 +102,20 @@ function useDemo(real: DraftState | null): DraftState | null {
     const at = Date.now() + 3000;
     setBase({
       ...real, status: 'setup', picks: [], gurus: [...gurus].sort((a, b) => a.draft_number - b.draft_number),
-      lottery: { at, now: Date.now(), step: 10_000, reveal: 4_000, order: order.map((i) => ({ id: gurus[i].id, name: gurus[i].name, draft_number: gurus[i].draft_number })) },
+      lottery: { at, now: Date.now(), step: 10_000, reveal: 4_000, paused: false, order: order.map((i) => ({ id: gurus[i].id, name: gurus[i].name, draft_number: gurus[i].draft_number })) },
     });
   }, [real, base]);
   useEffect(() => {
-    if (!base?.lottery) return;
+    if (!base?.lottery || base.lottery.paused) return;
     const t = setTimeout(() => setOver(true), base.lottery.at - Date.now() + base.gurus.length * 10_000 + 1500);
     return () => clearTimeout(t);
   }, [base]);
-  return base && over ? { ...base, lottery: null } : base;
+  const toggle = () => setBase((b) => {
+    if (!b?.lottery) return b;
+    const L = b.lottery, now = Date.now();
+    return { ...b, lottery: L.paused ? { ...L, paused: false, at: L.at + (now - L.now), now } : { ...L, paused: true, now } };
+  });
+  return { st: base && over ? { ...base, lottery: null } : base, toggle };
 }
 
 function Clock() {
@@ -115,22 +124,23 @@ function Clock() {
 }
 
 /* ---------- Arvonta ---------- */
-function Lottery({ st, offset }: { st: DraftState; offset: number }) {
-  const now = useNow(80) + offset;
+function Lottery({ st, offset, onToggle }: { st: DraftState; offset: number; onToggle?: () => void }) {
+  const tick = useNow(80);
   const L = st.lottery!;
+  const now = L.paused ? L.now : tick + offset;
   const elapsed = now - L.at;
   const n = L.order.length;
   const idx = Math.min(Math.floor(elapsed / L.step), n - 1);
   const inStep = elapsed - idx * L.step;
   const cur = elapsed >= 0 ? L.order[idx] : null;
   const revealed = cur && inStep >= L.reveal && cur.draft_number != null;
-  const spin = useMemo(() => 1 + Math.floor(Math.random() * n), [now, n]); // eslint-disable-line react-hooks/exhaustive-deps
-  const done = L.order.filter((g, i) => i < idx || (i === idx && revealed)).filter((g) => g.draft_number != null)
-    .sort((a, b) => a.draft_number! - b.draft_number!);
+  const spin = useMemo(() => 1 + Math.floor(Math.random() * n), [tick, n]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Arvotut: uusin ylimmäksi
+  const done = L.order.filter((g, i) => (i < idx || (i === idx && revealed)) && g.draft_number != null).reverse();
 
   return (
-    <main className="grid min-h-[calc(100vh-65px)] grid-cols-[1fr_minmax(280px,26%)] gap-6 p-8">
-      <section className="grid place-items-center">
+    <main className="grid h-[calc(100vh-65px)] grid-cols-[1fr_minmax(280px,26%)] gap-6 overflow-hidden p-6">
+      <section className="flex flex-col items-center pt-[4vh]">
         {!cur ? (
           <div className="text-center">
             <p className="text-2xl uppercase tracking-[0.4em] text-ice-300">Draft-järjestyksen arvonta</p>
@@ -139,31 +149,35 @@ function Lottery({ st, offset }: { st: DraftState; offset: number }) {
         ) : (
           <div key={cur.id} className="w-full max-w-5xl text-center">
             <p className="text-xl uppercase tracking-[0.4em] text-slate-400">Guru {idx + 1} / {n}</p>
-            <p className="lottery-rise mt-6 font-display text-[clamp(3rem,8vw,9rem)] leading-none">{cur.name}</p>
-            <div className="mt-10 flex items-center justify-center gap-6">
+            <p className="lottery-rise mt-4 font-display text-[clamp(3rem,7vw,8rem)] leading-none">{cur.name}</p>
+            <div className="mt-8 flex items-center justify-center gap-6">
               <span className="text-2xl uppercase tracking-[0.3em] text-slate-400">Draft-numero</span>
-              <span className={`grid h-48 w-48 place-items-center rounded-3xl border-4 font-display text-9xl transition-all ${revealed ? 'scale-110 border-ice-400 bg-ice-500/20 text-white shadow-[0_0_80px_rgba(56,189,248,0.5)]' : 'border-white/10 bg-white/5 text-slate-500'}`}>
-                {revealed ? cur.draft_number : spin}
+              <span className={`grid h-44 w-44 place-items-center rounded-3xl border-4 font-display text-9xl transition-all ${revealed ? 'scale-110 border-ice-400 bg-ice-500/20 text-white shadow-[0_0_80px_rgba(56,189,248,0.5)]' : 'border-white/10 bg-white/5 text-slate-500'}`}>
+                {revealed ? cur.draft_number : L.paused ? '?' : spin}
               </span>
             </div>
-            <div className="mx-auto mt-10 h-1.5 max-w-xl overflow-hidden rounded-full bg-white/10">
+            <div className="mx-auto mt-8 h-1.5 max-w-xl overflow-hidden rounded-full bg-white/10">
               <div className="h-full bg-ice-400" style={{ width: `${Math.min(100, (inStep / L.step) * 100)}%` }} />
             </div>
           </div>
         )}
+        {L.paused && <p className="mt-6 animate-pulse font-display text-4xl tracking-[0.3em] text-amber-300">⏸ TAUKO</p>}
+        {onToggle && (
+          <button onClick={onToggle} className={`btn mt-6 px-8 py-3 text-lg ${L.paused ? 'btn-primary' : 'btn-ghost'}`}>
+            {L.paused ? '▶ Jatka arvontaa' : '⏸ Tauko'}
+          </button>
+        )}
       </section>
-      <aside className="rounded-3xl border border-white/10 bg-rink-850/80 p-5">
-        <p className="mb-3 text-sm uppercase tracking-[0.3em] text-slate-400">Valintajärjestys</p>
-        <ol className="space-y-1.5">
-          {Array.from({ length: n }, (_, i) => {
-            const g = done.find((d) => d.draft_number === i + 1);
-            return (
-              <li key={i} className={`flex items-center gap-3 rounded-xl px-3 py-1.5 text-lg ${g ? 'animate-in bg-ice-500/15' : 'bg-white/[0.03]'}`}>
-                <span className="w-8 font-display text-ice-300">{i + 1}.</span>
-                <span className={g ? 'font-semibold' : 'text-slate-600'}>{g?.name ?? '—'}</span>
-              </li>
-            );
-          })}
+      <aside className="flex min-h-0 flex-col rounded-3xl border border-white/10 bg-rink-850/80 p-5">
+        <p className="mb-3 text-sm uppercase tracking-[0.3em] text-slate-400">Arvotut · {done.length}/{n}</p>
+        <ol className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {done.map((g, i) => (
+            <li key={g.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-lg ${i === 0 ? 'animate-in bg-ice-500/25 ring-1 ring-ice-400/50' : 'bg-ice-500/10'}`}>
+              <span className="w-10 text-right font-display text-2xl text-ice-300">{g.draft_number}.</span>
+              <span className="font-semibold">{g.name}</span>
+            </li>
+          ))}
+          {!done.length && <li className="text-sm text-slate-500">Arvonta alkaa…</li>}
         </ol>
       </aside>
     </main>

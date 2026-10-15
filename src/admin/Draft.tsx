@@ -33,6 +33,11 @@ export default function Draft() {
         <div className="flex flex-wrap gap-2">
           <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Avaa heijastettava näkymä</a>
           <a className="btn btn-ghost" href="/draft/naytto?harjoitus" target="_blank" rel="noopener" title="Arvonta-animaatio oikeilla guruilla – ei tallenna mitään">🧪 Harjoitusarvonta</a>
+          {st.lottery && (
+            <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => api('/admin/draft/lottery', { body: { action: st.lottery?.paused ? 'resume' : 'pause' } }))}>
+              {st.lottery.paused ? '▶ Jatka arvontaa' : '⏸ Tauko arvontaan'}
+            </button>
+          )}
           {st.status === 'setup' && <>
             <button className="btn btn-ghost" disabled={busy || !!st.lottery} onClick={() => confirm('Käynnistetäänkö draft-numeroiden arvonta? Numerot paljastetaan heijastettavassa näkymässä 10 s välein.') && act(() => api('/admin/draft/shuffle', { body: { animate: true } }), 'Arvonta käynnistyi – katso heijastettava näkymä')}>🎲 Arvo järjestys</button>
             <button className="btn btn-primary" disabled={busy || !!st.lottery} onClick={() => act(() => api('/admin/draft/status', { body: { status: 'live' } }), 'Draft käynnistetty!')}>▶ Aloita draft</button>

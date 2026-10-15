@@ -19,14 +19,15 @@ export async function draftState(db: D1Database, season: Season) {
   let gurus = gurusR.results as unknown as Guru[];
 
   // Käynnissä oleva arvonta: numerot paljastetaan vasta vuorollaan (ei spoilata etukäteen)
-  const now = Date.now();
+  const paused = season.draft_lottery_paused ?? null;
+  const now = paused ?? Date.now();
   const at = season.draft_lottery_at ?? null;
-  let lottery: { at: number; now: number; step: number; reveal: number; order: { id: number; name: string; draft_number: number | null }[] } | null = null;
+  let lottery: { at: number; now: number; step: number; reveal: number; paused: boolean; order: { id: number; name: string; draft_number: number | null }[] } | null = null;
   if (at && now < at + gurus.length * LOTTERY_STEP + 2000) {
     const order = gurus.filter((g) => g.lottery_order != null).sort((a, b) => a.lottery_order! - b.lottery_order!);
     const shown = (g: Guru) => now >= at + g.lottery_order! * LOTTERY_STEP + LOTTERY_REVEAL;
     lottery = {
-      at, now, step: LOTTERY_STEP, reveal: LOTTERY_REVEAL,
+      at, now, step: LOTTERY_STEP, reveal: LOTTERY_REVEAL, paused: paused != null,
       order: order.map((g) => ({ id: g.id, name: g.name, draft_number: shown(g) ? g.draft_number : null })),
     };
     gurus = gurus.map((g) => (g.lottery_order != null && !shown(g) ? { ...g, draft_number: null } : g))
