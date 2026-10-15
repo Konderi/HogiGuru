@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useApi } from '../auth';
+import { ROLE_LABEL, useApi , type Role } from '../auth';
 import { Card, Modal, PageHeader, Spinner } from '../ui';
 import { api, useAdmin } from './AdminLayout';
 
-interface U { id: number; email: string; name: string; role: 'admin' | 'guru'; active: number; guru_id: number | null; guru_name: string | null }
+interface U { id: number; email: string; name: string; role: Role; active: number; guru_id: number | null; guru_name: string | null }
 interface G { id: number; name: string; user_id: number | null }
 
 const randomPw = () => Array.from(crypto.getRandomValues(new Uint8Array(9)), (b) => 'abcdefghjkmnpqrstuvwxyzACDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 55]).join('');
@@ -48,7 +48,7 @@ export default function Users() {
               <tr key={u.id} className={u.active ? '' : 'opacity-50'}>
                 <td className="font-semibold text-white">{u.name}</td>
                 <td className="text-slate-400">{u.email}</td>
-                <td><span className={`chip ${u.role === 'admin' ? 'bg-goal/20 text-red-300' : 'bg-white/5 text-slate-300'}`}>{u.role === 'admin' ? 'Ylläpitäjä' : 'Guru'}</span></td>
+                <td><span className={`chip ${u.role !== 'guru' ? 'bg-goal/20 text-red-300' : 'bg-white/5 text-slate-300'}`}>{ROLE_LABEL[u.role]}</span></td>
                 <td>{u.guru_name ?? <span className="text-slate-600">–</span>}</td>
                 <td className="text-right"><button className="btn btn-ghost py-1" onClick={() => setEdit({ ...u, guruId: u.guru_id })}>Muokkaa</button></td>
               </tr>
@@ -64,7 +64,7 @@ export default function Users() {
             <div><label className="label">Sähköposti</label><input className="input" type="email" required value={edit.email ?? ''} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className="label">Rooli</label>
-                <select className="input" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value as U['role'] })}><option value="guru">Guru</option><option value="admin">Ylläpitäjä</option></select>
+                <select className="input" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value as U['role'] })}><option value="guru">Guru</option><option value="admin">Ylläpitäjä (pelin hallinta)</option><option value="superadmin">Pääylläpitäjä (+ tekninen ylläpito)</option></select>
               </div>
               <div><label className="label">Liitä guruun</label>
                 <select className="input" value={edit.guruId ?? ''} onChange={(e) => setEdit({ ...edit, guruId: e.target.value ? Number(e.target.value) : null })}>

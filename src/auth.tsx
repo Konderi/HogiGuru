@@ -1,8 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api } from './api';
 
+export type Role = 'superadmin' | 'admin' | 'guru';
+export const isAdminRole = (r?: string | null) => r === 'admin' || r === 'superadmin';
+export const ROLE_LABEL: Record<Role, string> = { superadmin: 'Pääylläpitäjä', admin: 'Ylläpitäjä', guru: 'Guru' };
+
 export interface Me {
-  user: { id: number; email: string; name: string; role: 'admin' | 'guru' } | null;
+  user: { id: number; email: string; name: string; role: Role } | null;
   guru?: { id: number; name: string } | null;
   needsSetup?: boolean;
 }

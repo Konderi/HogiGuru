@@ -270,9 +270,18 @@ Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vai
 |---|---|---|
 | Vierailija | Julkiset sivut | Ilmoittautua |
 | Guru | + oma kentällinen, draft | Ennakkolista, vaihtotoiveet, salasanan vaihto |
-| Ylläpitäjä | Kaikki | Kaikki |
+| Ylläpitäjä | Ylläpito (`/admin`) | Pelin hallinta: draft, vaihdot, gurut, pisteytys, valmentajat, käyttäjät |
+| Pääylläpitäjä | + Tekninen ylläpito (`/admin/yllapito`) | Varmistukset (R2), sähköposti, muutoshistoria, järjestelmän tila; vain pääylläpitäjä voi nimetä toisen pääylläpitäjän |
 
-Ensimmäinen ylläpitäjä luodaan sivulla `/kirjaudu`, kun kannassa ei ole käyttäjiä.
+Ensimmäinen käyttäjä luodaan sivulla `/kirjaudu` pääylläpitäjäksi, kun kannassa ei ole käyttäjiä.
+Pääylläpitäjä = `users.role = 'admin'` + `users.maintainer = 1` (migraatio 0008). Tekninen API: `/api/admin/maint/*`.
+
+### Varmistukset ja sähköposti
+
+- R2-säilö `hogiguru-backups`: `daily/` klo 03 (30 pv, kuun 1. pysyvä), `event/` ennen vaihtopäivän käsittelyä ja draftin lukitusta (90 pv), `manual/`.
+- Palautus: lataa `.sql` ylläpitosivulta ja aja `npx wrangler d1 execute hogiguru --remote --file=varmistus.sql` tyhjään kantaan.
+- Sähköposti Resendin kautta (`RESEND_API_KEY` salaisuutena, lähettäjä `no-reply@no-reply.konderi.fi`). Viikkokatsaus ma klo 9, ylläpitoraportti pääylläpitäjille klo 7. Peruutus: `/api/unsubscribe?t=`.
+- Muutoshistoria (`audit_log`): ylläpidon ja gurujen muuttavat pyynnöt, salasanat peitetty.
 
 ---
 

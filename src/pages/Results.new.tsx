@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { useApi, useAuth } from '../auth';
+import { isAdminRole, useApi, useAuth } from '../auth';
 import GalaReveal from '../components/GalaReveal';
 import ResultsView, { type Results } from '../components/ResultsView';
 import { Card, ErrorBox, PageHeader, Spinner } from '../ui';
@@ -8,7 +8,7 @@ import { Card, ErrorBox, PageHeader, Spinner } from '../ui';
 export default function ResultsPage() {
   const { data, error, reload } = useApi<Results | { published: false; season: string }>('/results');
   const { me } = useAuth();
-  const isAdmin = me?.user?.role === 'admin';
+  const isAdmin = isAdminRole(me?.user?.role);
   const [gala, setGala] = useState(false);
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Spinner />;

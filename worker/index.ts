@@ -17,7 +17,10 @@ import { layout, sendMail } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
-interface User { id: number; email: string; name: string; role: 'admin' | 'guru' }
+interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
+/** Pääylläpitäjä = role 'admin' + maintainer-lippu (CHECK-rajoite sallii vain admin/guru). */
+const ROLE_SQL = "CASE WHEN u.role = 'admin' AND u.maintainer = 1 THEN 'superadmin' ELSE u.role END";
+const isAdmin = (u: User | null | undefined) => u?.role === 'admin' || u?.role === 'superadmin';
 type App = { Bindings: Env; Variables: { user: User | null; season: Season } };
 type C = HonoCtx<App>;
 
@@ -34,7 +37,7 @@ app.use('*', async (c, next) => {
   let user: User | null = null;
   if (sid) {
     user = await c.env.DB.prepare(
-      'SELECT u.id, u.email, u.name, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ? AND u.active = 1',
+      `SELECT u.id, u.email, u.name, ${ROLE_SQL} AS role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ? AND u.active = 1`,
     ).bind(sid, Date.now()).first<User>();
   }
   c.set('user', user);
@@ -45,7 +48,8 @@ app.use('*', async (c, next) => {
 });
 
 const requireUser = async (c: C, next: Next) => (c.get('user') ? next() : c.json({ error: 'Kirjaudu sisään' }, 401));
-const requireAdmin = async (c: C, next: Next) => (c.get('user')?.role === 'admin' ? next() : c.json({ error: 'Vain ylläpitäjille' }, 403));
+const requireAdmin = async (c: C, next: Next) => (isAdmin(c.get('user')) ? next() : c.json({ error: 'Vain ylläpitäjille' }, 403));
+const requireSuper = async (c: C, next: Next) => (c.get('user')?.role === 'superadmin' ? next() : c.json({ error: 'Vain pääylläpitäjälle' }, 403));
 
 const num = (v: unknown) => (v === '' || v == null ? null : Number(v));
 
@@ -400,7 +404,7 @@ app.post('/setup', async (c) => {
   if (await c.env.DB.prepare('SELECT 1 FROM users LIMIT 1').first()) return c.json({ error: 'Asennus on jo tehty' }, 403);
   const { email, name, password } = await c.req.json<{ email: string; name: string; password: string }>();
   if (!email || !name || !password || password.length < 8) throw new Error('Täytä kaikki kentät (salasana väh. 8 merkkiä)');
-  const u = await c.env.DB.prepare("INSERT INTO users (email, name, password_hash, role) VALUES (?,?,?,'admin') RETURNING id")
+  const u = await c.env.DB.prepare("INSERT INTO users (email, name, password_hash, role, maintainer) VALUES (?,?,?,'admin',1) RETURNING id")
     .bind(email.trim(), name.trim(), await hashPassword(password)).first<{ id: number }>();
   await startSession(c, u!.id);
   return c.json({ ok: true });
@@ -700,9 +704,17 @@ admin.delete('/registrations/:id', async (c) => {
 });
 
 // Käyttäjät
+/** Roolin tallennusmuoto. Pääylläpitäjän voi nimetä vain pääylläpitäjä. */
+function roleCols(c: C, role: string): { role: 'admin' | 'guru'; maintainer: number } {
+  if (role === 'superadmin') {
+    if (c.get('user')!.role !== 'superadmin') throw new Error('Vain pääylläpitäjä voi nimetä pääylläpitäjän');
+    return { role: 'admin', maintainer: 1 };
+  }
+  return { role: role === 'admin' ? 'admin' : 'guru', maintainer: 0 };
+}
 admin.get('/users', async (c) => {
   const res = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.role, u.active, u.created_at, g.id AS guru_id, g.name AS guru_name
+    `SELECT u.id, u.email, u.name, ${ROLE_SQL} AS role, u.active, u.created_at, g.id AS guru_id, g.name AS guru_name
      FROM users u LEFT JOIN gurus g ON g.user_id = u.id AND g.season_id = ? ORDER BY u.name`,
   ).bind(c.get('season').id).all();
   return c.json(res.results);
@@ -710,8 +722,9 @@ admin.get('/users', async (c) => {
 admin.post('/users', async (c) => {
   const b = await c.req.json<{ email: string; name: string; password: string; role: string; guruId?: number }>();
   if (!b.password || b.password.length < 8) throw new Error('Salasanan pitää olla vähintään 8 merkkiä');
-  const u = await c.env.DB.prepare('INSERT INTO users (email, name, password_hash, role) VALUES (?,?,?,?) RETURNING id')
-    .bind(b.email.trim(), b.name.trim(), await hashPassword(b.password), b.role === 'admin' ? 'admin' : 'guru').first<{ id: number }>();
+  const r = roleCols(c, b.role);
+  const u = await c.env.DB.prepare('INSERT INTO users (email, name, password_hash, role, maintainer) VALUES (?,?,?,?,?) RETURNING id')
+    .bind(b.email.trim(), b.name.trim(), await hashPassword(b.password), r.role, r.maintainer).first<{ id: number }>();
   if (b.guruId) await c.env.DB.prepare('UPDATE gurus SET user_id = ? WHERE id = ?').bind(u!.id, b.guruId).run();
   return c.json(u);
 });
@@ -719,10 +732,15 @@ admin.put('/users/:id', async (c) => {
   const id = Number(c.req.param('id'));
   const b = await c.req.json<{ email?: string; name?: string; role?: string; active?: boolean; password?: string; guruId?: number | null }>();
   const db = c.env.DB;
-  if (id === c.get('user')!.id && (b.role === 'guru' || b.active === false)) throw new Error('Et voi poistaa omia ylläpito-oikeuksiasi');
-  if (b.email || b.name || b.role || b.active !== undefined) {
-    await db.prepare('UPDATE users SET email = COALESCE(?, email), name = COALESCE(?, name), role = COALESCE(?, role), active = COALESCE(?, active) WHERE id = ?')
-      .bind(b.email ?? null, b.name ?? null, b.role ?? null, b.active === undefined ? null : b.active ? 1 : 0, id).run();
+  if (id === c.get('user')!.id && ((b.role && b.role !== c.get('user')!.role) || b.active === false)) throw new Error('Et voi muuttaa omaa rooliasi tai poistaa itseäsi käytöstä');
+  if (c.get('user')!.role !== 'superadmin') {
+    const t = await db.prepare(`SELECT ${ROLE_SQL} AS role FROM users u WHERE id = ?`).bind(id).first<{ role: string }>();
+    if (t?.role === 'superadmin') throw new Error('Vain pääylläpitäjä voi muokata pääylläpitäjää');
+  }
+  const r = b.role ? roleCols(c, b.role) : null;
+  if (b.email || b.name || r || b.active !== undefined) {
+    await db.prepare('UPDATE users SET email = COALESCE(?, email), name = COALESCE(?, name), role = COALESCE(?, role), maintainer = COALESCE(?, maintainer), active = COALESCE(?, active) WHERE id = ?')
+      .bind(b.email ?? null, b.name ?? null, r?.role ?? null, r?.maintainer ?? null, b.active === undefined ? null : b.active ? 1 : 0, id).run();
   }
   if (b.password) {
     if (b.password.length < 8) throw new Error('Salasanan pitää olla vähintään 8 merkkiä');
@@ -962,29 +980,53 @@ admin.delete('/hall-of-fame/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-// ================= VARMISTUKSET, SÄHKÖPOSTI, MUUTOSHISTORIA =================
-admin.get('/backups', async (c) => c.json(await listBackups(c.env.BACKUPS)));
-admin.post('/backups', async (c) => c.json(await makeBackup(c.env.DB, c.env.BACKUPS, 'manual')));
-admin.get('/backups/file', async (c) => {
+// ================= TEKNINEN YLLÄPITO (vain pääylläpitäjä) =================
+// Varmistukset, sähköposti, muutoshistoria, järjestelmän tila: /api/admin/maint/*
+const maint = new Hono<App>();
+maint.use('*', requireSuper);
+maint.get('/status', async (c) => {
+  const db = c.env.DB;
+  const [syncs, mails, audits, users, backups] = await Promise.all([
+    db.prepare('SELECT * FROM sync_log ORDER BY id DESC LIMIT 15').all(),
+    db.prepare("SELECT ok, COUNT(*) AS n FROM mail_log WHERE at > datetime('now','-7 day') GROUP BY ok").all<{ ok: number; n: number }>(),
+    db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE at > datetime('now','-7 day')").first<{ n: number }>(),
+    db.prepare(`SELECT ${ROLE_SQL} AS role, COUNT(*) AS n FROM users u WHERE active = 1 GROUP BY 1`).all<{ role: string; n: number }>(),
+    listBackups(c.env.BACKUPS),
+  ]);
+  return c.json({
+    mailConfigured: !!c.env.RESEND_API_KEY,
+    mailFrom: c.env.MAIL_FROM ?? null,
+    syncs: syncs.results,
+    mail7d: Object.fromEntries(mails.results.map((m) => [m.ok ? 'ok' : 'fail', m.n])),
+    audit7d: audits?.n ?? 0,
+    users: Object.fromEntries(users.results.map((u) => [u.role, u.n])),
+    lastBackup: backups[0] ?? null,
+    backupCount: backups.length,
+  });
+});
+maint.get('/backups', async (c) => c.json(await listBackups(c.env.BACKUPS)));
+maint.post('/backups', async (c) => c.json(await makeBackup(c.env.DB, c.env.BACKUPS, 'manual')));
+maint.get('/backups/file', async (c) => {
   const key = c.req.query('key') ?? '';
   const o = await c.env.BACKUPS.get(key);
   if (!o) return c.json({ error: 'Ei löydy' }, 404);
   return new Response(o.body, { headers: { 'Content-Type': 'application/sql; charset=utf-8', 'Content-Disposition': `attachment; filename="hogiguru-${key.replace(/\//g, '_')}"` } });
 });
-admin.get('/audit', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT 300').all()).results));
-admin.get('/mail-log', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM mail_log ORDER BY id DESC LIMIT 200').all()).results));
-admin.post('/mail/test', async (c) => {
+maint.get('/audit', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT 300').all()).results));
+maint.get('/mail-log', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM mail_log ORDER BY id DESC LIMIT 200').all()).results));
+maint.post('/mail/test', async (c) => {
   const to = c.get('user')!.email;
   const ok = await sendMail(c.env, 'admin:test', to, 'HogiGuru testiviesti', layout('Testiviesti', '<p>Sähköpostin lähetys toimii. ✅</p>'));
   if (!ok) throw new Error((await c.env.DB.prepare("SELECT error FROM mail_log WHERE kind = 'admin:test' ORDER BY id DESC LIMIT 1").first<{ error: string }>())?.error ?? 'Lähetys epäonnistui');
   return c.json({ ok, to });
 });
-admin.post('/mail/weekly', async (c) => {
+maint.post('/mail/weekly', async (c) => {
   const { all } = await c.req.json<{ all?: boolean }>().catch(() => ({ all: false }));
   return c.json(await sendWeeklyReport(c.env, c.get('season'), all ? {} : { onlyTo: c.get('user')!.email }));
 });
-admin.post('/mail/admin-report', async (c) => c.json(await sendAdminReport(c.env, c.get('season'))));
+maint.post('/mail/admin-report', async (c) => c.json(await sendAdminReport(c.env, c.get('season'))));
 
+admin.route('/maint', maint);
 app.route('/admin', admin);
 app.notFound((c) => c.json({ error: 'Ei löydy' }, 404));
 

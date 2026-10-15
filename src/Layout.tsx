@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
-import { useAuth } from './auth';
+import { isAdminRole, useAuth } from './auth';
 import { Logo } from './ui';
 
 const nav = [
@@ -25,7 +25,7 @@ export default function Layout() {
   const user = me?.user;
   const extra = [
     ...(user ? [{ to: '/oma-joukkue', label: 'Oma joukkue' }, { to: '/draft', label: 'Draft' }] : []),
-    ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Ylläpito' }] : []),
+    ...(isAdminRole(user?.role) ? [{ to: '/admin', label: 'Ylläpito' }] : []),
   ];
 
   return (

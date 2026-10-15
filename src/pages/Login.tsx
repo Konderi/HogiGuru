@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { api } from '../api';
-import { useAuth } from '../auth';
+import { isAdminRole, useAuth } from '../auth';
 import { ErrorBox, Logo } from '../ui';
 
 export default function Login() {
@@ -12,7 +12,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const setup = !!me?.needsSetup;
 
-  if (me?.user) return <Navigate to={me.user.role === 'admin' ? '/admin' : '/oma-joukkue'} replace />;
+  if (me?.user) return <Navigate to={isAdminRole(me.user.role) ? '/admin' : '/oma-joukkue'} replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError(null);

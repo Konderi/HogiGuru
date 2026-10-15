@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
-import { AuthProvider, useAuth } from './auth';
+import { AuthProvider, isAdminRole, useAuth } from './auth';
 import Layout from './Layout';
 import { Spinner } from './ui';
 import Home from './pages/Home';
@@ -26,13 +26,14 @@ import AdminRegistrations from './admin/Registrations';
 import Register from './pages/Register';
 import Results from './pages/Results';
 import AdminResults from './admin/Results';
+import AdminMaintenance from './admin/Maintenance';
 import './index.css';
 
 function Protected({ admin, children }: { admin?: boolean; children: React.ReactNode }) {
   const { me } = useAuth();
   if (!me) return <Spinner />;
   if (!me.user) return <Navigate to="/kirjaudu" replace />;
-  if (admin && me.user.role !== 'admin') return <Navigate to="/" replace />;
+  if (admin && !isAdminRole(me.user.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -64,6 +65,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="hall-of-fame" element={<AdminHof />} />
               <Route path="ilmoittautuminen" element={<AdminRegistrations />} />
               <Route path="tulokset" element={<AdminResults />} />
+              <Route path="yllapito" element={<AdminMaintenance />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

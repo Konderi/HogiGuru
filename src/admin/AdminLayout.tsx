@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { api } from '../api';
+import { useAuth } from '../auth';
 import { Toast } from '../ui';
 
 const links = [
@@ -22,6 +23,7 @@ export const useAdmin = () => useContext(NotifyCtx);
 export { api };
 
 export default function AdminLayout() {
+  const { me } = useAuth();
   const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null);
   const notify = useCallback<Notify>((text, err) => setMsg({ text, err }), []);
   const run = useCallback(async <T,>(fn: () => Promise<T>, ok?: string) => {
@@ -34,7 +36,7 @@ export default function AdminLayout() {
         <aside>
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-goal">Ylläpito</p>
           <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-            {links.map((l) => (
+            {[...links, ...(me?.user?.role === 'superadmin' ? [{ to: '/admin/yllapito', label: 'Tekninen ylläpito', icon: '⚙', end: false }] : [])].map((l) => (
               <NavLink key={l.to} to={l.to} end={l.end}
                 className={({ isActive }) => `flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${isActive ? 'bg-ice-500/15 text-ice-300' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
                 <span className="w-4 text-center opacity-70">{l.icon}</span>{l.label}
