@@ -231,10 +231,6 @@ function Live({ st, note }: { st: DraftState; note?: string | null }) {
   const upcoming = Array.from({ length: 4 }, (_, i) => st.pickNo + 1 + i).filter((n) => n <= st.total)
     .map((n) => ({ n, g: guruForPick(st.gurus, n, st.snake) }));
   const recent = st.picks.slice(-12).reverse();
-  const hot = st.pool.filter((p) => p.used >= Math.min(HOT, st.maxPicks[p.position]));
-  const isFull = (p: (typeof hot)[number]) => p.used >= st.maxPicks[p.position];
-  const hotOpen = hot.filter((p) => !isFull(p)).sort((a, b) => b.used - a.used || a.name.localeCompare(b.name, 'fi'));
-  const full = hot.filter(isFull).sort((a, b) => a.name.localeCompare(b.name, 'fi'));
   const name = (id: number) => st.gurus.find((g) => g.id === id)?.name ?? '';
 
   // Draft-taulu vierii itsestään niin, että vuorossa oleva guru pysyy näkyvissä
@@ -246,80 +242,83 @@ function Live({ st, note }: { st: DraftState; note?: string | null }) {
     box.scrollTo({ top: row.offsetTop - box.clientHeight / 2 + row.clientHeight / 2, behavior: 'smooth' });
   }, [st.pickNo]);
 
+  const live = st.status === 'live' && !!st.onClock;
+  const COLS: Position[] = ['C', 'G', 'D', 'F'];
   return (
-    <main className="grid h-[calc(100vh-65px)] gap-4 overflow-hidden p-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,18%)]">
+    <main className="grid h-[calc(100vh-65px)] gap-4 overflow-hidden p-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,24%)]">
       <div className="flex min-h-0 min-w-0 flex-col gap-4">
-        {st.status === 'live' && st.onClock ? (
-          <div className="grid shrink-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <section className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-3xl border border-ice-400/40 bg-gradient-to-r from-ice-500/25 via-rink-850 to-rink-850 px-8 py-5">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-ice-300">Vuorossa · kierros {st.round}{st.snake && st.round % 2 === 0 ? ' ↩ käänteinen' : ''} · valinta {st.pickNo}/{st.total}</p>
-              <p className="font-display text-[clamp(2.5rem,5vw,5rem)] leading-tight">{st.onClock.name}</p>
-              <p className="text-slate-300">{st.onClock.remote_draft ? '📋 Ei paikalla – valinta tehdään draft-lomakkeelta' : '🏒 Paikalla – valitsee nyt'}</p>
-              {note && <p className="mt-1 animate-pulse text-lg font-semibold text-amber-300">{note}</p>}
-            </div>
-            <div className="flex gap-3">
-              {POSITIONS.map((p) => (
-                <div key={p} className={`rounded-2xl border px-4 py-2 text-center ${left(p) ? 'border-white/15 bg-white/5' : 'border-transparent opacity-25'}`}>
-                  <div className="font-display text-4xl">{left(p)}</div>
-                  <div className="text-xs uppercase tracking-wider text-slate-400">{POS_PLURAL[p]}</div>
-                </div>
-              ))}
-            </div>
-            {upcoming.length > 0 && (
-              <div className="ml-auto">
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Seuraavaksi</p>
-                <ol className="mt-1 space-y-0.5 text-lg">
-                  {upcoming.map(({ n, g }) => <li key={n}><span className="mr-2 font-mono text-sm text-slate-500">{n}</span>{g.name}</li>)}
-                </ol>
-              </div>
-            )}
+        {st.status === 'done' && !st.picks.length ? (
+          <section className="rounded-3xl border border-white/10 bg-rink-850/80 px-8 py-10 text-center">
+            <p className="font-display text-4xl">Kauden kentälliset on jo luotu</p>
+            <p className="mt-3 text-slate-300">Tämän kauden joukkueet on syötetty suoraan, joten draft-tilaisuutta ei ole. Arvonta ja live-draft käynnistyvät, kun uuden kauden draft on valmistelutilassa.</p>
+            <a href="/draft/naytto?harjoitus" className="btn btn-primary mt-6 inline-flex">🧪 Kokeile harjoitusarvontaa</a>
           </section>
-          <section className="flex max-h-[38vh] min-h-0 flex-col rounded-3xl border border-amber-400/30 bg-rink-850/80 p-4">
-            <p className="text-sm uppercase tracking-[0.3em] text-amber-300">🔥 Varaustilanne <span className="normal-case tracking-normal text-slate-400">· <span className="text-amber-300">kuuma</span> = mieti varavalinta · <span className="text-red-300 line-through">täynnä</span></span></p>
-            <div className="mt-2 grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-y-auto pr-1 lg:grid-cols-4">
-              {POSITIONS.map((pos) => {
-                const open = hotOpen.filter((p) => p.position === pos);
-                const done = full.filter((p) => p.position === pos);
+        ) : !live && (st.status === 'done' || st.picks.length >= st.total) ? (
+          <section className="rounded-3xl border border-ice-400/40 bg-ice-500/10 px-8 py-5 text-center font-display text-4xl">Draft valmis – onnea kaudelle! 🏆</section>
+        ) : null}
+
+        {st.picks.length > 0 && (
+          <section className="flex min-h-0 flex-[3] flex-col rounded-3xl border border-amber-400/30 bg-rink-850/80 p-3">
+            <p className="px-1 text-sm uppercase tracking-[0.3em] text-amber-300">🔥 Varaustilanne <span className="normal-case tracking-normal text-slate-400">· <span className="text-amber-300">kuuma</span> · <span className="text-red-300">täynnä</span></span></p>
+            <div className="mt-2 grid min-h-0 flex-1 grid-cols-[1fr_1fr_1fr_2fr] gap-3">
+              {COLS.map((pos) => {
+                const max = st.maxPicks[pos];
+                const list = st.pool.filter((p) => p.position === pos && p.used > 0)
+                  .sort((a, b) => b.used - a.used || a.name.localeCompare(b.name, 'fi'));
                 return (
-                  <div key={pos} className="min-w-0">
-                    <p className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-slate-400">
-                      <PosBadge pos={pos} />{POS_PLURAL[pos]} <span className="ml-auto font-mono">max {st.maxPicks[pos]}</span>
+                  <div key={pos} className="flex min-h-0 min-w-0 flex-col">
+                    <p className="mb-1 flex items-center gap-1.5 border-b border-white/10 pb-1 text-xs uppercase tracking-wider text-slate-400">
+                      <PosBadge pos={pos} />{POS_PLURAL[pos]} <span className="ml-auto font-mono">{list.length} · max {max}</span>
                     </p>
-                    <div className="space-y-1">
-                      {open.map((p) => (
-                        <div key={p.entity_id} className="flex items-center gap-1.5 rounded-lg bg-amber-400/10 px-2 py-0.5 ring-1 ring-amber-400/30">
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-                          <span className="font-mono text-sm font-bold text-amber-300">{p.used}/{st.maxPicks[pos]}</span>
-                        </div>
-                      ))}
-                      {done.map((p) => (
-                        <div key={p.entity_id} className="truncate rounded-md bg-goal/20 px-2 py-0.5 text-xs text-red-200 line-through decoration-red-300/60 ring-1 ring-goal/40">{p.name}</div>
-                      ))}
-                      {!open.length && !done.length && <p className="text-xs text-slate-600">–</p>}
+                    <div className={`min-h-0 flex-1 overflow-y-auto pr-1 ${pos === 'F' ? 'columns-2 gap-2' : ''}`}>
+                      {list.map((p) => {
+                        const cls = p.used >= max ? 'bg-goal/30 text-red-100' : p.used >= Math.min(HOT, max) ? 'bg-amber-400/15 text-amber-100' : 'text-slate-300';
+                        return (
+                          <div key={p.entity_id} className={`mb-0.5 flex break-inside-avoid items-center gap-1 rounded px-1.5 text-sm leading-6 ${cls}`}>
+                            <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                            <span className="font-mono font-bold">{p.used}</span>
+                          </div>
+                        );
+                      })}
+                      {!list.length && <p className="text-xs text-slate-600">–</p>}
                     </div>
                   </div>
                 );
               })}
             </div>
           </section>
-          </div>
-        ) : st.status === 'done' && !st.picks.length ? (
-          <section className="rounded-3xl border border-white/10 bg-rink-850/80 px-8 py-10 text-center">
-            <p className="font-display text-4xl">Kauden kentälliset on jo luotu</p>
-            <p className="mt-3 text-slate-300">Tämän kauden joukkueet on syötetty suoraan, joten draft-tilaisuutta ei ole. Arvonta ja live-draft käynnistyvät, kun uuden kauden draft on valmistelutilassa.</p>
-            <a href="/draft/naytto?harjoitus" className="btn btn-primary mt-6 inline-flex">🧪 Kokeile harjoitusarvontaa</a>
-          </section>
-        ) : st.status === 'done' || st.picks.length >= st.total ? (
-          <section className="rounded-3xl border border-ice-400/40 bg-ice-500/10 px-8 py-5 text-center font-display text-4xl">Draft valmis – onnea kaudelle! 🏆</section>
-        ) : null}
+        )}
 
-        <div ref={boardRef} className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-white/10 bg-rink-900 px-2 pb-2">
+        <div ref={boardRef} className="min-h-0 flex-[2] overflow-y-auto rounded-3xl border border-white/10 bg-rink-900 px-2 pb-2">
           <DraftGrid st={st} compact />
         </div>
       </div>
 
       <aside className="flex min-h-0 flex-col gap-4">
+        {live && st.onClock && (
+          <section className="shrink-0 rounded-3xl border border-ice-400/40 bg-gradient-to-b from-ice-500/25 to-rink-850 p-5">
+            <p className="text-xs uppercase tracking-[0.25em] text-ice-300">Vuorossa · kierros {st.round}{st.snake && st.round % 2 === 0 ? ' ↩' : ''} · {st.pickNo}/{st.total}</p>
+            <p className="font-display text-[clamp(2rem,3.2vw,4rem)] leading-tight">{st.onClock.name}</p>
+            <p className="text-sm text-slate-300">{st.onClock.remote_draft ? '📋 Ei paikalla – valinta lomakkeelta' : '🏒 Paikalla – valitsee nyt'}</p>
+            {note && <p className="mt-1 animate-pulse font-semibold text-amber-300">{note}</p>}
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {POSITIONS.map((p) => (
+                <div key={p} className={`rounded-xl border px-1 py-2 text-center ${left(p) ? 'border-white/15 bg-white/5' : 'border-transparent opacity-25'}`}>
+                  <div className="font-display text-3xl">{left(p)}</div>
+                  <div className="truncate text-[10px] uppercase tracking-wider text-slate-400">{POS_PLURAL[p]}</div>
+                </div>
+              ))}
+            </div>
+            {upcoming.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Seuraavaksi</p>
+                <ol className="mt-1 space-y-0.5">
+                  {upcoming.map(({ n, g }) => <li key={n} className="truncate"><span className="mr-2 font-mono text-sm text-slate-500">{n}</span>{g.name}</li>)}
+                </ol>
+              </div>
+            )}
+          </section>
+        )}
         <section className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-white/10 bg-rink-850/80 p-4">
           <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Viimeisimmät</p>
           <ul className="mt-2 space-y-1.5">
