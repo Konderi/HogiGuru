@@ -1,4 +1,4 @@
-// Play-Off-gurukisa: kokoonpanot, pisteet, vaihtoikkunat ja leaderboard.
+// Play-Offs-gurukisa: kokoonpanot, pisteet, vaihtoikkunat ja leaderboard.
 import { helsinkiDate } from './data';
 import { aliveTeams, fetchBracket, GURU_PHASES, type Bracket } from './playoff';
 import { goaliePoints, skaterPoints, type Scoring } from './scoring';

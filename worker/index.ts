@@ -945,7 +945,7 @@ admin.use('*', requireAdmin);
 // Muutoshistoria: kaikki ylläpidon muuttavat pyynnöt
 admin.use('*', audit);
 
-// Play-Off (vaihe 1: vain ylläpidolle). ?season=YYYY, oletus nykyinen; jos tyhjä → edellinen kausi esikatseluun.
+// Play-Offs (vaihe 1: vain ylläpidolle). ?season=YYYY, oletus nykyinen; jos tyhjä → edellinen kausi esikatseluun.
 app.get('/playoff/bracket', requireUser, async (c) => {
   const wu = (p: Promise<unknown>) => c.executionCtx.waitUntil(p);
   const q = Number(c.req.query('season'));
@@ -969,31 +969,31 @@ admin.get('/playoff/season', async (c) => {
 });
 admin.post('/playoff/season', async (c) => {
   const db = c.env.DB; const parent = c.get('season');
-  if (await playoffSeasonOf(db, parent.id)) return c.json({ error: 'Play-Off-kisa on jo luotu' }, 400);
+  if (await playoffSeasonOf(db, parent.id)) return c.json({ error: 'Play-Offs-kisa on jo luotu' }, 400);
   await db.prepare(
     `INSERT INTO seasons (name, liiga_season, active, max_swaps, max_picks_per_entity, roster, scoring, draft_status, draft_snake, kind, parent_season_id, max_picks_by_pos, draft_nav)
-     SELECT 'Play-Off ' || name, liiga_season, 0, 4, 12, '{"G":1,"D":2,"F":3}', scoring, 'setup', 0, 'playoff', id, '{"G":12,"D":8,"F":8}', 0 FROM seasons WHERE id = ?`,
+     SELECT 'Play-Offs ' || name, liiga_season, 0, 4, 12, '{"G":1,"D":2,"F":3}', scoring, 'setup', 0, 'playoff', id, '{"G":12,"D":8,"F":8}', 0 FROM seasons WHERE id = ?`,
   ).bind(parent.id).run();
   return c.json({ ok: true });
 });
-/** Play-Off-kisan lopputulos Hall of Fameen (top 3, kausinimi "<kausi> Play-Off"). */
+/** Play-Offs-kisan lopputulos Hall of Fameen (top 3, kausinimi "<kausi> Play-Offs"). */
 admin.post('/playoff/hall-of-fame', async (c) => {
   const db = c.env.DB;
   const po = await playoffSeasonOf(db, c.get('season').id);
   if (!po) return c.json({ error: 'Ei kisaa' }, 404);
   const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
   const rows = poLeaderboard(ctx).filter((r) => r.rank <= 3);
-  const name = po.name.includes('Play-Off') ? po.name : `${po.name} Play-Off`;
+  const name = po.name.includes('Play-Offs') ? po.name : `${po.name} Play-Offs`;
   await db.batch([
     db.prepare('DELETE FROM hall_of_fame WHERE season_name = ?').bind(name),
-    ...rows.map((r) => db.prepare('INSERT INTO hall_of_fame (season_name, rank, name, points, note) VALUES (?,?,?,?,?)').bind(name, r.rank, r.name, r.points, 'Play-Off')),
+    ...rows.map((r) => db.prepare('INSERT INTO hall_of_fame (season_name, rank, name, points, note) VALUES (?,?,?,?,?)').bind(name, r.rank, r.name, r.points, 'Play-Offs')),
   ]);
   return c.json({ ok: true, count: rows.length });
 });
 admin.put('/playoff/season', async (c) => {
   const db = c.env.DB;
   const po = await playoffSeasonOf(db, c.get('season').id);
-  if (!po) return c.json({ error: 'Ei Play-Off-kisaa' }, 404);
+  if (!po) return c.json({ error: 'Ei Play-Offs-kisaa' }, 404);
   const b = await c.req.json<{ reg_open?: boolean; max_picks_by_pos?: Record<string, number>; max_swaps?: number; draft_status?: string; swap_open?: number }>();
   if (b.draft_status && !['setup', 'live', 'done'].includes(b.draft_status)) return c.json({ error: 'Virheellinen tila' }, 400);
   await db.prepare(`UPDATE seasons SET reg_open = COALESCE(?, reg_open), max_picks_by_pos = COALESCE(?, max_picks_by_pos), max_swaps = COALESCE(?, max_swaps),
@@ -1005,7 +1005,7 @@ admin.put('/playoff/season', async (c) => {
 admin.delete('/playoff/entry/:id', async (c) => {
   const db = c.env.DB;
   const po = await playoffSeasonOf(db, c.get('season').id);
-  if (!po) return c.json({ error: 'Ei Play-Off-kisaa' }, 404);
+  if (!po) return c.json({ error: 'Ei Play-Offs-kisaa' }, 404);
   const id = Number(c.req.param('id'));
   await db.batch([
     db.prepare('DELETE FROM playoff_predictions WHERE season_id = ? AND guru_id = ?').bind(po.id, id),

@@ -98,8 +98,8 @@ function AdminCompetition() {
         <ErrorBox error={error ?? err} />
         {!data ? <Spinner /> : !s ? (
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm text-slate-400">Play-Off-kisaa ei ole vielä luotu tälle kaudelle.</p>
-            <button className="btn btn-primary" onClick={() => run(() => api('/admin/playoff/season', { method: 'POST' }))}>Luo Play-Off-kisa</button>
+            <p className="text-sm text-slate-400">Play-Offs-kisaa ei ole vielä luotu tälle kaudelle.</p>
+            <button className="btn btn-primary" onClick={() => run(() => api('/admin/playoff/season', { method: 'POST' }))}>Luo Play-Offs-kisa</button>
           </div>
         ) : (
           <>
@@ -131,8 +131,8 @@ function AdminCompetition() {
               <span className="text-xs text-slate-500">(vaihdoissa ei rajoja)</span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn btn-ghost" onClick={() => confirm('Tallennetaanko nykyinen top 3 Hall of Fameen? (korvaa aiemman Play-Off-merkinnän)') && run(async () => { const r = await api<{ count: number }>('/admin/playoff/hall-of-fame', { method: 'POST' }); alert(`Tallennettu ${r.count} riviä Hall of Fameen.`); })}>🏆 Tallenna Hall of Fameen</button>
-              <span className="text-xs text-slate-500">Tee finaalin jälkeen. Play-Offissa ei ole gaalaa.</span>
+              <button className="btn btn-ghost" onClick={() => confirm('Tallennetaanko nykyinen top 3 Hall of Fameen? (korvaa aiemman Play-Offs-merkinnän)') && run(async () => { const r = await api<{ count: number }>('/admin/playoff/hall-of-fame', { method: 'POST' }); alert(`Tallennettu ${r.count} riviä Hall of Fameen.`); })}>🏆 Tallenna Hall of Fameen</button>
+              <span className="text-xs text-slate-500">Tee finaalin jälkeen. Play-Offsissa ei ole gaalaa.</span>
             </div>
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Ilmoittautuneet ({data.entries.length})</h3>
@@ -180,7 +180,7 @@ function MyEntry() {
             </label>
             {open && <button className="btn btn-ghost" onClick={() => confirm('Perutaanko ilmoittautuminen?') && leave()}>Peru ilmoittautuminen</button>}
           </>
-        ) : open ? <button className="btn btn-primary" onClick={() => join()}>Ilmoittaudu Play-Off-kisaan</button> : null}
+        ) : open ? <button className="btn btn-primary" onClick={() => join()}>Ilmoittaudu Play-Offs-kisaan</button> : null}
       </div>
     </Card>
   );
@@ -246,7 +246,7 @@ function DraftForm({ st, reload }: { st: State; reload: () => void }) {
     } catch (e) { setMsg({ text: (e as Error).message, err: true }); }
   };
   return (
-    <Card title="Valitse Play-Off-joukkueesi">
+    <Card title="Valitse Play-Offs-joukkueesi">
       <div className="space-y-4 p-4">
         <p className="text-sm text-slate-400">Valitse {s.roster.F} hyökkääjää, {s.roster.D} puolustajaa ja {s.roster.G} maalivahdin. Sama pelaaja voi olla enintään {s.limits.F} gurulla (maalivahti {s.limits.G}) – nopeat syövät hitaat. Voit muokata valintoja niin kauan kuin lomake on auki.</p>
         {(['F', 'D', 'G'] as const).map((p) => (
@@ -325,7 +325,7 @@ function MyTeamTab() {
   const { data, error, reload } = useApi<State>('/playoff/state');
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Spinner />;
-  if (!data.season) return <Empty>Play-Off-kisaa ei ole vielä avattu.</Empty>;
+  if (!data.season) return <Empty>Play-Offs-kisaa ei ole vielä avattu.</Empty>;
   if (!data.guru) return <MyEntry />;
   const ds = data.season.draft_status;
   return (
@@ -346,9 +346,9 @@ function LeaderboardTab() {
   const team = useApi<{ roster: State['roster'] }>(open ? `/playoff/guru/${open}` : null, [open]);
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Spinner />;
-  if (!data.season) return <Empty>Play-Off-kisaa ei ole vielä avattu.</Empty>;
+  if (!data.season) return <Empty>Play-Offs-kisaa ei ole vielä avattu.</Empty>;
   return (
-    <Card title="Play-Off Leaderboard">
+    <Card title="Play-Offs Leaderboard">
       {!data.rows.length ? <Empty>Ei vielä osallistujia.</Empty> : (
         <div className="overflow-x-auto">
           <table className="table">
@@ -436,7 +436,7 @@ const TABS = [
 
 function Rules() {
   return (
-    <Card title="Play-Off-säännöt">
+    <Card title="Play-Offs-säännöt">
       <ul className="list-disc space-y-2 p-5 pl-9 text-sm text-slate-300">
         <li>Kisa alkaa puolivälieristä ja päättyy finaaliin. Pronssiottelu ja 1. kierros eivät kerrytä pisteitä.</li>
         <li>Joukkue: 3 hyökkääjää, 2 puolustajaa ja 1 maalivahti. Valmentajia ei ole.</li>
@@ -457,7 +457,7 @@ export default function Playoff() {
   const [tab, setTab] = useState<string>('lb');
   return (
     <div className="space-y-6">
-      <PageHeader kicker="HogiGuru Play-Off" title="Play-Off" />
+      <PageHeader kicker="HogiGuru Play-Offs" title="Play-Offs" />
       <div className="flex flex-wrap gap-1">
         {TABS.filter((t) => !('admin' in t) || admin).map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${tab === t.id ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{t.label}</button>

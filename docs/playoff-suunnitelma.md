@@ -1,12 +1,12 @@
-# HogiGuru Play-Off – suunnitelma
+# HogiGuru Play-Offs – suunnitelma
 
-Play-Off on runkosarjan rinnalla pyörivä **lisäkisa**: oma ilmoittautuminen, oma etusivu, oma leaderboard ja oma Hall of Fame -rivi. Ei osallistumismaksua eikä palkintoja – vain mainetta ja kunniaa.
+Play-Offs on runkosarjan rinnalla pyörivä **lisäkisa**: oma ilmoittautuminen, oma etusivu, oma leaderboard ja oma Hall of Fame -rivi. Ei osallistumismaksua eikä palkintoja – vain mainetta ja kunniaa.
 
 ## Päätetyt linjaukset
 
 | Asia | Päätös |
 |---|---|
-| Rakenne | Alisivusto `/playoff/*` omalla etusivullaan; yläpalkissa **Play-Off** (näkyvyys ylläpidosta) |
+| Rakenne | Alisivusto `/playoff/*` omalla etusivullaan; yläpalkissa **Play-Offs** (näkyvyys ylläpidosta) |
 | Kentällinen | 3 H, 2 P, 1 MV – **ei valmentajia** |
 | Valintatapa | Verkossa tehtävä lomakedraft: gurut täyttävät ennakkolistan, järjestelmä ajaa draftin kerralla (ei tilaisuutta) |
 | Alku | Puolivälierät (8 joukkuetta). Säälipudotuspelit eivät kuulu kisaan |
@@ -61,11 +61,11 @@ Hakemistopuuveikkaus täytetään ennen puolivälierien alkua (parit tiedossa s�
 - **Hakemistopuu:** oikea puu + gurujen veikkausten osuvuus.
 - **Oma joukkue:** pudonneet pelaajat harmaina, ilmaiset vaihdot korostettuina.
 - **Vaihdot, Tilastot, Kokonaistulokset:** playoff-data.
-- **Ylläpito:** kisavalitsin *Runkosarja / Play-Off*; nykyiset ylläpitosivut toimivat valitun kisan tiedoilla.
+- **Ylläpito:** kisavalitsin *Runkosarja / Play-Offs*; nykyiset ylläpitosivut toimivat valitun kisan tiedoilla.
 
 ## Tekninen toteutus
 
-- Play-Off = uusi rivi `seasons`-taulussa (`kind = 'playoffs'`, `parent_season_id`). Kaikki kausikohtainen (gurut, kentälliset, draft, vaihdot, ilmoittautuminen, pisteytys) toimii sellaisenaan.
+- Play-Offs = uusi rivi `seasons`-taulussa (`kind = 'playoffs'`, `parent_season_id`). Kaikki kausikohtainen (gurut, kentälliset, draft, vaihdot, ilmoittautuminen, pisteytys) toimii sellaisenaan.
 - Kisan valinta pyynnössä (`/api/...?comp=playoffs` tai otsake); frontend `/playoff/*`-reitit asettavat sen.
 - liiga.fi: playoff-turnauksen tilastot ja ottelut. Omat taulut tai `tournament`-sarake tilastoihin.
   - **Varmistettu:** `GET https://liiga.fi/api/v2/games?tournament=playoffs&season=2026` → `serie: "PLAYOFFS"`.

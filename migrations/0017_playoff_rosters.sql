@@ -1,4 +1,4 @@
--- Play-Off vaihe 3–4: ottelukohtaiset pudotuspelitilastot, kokoonpanot ja vaihdot
+-- Play-Offs vaihe 3–4: ottelukohtaiset pudotuspelitilastot, kokoonpanot ja vaihdot
 CREATE TABLE IF NOT EXISTS playoff_game_stats (
   season INTEGER NOT NULL,
   game_id INTEGER NOT NULL,

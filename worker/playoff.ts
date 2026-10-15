@@ -1,4 +1,4 @@
-// Play-Off: liiga.fi-pudotuspeliotteluista laskettu hakemistopuu.
+// Play-Offs: liiga.fi-pudotuspeliotteluista laskettu hakemistopuu.
 
 export const PHASE_NAMES: Record<number, string> = { 1: '1. kierros', 2: 'Puolivälierät', 3: 'Välierät', 4: 'Pronssiottelu', 5: 'Finaali' };
 /** Gurukisaan kuuluvat vaiheet (alkaa puolivälieristä, ei pronssia). */

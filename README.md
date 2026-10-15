@@ -166,8 +166,8 @@ HogiGuru-app/
 │   ├── 0013_lottery_pause.sql   arvonnan tauko
 │   ├── 0014_draft_nav.sql       Draft-linkin näkyvyys yläpalkissa
 │   ├── 0015_playoff.sql         pudotuspelitilastot, kauden tyyppi (playoff)
-│   ├── 0016_playoff_reg.sql     Play-Off-ilmoittautuminen, mestariveikkaus
-│   └── 0017_playoff_rosters.sql Play-Off-kokoonpanot, ottelutilastot, vaihtoikkuna
+│   ├── 0016_playoff_reg.sql     Play-Offs-ilmoittautuminen, mestariveikkaus
+│   └── 0017_playoff_rosters.sql Play-Offs-kokoonpanot, ottelutilastot, vaihtoikkuna
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
@@ -377,7 +377,7 @@ Varmistus on koko kannan SQL-dump (rakenne + data, istunnot pois lukien). Lisäk
 
 ---
 
-## Play-Off-kisa
+## Play-Offs-kisa
 
 Erillinen sivukisa pudotuspeleihin (`/playoff`, toistaiseksi näkyvissä vain ylläpitäjille). Ks. [suunnitelma](docs/playoff-suunnitelma.md).
 

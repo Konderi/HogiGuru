@@ -1,4 +1,4 @@
--- Play-Off: pudotuspelien summatilastot (liiga.fi tournament=playoffs) + kisatyyppi kausille
+-- Play-Offs: pudotuspelien summatilastot (liiga.fi tournament=playoffs) + kisatyyppi kausille
 CREATE TABLE IF NOT EXISTS playoff_stats (
   season INTEGER NOT NULL,
   player_id INTEGER NOT NULL,

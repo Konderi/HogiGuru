@@ -1,4 +1,4 @@
--- Play-Off vaihe 2: ilmoittautuminen (gurut-rivit play-off-kaudelle) + mestariveikkaus
+-- Play-Offs vaihe 2: ilmoittautuminen (gurut-rivit play-off-kaudelle) + mestariveikkaus
 ALTER TABLE seasons ADD COLUMN reg_open INTEGER NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS playoff_predictions (
   season_id INTEGER NOT NULL,
