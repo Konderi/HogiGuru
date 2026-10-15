@@ -1046,9 +1046,24 @@ admin.post('/draft/shuffle', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   if (season.draft_status !== 'setup') throw new Error('Järjestys lukitaan, kun draft alkaa');
   const gurus = (await db.prepare('SELECT id FROM gurus WHERE season_id = ?').bind(season.id).all<{ id: number }>()).results;
-  const rnd = crypto.getRandomValues(new Uint32Array(gurus.length));
+  const rnd = crypto.getRandomValues(new Uint32Array(gurus.length * 2));
   const order = gurus.map((g, i) => ({ g, r: rnd[i] })).sort((a, b) => a.r - b.r);
-  await db.batch(order.map((o, i) => db.prepare('UPDATE gurus SET draft_number = ? WHERE id = ?').bind(i + 1, o.g.id)));
+  // Paljastusjärjestys ruudulla arvotaan erikseen, jotta se ei kerro numeroita
+  const reveal = gurus.map((g, i) => ({ g, r: rnd[gurus.length + i] })).sort((a, b) => a.r - b.r);
+  const animate = !!(await c.req.json<{ animate?: boolean }>().catch(() => ({ animate: false }))).animate;
+  await db.batch([
+    ...order.map((o, i) => db.prepare('UPDATE gurus SET draft_number = ? WHERE id = ?').bind(i + 1, o.g.id)),
+    ...reveal.map((o, i) => db.prepare('UPDATE gurus SET lottery_order = ? WHERE id = ?').bind(i, o.g.id)),
+    db.prepare('UPDATE seasons SET draft_lottery_at = ? WHERE id = ?').bind(animate ? Date.now() + 3000 : null, season.id),
+  ]);
+  return c.json({ ok: true });
+});
+admin.post('/draft/attendance', async (c) => {
+  const b = await c.req.json<{ id?: number; present: boolean; all?: boolean }>();
+  const season = c.get('season');
+  if (season.draft_status === 'done') throw new Error('Draft on jo päättynyt');
+  if (b.all) await c.env.DB.prepare('UPDATE gurus SET remote_draft = ? WHERE season_id = ?').bind(b.present ? 0 : 1, season.id).run();
+  else await c.env.DB.prepare('UPDATE gurus SET remote_draft = ? WHERE id = ? AND season_id = ?').bind(b.present ? 0 : 1, Number(b.id), season.id).run();
   return c.json({ ok: true });
 });
 admin.post('/draft/status', async (c) => {
@@ -1058,6 +1073,10 @@ admin.post('/draft/status', async (c) => {
   if (status === 'live') {
     const missing = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM gurus WHERE season_id = ? AND draft_number IS NULL').bind(season.id).first<{ n: number }>();
     if (missing?.n) throw new Error(`${missing.n} gurulta puuttuu draft-numero`);
+    const st = await draftState(c.env.DB, season);
+    if (st.lottery) throw new Error('Arvonta on vielä kesken');
+    const noPrefs = st.gurus.filter((g) => g.remote_draft && !st.hasPrefs.includes(g.id));
+    if (noPrefs.length) throw new Error(`Poissaolevilta puuttuu draft-lomake: ${noPrefs.map((g) => g.name).join(', ')}`);
   }
   await c.env.DB.prepare('UPDATE seasons SET draft_status = ? WHERE id = ?').bind(status === 'live' ? 'live' : 'setup', season.id).run();
   return c.json({ ok: true });

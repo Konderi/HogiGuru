@@ -15,6 +15,7 @@ import Login from './pages/Login';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import MyTeam from './pages/MyTeam';
 import DraftBoard from './pages/DraftBoard';
+import DraftScreen from './pages/DraftScreen';
 import AdminLayout from './admin/AdminLayout';
 import AdminDashboard from './admin/Dashboard';
 import AdminUsers from './admin/Users';
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="draft/naytto" element={<Protected><DraftScreen /></Protected>} />
           <Route element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="leaderboard" element={<Leaderboard />} />

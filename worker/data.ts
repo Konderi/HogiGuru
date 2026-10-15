@@ -4,7 +4,7 @@ export interface Season {
   id: number; name: string; liiga_season: number; active: number;
   max_swaps: number | null; max_picks_per_entity: number; max_picks_by_pos: Partial<Record<Position, number>>;
   roster: Record<Position, number>; scoring: Scoring;
-  draft_status: 'setup' | 'live' | 'done'; draft_snake: number;
+  draft_status: 'setup' | 'live' | 'done'; draft_snake: number; draft_lottery_at?: number | null;
   registration_open: number; registration_deadline: string | null; entry_fee: string | null; registration_info: string | null;
   results_published: number; selection_mode: 'draft' | 'baskets'; baskets: string[][];
   results_override: import('./predictions').Override;

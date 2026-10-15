@@ -54,11 +54,13 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 ## 2. Draft
 
 1. **Draft → Listat:** kokoa draft-listat paikoittain.
-2. Merkitse etäosallistujat. He täyttävät ennakkolistan (*Oma joukkue → Draft-ennakkolista*), tai syötä se heidän puolestaan.
-3. 🎲 **Arvo järjestys** (käärmedraft valinnainen).
-4. Draft-iltana **▶ Aloita** ja avaa `/draft` isolle näytölle.
-5. Vuorossa olevalle: valitse pelaaja. Etäosallistujalle ⚙ **valinta ennakkolistalta**. Virheen voi perua ↶.
-6. Lopuksi **✓ Vie kentällisiin**. Järjestelmä ottaa ensin automaattisesti varmistuksen. Draftin tila muuttuu `done` ja gurut näkevät joukkueensa.
+2. Ennen tilaisuutta jokaisen gurun on täytettävä draft-lomake (*Oma joukkue*). Lomake on pakollinen niille, jotka eivät ole paikalla.
+3. Avaa **📺 Avaa heijastettava näkymä** (`/draft/naytto`) seinälle ja Teamsiin (⛶ = koko näyttö). Pidä hallinta omalla koneellasi.
+4. **Vaihe 1 – läsnäolo:** merkitse *Ketkä ovat paikalla?* -kortissa paikalla olevat gurut. Poissaolevalta, jolta lomake puuttuu, näkyy ⚠. Draftia ei voi aloittaa, ennen kuin kaikilla poissaolevilla on lomake.
+5. **Vaihe 2 – 🎲 Arvo järjestys:** heijastettavassa näkymässä gurut nousevat ruudulle satunnaisessa järjestyksessä 10 s välein. Draft-numero paljastuu 4 s kohdalla. Numerot pysyvät salassa myös palvelimella, kunnes ne paljastetaan.
+6. **Vaihe 3 – ▶ Aloita draft.** Paikalla oleva guru kertoo vuorollaan valintansa (vapaasti mikä tahansa paikka/pelaaja), ja ylläpitäjä klikkaa sen. Poissaolevalle ⚙ **Valitse ennakkolistalta**. Virheen voi perua ↶.
+7. Heijastettava näkymä näyttää vuorossa olevan gurun ja hänen vapaat paikkansa sekä seuraavat vuorot. Siinä on myös koko draft-taulu, viimeisimmät valinnat ja 🔥 **varaustilanteen**: pelaajat, jotka on valittu vähintään 3 kertaa, sekä täynnä olevat. Uusi valinta välähtää koko ruudulle.
+8. Lopuksi **✓ Vie kentällisiin**. Järjestelmä ottaa ensin automaattisesti varmistuksen. Draftin tila muuttuu `done` ja gurut näkevät joukkueensa.
 
 Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylityksen.
 

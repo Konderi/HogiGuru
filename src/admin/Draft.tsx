@@ -15,9 +15,9 @@ export default function Draft() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (st?.status !== 'live') return;
+    if (st?.status !== 'live' && !st?.lottery) return;
     const t = setInterval(reload, 5000); return () => clearInterval(t);
-  }, [st?.status, reload]);
+  }, [st?.status, st?.lottery, reload]);
 
   const mine = useMemo(() => st?.picks.filter((p) => p.guru_id === st.onClock?.id) ?? [], [st]);
   if (!st) return <Spinner />;
@@ -31,9 +31,10 @@ export default function Draft() {
     <>
       <PageHeader kicker={`Draft · ${statusLabel}`} title="Draft-tilaisuus">
         <div className="flex flex-wrap gap-2">
+          <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Avaa heijastettava näkymä</a>
           {st.status === 'setup' && <>
-            <button className="btn btn-ghost" disabled={busy} onClick={() => confirm('Arvotaanko draft-numerot kaikille guruille uudelleen?') && act(() => api('/admin/draft/shuffle', { method: 'POST' }), 'Järjestys arvottu')}>🎲 Arvo järjestys</button>
-            <button className="btn btn-primary" disabled={busy} onClick={() => act(() => api('/admin/draft/status', { body: { status: 'live' } }), 'Draft käynnistetty!')}>▶ Aloita draft</button>
+            <button className="btn btn-ghost" disabled={busy || !!st.lottery} onClick={() => confirm('Käynnistetäänkö draft-numeroiden arvonta? Numerot paljastetaan heijastettavassa näkymässä 10 s välein.') && act(() => api('/admin/draft/shuffle', { body: { animate: true } }), 'Arvonta käynnistyi – katso heijastettava näkymä')}>🎲 Arvo järjestys</button>
+            <button className="btn btn-primary" disabled={busy || !!st.lottery} onClick={() => act(() => api('/admin/draft/status', { body: { status: 'live' } }), 'Draft käynnistetty!')}>▶ Aloita draft</button>
           </>}
           {st.status === 'live' && <>
             <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => api('/admin/draft/status', { body: { status: 'setup' } }), 'Draft keskeytetty')}>⏸ Keskeytä</button>
@@ -42,6 +43,34 @@ export default function Draft() {
         </div>
       </PageHeader>
 
+      {st.status === 'setup' && st.gurus.length > 0 && (
+        <Card title="Vaihe 1 · Ketkä ovat paikalla?" className="mb-6"
+          action={<div className="flex gap-2">
+            <button className="btn btn-ghost px-3 py-1 text-xs" disabled={busy} onClick={() => act(() => api('/admin/draft/attendance', { body: { all: true, present: true } }))}>Kaikki paikalla</button>
+            <button className="btn btn-ghost px-3 py-1 text-xs" disabled={busy} onClick={() => act(() => api('/admin/draft/attendance', { body: { all: true, present: false } }))}>Kukaan ei</button>
+          </div>}>
+          <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {st.gurus.map((g) => {
+              const present = !g.remote_draft;
+              const prefs = st.hasPrefs.includes(g.id);
+              return (
+                <button key={g.id} disabled={busy} onClick={() => act(() => api('/admin/draft/attendance', { body: { id: g.id, present: !present } }))}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${present ? 'border-ice-400/50 bg-ice-500/10' : 'border-white/10 bg-white/[0.02]'}`}>
+                  <span className={`grid h-6 w-6 place-items-center rounded-md border text-sm ${present ? 'border-ice-400 bg-ice-500 text-rink-950' : 'border-white/20'}`}>{present ? '✓' : ''}</span>
+                  <span className="flex-1 truncate font-semibold text-white">{g.name}</span>
+                  <span className={`text-xs ${present ? 'text-ice-300' : prefs ? 'text-slate-400' : 'text-goal'}`}>
+                    {present ? 'paikalla' : prefs ? '📋 lomake ok' : '⚠ lomake puuttuu'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="border-t border-white/5 px-5 py-3 text-xs text-slate-400">
+            Paikalla olevat valitsevat vuorollaan vapaasti. Poissaolevien valinnat tehdään heidän draft-lomakkeeltaan, joten lomakkeen pitää olla täytetty ennen kuin draft voidaan aloittaa.
+            {' '}Vaihe 2: arvo järjestys (🎲) ja näytä arvonta heijastettavassa näkymässä. Vaihe 3: ▶ Aloita draft.
+          </p>
+        </Card>
+      )}
       {st.status === 'live' && st.onClock && (
         <section className="relative mb-6 overflow-hidden rounded-3xl border border-ice-400/30 bg-gradient-to-r from-ice-500/15 via-rink-850 to-goal/10 p-6 animate-in">
           <div className="flex flex-wrap items-center gap-6">
@@ -100,7 +129,7 @@ export default function Draft() {
         </Card>
 
         <Card title="Draft-taulu">
-          {st.gurus.length ? <div className="overflow-x-auto"><DraftGrid st={st} /></div> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
+          {st.gurus.length ? <DraftGrid st={st} /> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
           {st.status === 'setup' && st.gurus.length > 0 && (
             <p className="border-t border-white/5 px-5 py-3 text-xs text-slate-400">
               Ennakkolista tehty: {st.hasPrefs.length}/{st.gurus.length}. Etäosallistujat merkitään gurun asetuksista; heidän vuorollaan valinta tehdään ennakkolistalta.

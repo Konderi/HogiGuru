@@ -2,17 +2,36 @@ import { entityName, loadContext, maxFor, maxMap, usageCounts, usageKey, type Se
 import { entityPoints, POSITIONS, type Position } from './scoring';
 import { helsinkiDate } from './data';
 
-interface Guru { id: number; name: string; draft_number: number | null; remote_draft: number; user_id: number | null }
+interface Guru { id: number; name: string; draft_number: number | null; remote_draft: number; user_id: number | null; lottery_order?: number | null }
 interface Pick { id: number; pick_no: number; guru_id: number; position: Position; entity_id: number; auto: number }
+
+/** Arvonnassa jokainen guru on ruudulla näin kauan (ms); numero paljastuu LOTTERY_REVEAL ms kohdalla. */
+export const LOTTERY_STEP = 10_000;
+export const LOTTERY_REVEAL = 4_000;
 
 export async function draftState(db: D1Database, season: Season) {
   const [gurusR, picksR, poolR, prefsR] = await db.batch([
-    db.prepare('SELECT id, name, draft_number, remote_draft, user_id FROM gurus WHERE season_id = ? ORDER BY draft_number IS NULL, draft_number, name').bind(season.id),
+    db.prepare('SELECT id, name, draft_number, remote_draft, user_id, lottery_order FROM gurus WHERE season_id = ? ORDER BY draft_number IS NULL, draft_number, name').bind(season.id),
     db.prepare('SELECT * FROM draft_picks WHERE season_id = ? ORDER BY pick_no').bind(season.id),
     db.prepare('SELECT position, entity_id FROM draft_pool WHERE season_id = ?').bind(season.id),
     db.prepare('SELECT p.guru_id FROM draft_prefs p JOIN gurus g ON g.id = p.guru_id WHERE g.season_id = ?').bind(season.id),
   ]);
-  const gurus = gurusR.results as unknown as Guru[];
+  let gurus = gurusR.results as unknown as Guru[];
+
+  // Käynnissä oleva arvonta: numerot paljastetaan vasta vuorollaan (ei spoilata etukäteen)
+  const now = Date.now();
+  const at = season.draft_lottery_at ?? null;
+  let lottery: { at: number; now: number; step: number; reveal: number; order: { id: number; name: string; draft_number: number | null }[] } | null = null;
+  if (at && now < at + gurus.length * LOTTERY_STEP + 2000) {
+    const order = gurus.filter((g) => g.lottery_order != null).sort((a, b) => a.lottery_order! - b.lottery_order!);
+    const shown = (g: Guru) => now >= at + g.lottery_order! * LOTTERY_STEP + LOTTERY_REVEAL;
+    lottery = {
+      at, now, step: LOTTERY_STEP, reveal: LOTTERY_REVEAL,
+      order: order.map((g) => ({ id: g.id, name: g.name, draft_number: shown(g) ? g.draft_number : null })),
+    };
+    gurus = gurus.map((g) => (g.lottery_order != null && !shown(g) ? { ...g, draft_number: null } : g))
+      .sort((a, b) => (a.draft_number ?? 999) - (b.draft_number ?? 999) || a.name.localeCompare(b.name, 'fi'));
+  }
   const picks = picksR.results as unknown as Pick[];
   const ctx = await loadContext(db, season);
   const perGuru = Object.values(season.roster).reduce((a, b) => a + b, 0);
@@ -31,7 +50,7 @@ export async function draftState(db: D1Database, season: Season) {
   return {
     status: season.draft_status, snake: !!season.draft_snake, roster: season.roster,
     maxPicks: maxMap(season), total, pickNo, round: Math.ceil(pickNo / Math.max(gurus.length, 1)),
-    onClock, gurus, hasPrefs: (prefsR.results as { guru_id: number }[]).map((r) => r.guru_id),
+    onClock, gurus, hasPrefs: (prefsR.results as { guru_id: number }[]).map((r) => r.guru_id), lottery,
     picks: picks.map((p) => ({ ...p, ...entityName(ctx, p.position, p.entity_id) })),
     pool,
   };
