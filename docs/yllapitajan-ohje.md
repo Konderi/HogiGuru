@@ -56,7 +56,7 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 1. **Draft → Listat:** kokoa draft-listat paikoittain. Ota käärmedraft käyttöön kohdassa *Pisteytys & kausi* (joka toinen kierros käänteisesti).
 2. Ennen tilaisuutta jokaisen gurun on täytettävä draft-lomake (*Oma joukkue*). Lomake on pakollinen niille, jotka eivät ole paikalla.
 3. Avaa **📺 Seinänäkymä** (`/draft/naytto`) seinälle ja Teamsiin (⛶ = koko näyttö). Pidä hallinta omalla koneellasi tai puhelimella. Seinänäkymä vaihtaa sisältöä itse draftin tilan mukaan (aula → arvonta → järjestys → live → valmis), joten sitä ei tarvitse vaihdella kesken tilaisuuden. Painike näkyy, kun draft on valmistelussa tai käynnissä.
-4. **Vaihe 1 – läsnäolo:** merkitse *Ketkä ovat paikalla?* -kortissa paikalla olevat gurut. Poissaolevalta, jolta lomake puuttuu, näkyy ⚠. Draftia ei voi aloittaa, ennen kuin kaikilla poissaolevilla on lomake.
+4. **Vaihe 1 – läsnäolo:** merkitse *Ketkä ovat paikalla?* -kortissa paikalla olevat gurut (uudet gurut ovat oletuksena poissa eli lomakkeella). Poissaolevalta, jolta lomake puuttuu, näkyy ⚠. Draftia ei voi aloittaa, ennen kuin kaikilla poissaolevilla on lomake.
 5. **Vaihe 2 – 🎲 Arvo järjestys:** 10 s lähtölaskennan jälkeen gurut nousevat seinälle satunnaisessa järjestyksessä 10 s välein, ja draft-numero paljastuu 4 s kohdalla. Arvonnan voi tauottaa (⏸). Numerot ja järjestys pysyvät salassa myös palvelimella ja draft-taulussa, kunnes ne paljastetaan. Arvonnan jälkeen seinälle jää valintajärjestys – käy se läpi rauhassa.
 6. **Vaihe 3 – ▶ Aloita draft** (ei käynnisty automaattisesti arvonnan jälkeen). Paikalla oleva guru kertoo vuorollaan valintansa (vapaasti mikä tahansa paikka/pelaaja), ja ylläpitäjä klikkaa sen. Poissaolevalle ⚙ **Valitse ennakkolistalta**. Virheen voi perua ↶.
 7. **Seinänäkymä draftin aikana:**
@@ -72,7 +72,7 @@ Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylity
 **Draft yläpalkissa:** *Näytä yläpalkissa* -ruksi (Draft-sivun yläosassa) näyttää tai piilottaa Draft-linkin kaikkien käyttäjien yläpalkista. Oletuksena päällä; piilota kauden alettua. Sivu toimii edelleen suoralla osoitteella `/draft`.
 
 **Harjoittelu ennen tilaisuutta** (mitään ei tallenneta): paina **▶ Aloita draft** -painiketta, jossa on keltainen **HARJOITUS**-merkki (`/admin/draft/harjoitus`). Harjoitus kulkee samat vaiheet kuin oikea draft:
-1. **Läsnäolo:** 👥 *10 testigurua* (keksityt nimet, 3 lomakkeella) tai *Oikeat gurut*. 🎟 *Generoi testikupongit* tekee kaikille keksityt lomakkeet (paina gurujen valinnan jälkeen). Läsnäolon voi vaihtaa klikkaamalla.
+1. **Läsnäolo:** 👥 *10 testigurua* (keksityt nimet) tai *Oikeat gurut*. 🎟 *Generoi testikupongit* tekee kaikille keksityt lomakkeet (paina gurujen valinnan jälkeen). Oletuksena kukaan ei ole paikalla – klikkaa paikalla olevat.
 2. **🎲 Aloita arvonta:** seinänäkymässä arvonta (harjoituksessa 5 s per guru). Numerot ilmestyvät draft-tauluun vasta arvonnan edetessä.
 3. **Järjestys** → **▶ Aloita draft**.
 4. **Draft:** valinnat haulla (näytetään 6 osumaa, *Kaikki* tai pelipaikka). Lomakkeelta valitsevien vuoro tehdään automaattisesti 3 s kuluttua. Käärmedraft on harjoituksessa aina päällä. Tauko, ↶ peru, ↺ nollaa.

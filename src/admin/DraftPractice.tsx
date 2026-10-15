@@ -50,7 +50,7 @@ export default function DraftPractice() {
   // Alkutila: oikeat gurut ilman numeroita (numerot arvotaan harjoituksessa)
   useEffect(() => {
     if (!real || gurus) return;
-    setGurus(real.gurus.map((g) => ({ ...g, draft_number: null })));
+    setGurus(real.gurus.map((g) => ({ ...g, draft_number: null, remote_draft: 1 })));
   }, [real, gurus]);
 
   // Arvonnan aikana numerot paljastuvat vasta, kun arvonta ehtii gurun kohdalle (kuten palvelimella)
@@ -159,7 +159,7 @@ export default function DraftPractice() {
   };
   const reset = () => { setPicks([]); setPhase('setup'); setLottery(null); setPaused(false); setErr(null); setEdit(null); failedFor.current = null; setGurus(gurus.map((g) => ({ ...g, draft_number: null }))); };
   const pickGurus = (list: Guru[]) => { setGurus(list); setFakePrefs({}); };
-  const testGurus = () => pickGurus(TEST_NAMES.map((name, i) => ({ id: 900_001 + i, name, draft_number: null, remote_draft: i % 3 === 2 ? 1 : 0, user_id: null }) as Guru));
+  const testGurus = () => pickGurus(TEST_NAMES.map((name, i) => ({ id: 900_001 + i, name, draft_number: null, remote_draft: 1, user_id: null }) as Guru));
   const numbered = gurus.length > 0 && gurus.every((g) => g.draft_number != null);
 
   // Tarkistusvaihe: yksittäisen valinnan vaihto (samat säännöt kuin palvelimen replacePick)
@@ -207,7 +207,7 @@ export default function DraftPractice() {
         <Card title={`Vaihe 1 · Läsnäolo (${gurus.length} gurua)`} className="mb-6"
           action={<div className="flex flex-wrap gap-2">
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={testGurus} title="10 keksittyä gurua – nopea läpikäynti">👥 10 testigurua</button>
-            {real && <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => pickGurus(real.gurus.map((g) => ({ ...g, draft_number: null })))}>Oikeat gurut</button>}
+            {real && <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => pickGurus(real.gurus.map((g) => ({ ...g, draft_number: null, remote_draft: 1 })))}>Oikeat gurut</button>}
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={genPrefs} title="Keksityt draft-lomakkeet kaikille guruille (vain harjoitukseen)">🎟 Generoi testikupongit</button>
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 1 })))}>Kaikki lomakkeelta</button>
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 0 })))}>Kaikki paikalla</button>

@@ -186,7 +186,7 @@ export default function Gurus() {
   return (
     <>
       <PageHeader kicker={`${data.length} kisaajaa`} title="Gurut & kentälliset">
-        <button className="btn btn-primary" onClick={() => setEdit({ remote_draft: 0 })}>+ Uusi guru</button>
+        <button className="btn btn-primary" onClick={() => setEdit({ remote_draft: 1 })}>+ Uusi guru</button>
       </PageHeader>
       <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
         <Card>

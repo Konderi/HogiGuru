@@ -872,7 +872,7 @@ admin.post('/registrations/:id/accept', async (c) => {
   // Nimi: ylläpidon valitsema aiempi nimi > automaattinen täsmäys aiempaan guruun > lomakkeen nimi
   const guruName = chosen?.trim() || nameMatches(r.name, await knownGuruNames(db)).exact || r.name;
   let guru = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND lower(name) = lower(?)').bind(season.id, guruName).first<{ id: number }>();
-  if (!guru) guru = await db.prepare('INSERT INTO gurus (season_id, name) VALUES (?,?) RETURNING id').bind(season.id, guruName).first<{ id: number }>();
+  if (!guru) guru = await db.prepare('INSERT INTO gurus (season_id, name, remote_draft) VALUES (?,?,1) RETURNING id').bind(season.id, guruName).first<{ id: number }>();
   // Olemassa oleva tunnus liitetään aina sähköpostin perusteella
   let u = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(r.email.toLowerCase()).first<{ id: number }>();
   if (!u && password) {
@@ -992,7 +992,7 @@ admin.get('/gurus', async (c) => {
 admin.post('/gurus', async (c) => {
   const b = await c.req.json<{ name: string; draft_number?: number; remote_draft?: boolean }>();
   const r = await c.env.DB.prepare('INSERT INTO gurus (season_id, name, draft_number, remote_draft) VALUES (?,?,?,?) RETURNING id')
-    .bind(c.get('season').id, b.name.trim(), num(b.draft_number), b.remote_draft ? 1 : 0).first();
+    .bind(c.get('season').id, b.name.trim(), num(b.draft_number), b.remote_draft === undefined || b.remote_draft ? 1 : 0).first();
   return c.json(r);
 });
 admin.put('/gurus/:id', async (c) => {
