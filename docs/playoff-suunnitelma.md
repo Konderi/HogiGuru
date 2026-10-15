@@ -34,7 +34,8 @@ Play-Off on runkosarjan rinnalla pyörivä **lisäkisa**: oma ilmoittautuminen, 
 - **Pudonneen joukkueen pelaaja: ilmainen vaihto**, ei kuluta normaaleja. Pudonnut pelaaja säilyttää keräämänsä pisteet.
 - Ikkunat aukeavat **automaattisesti**, kun kierroksen viimeinen sarja on ratkennut (liiga.fi-otteludata), ja sulkeutuvat 2 h ennen seuraavan kierroksen ensimmäistä ottelua. Gurut saavat sähköpostin. Ylläpito voi säätää aikoja.
 - Käsittely nykyisellä vaihtotoivejonolla (varavaihtoehdot, vuorojärjestys = draft-järjestys, joka toinen ikkuna käänteinen).
-- **Valintarajat** (montako gurua voi omistaa saman pelaajan) nousevat kierroksittain, koska elossa olevia pelaajia on yhä vähemmän. Ehdotus lähtötasoksi: H 8, P 8, MV 12; rajat kerrotaan jäljellä olevien joukkueiden suhteessa.
+- **Valintarajat** (montako gurua voi omistaa saman pelaajan) koskevat **vain lomakedraftia**: lähtötaso H 8, P 8, MV 12 (nyrkkisääntö ≈ ¼ gureista, maalivahdeille enemmän; lukitaan kun ilmoittautuneiden määrä tiedossa, säädettävissä ylläpidosta). **Vaihdoissa ei rajoja** – pudonneen tilalle saa aina kenet tahansa elossa olevan, joten yksikään vaihto ei epäonnistu täyden pelaajan takia.
+- Sääntö guruille yhdellä lauseella: *"Draftissa sama pelaaja voi olla enintään 8 gurulla (maalivahti 12), vaihdoissa rajoja ei ole."*
 
 ## Pisteytys
 
@@ -66,7 +67,11 @@ Hakemistopuuveikkaus täytetään ennen puolivälierien alkua (parit tiedossa s�
 
 - Play-Off = uusi rivi `seasons`-taulussa (`kind = 'playoffs'`, `parent_season_id`). Kaikki kausikohtainen (gurut, kentälliset, draft, vaihdot, ilmoittautuminen, pisteytys) toimii sellaisenaan.
 - Kisan valinta pyynnössä (`/api/...?comp=playoffs` tai otsake); frontend `/playoff/*`-reitit asettavat sen.
-- liiga.fi: playoff-turnauksen tilastot ja ottelut (turnausnimi varmistetaan rajapinnasta). Omat taulut tai `tournament`-sarake tilastoihin.
+- liiga.fi: playoff-turnauksen tilastot ja ottelut. Omat taulut tai `tournament`-sarake tilastoihin.
+  - **Varmistettu:** `GET https://liiga.fi/api/v2/games?tournament=playoffs&season=2026` → `serie: "PLAYOFFS"`.
+  - Jokaisessa ottelussa `playOffPhase`, `playOffPair` ja `playOffReqWins` → hakemistopuu ja sarjatilanne voidaan laskea suoraan otteluista.
+  - Vaiheet (kausi 2026): 1 = 1. kierros (paras 5:stä), 2 = puolivälierät, 3 = välierät, 4 = pronssi (1 ottelu), 5 = finaali (paras 7:stä). Gurukisa alkaa vaiheesta 2; vaihe 4 ohitetaan.
+  - Sarja ratkennut = jommankumman voitot ≥ `playOffReqWins` → tästä swap-ikkunan automaattinen avaus.
 - Sarjatilanteet ja pudonneet joukkueet johdetaan otteluista.
 - Uusi: vaihtoikkunoiden automaattinen avaus, ilmaisten vaihtojen kiintiölogiikka (laajennus nykyiseen `COUNTED_SWAP`-ehtoon), lomakedraftin ajo yhdellä napilla.
 
