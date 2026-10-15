@@ -19,17 +19,18 @@ export function Card({ title, action, children, className = '' }: { title?: Reac
   return (
     <section className={`card animate-in ${className}`}>
       {(title || action) && <header className="card-header"><h2 className="card-title">{title}</h2>{action}</header>}
-      {children}
+      {/* Leveät taulukot vierivät sivuttain kortin sisällä mobiilissa */}
+      <div className="overflow-x-auto overscroll-x-contain">{children}</div>
     </section>
   );
 }
 
 export function PageHeader({ kicker, title, children }: { kicker?: string; title: string; children?: ReactNode }) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4 animate-in">
-      <div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 animate-in sm:mb-8">
+      <div className="min-w-0">
         {kicker && <p className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-ice-400">{kicker}</p>}
-        <h1 className="text-4xl sm:text-5xl">{title}</h1>
+        <h1 className="break-words text-3xl sm:text-5xl">{title}</h1>
       </div>
       {children}
     </div>
@@ -94,10 +95,10 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   }, [onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 pt-[8vh] backdrop-blur-sm" onClick={onClose}>
-      <div className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} animate-in`} onClick={(e) => e.stopPropagation()}>
-        <header className="card-header"><h2 className="card-title">{title}</h2><button className="text-slate-400 hover:text-white" onClick={onClose} aria-label="Sulje">✕</button></header>
-        <div className="p-5">{children}</div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/70 backdrop-blur-sm sm:items-start sm:p-4 sm:pt-[8vh]" onClick={onClose}>
+      <div className={`card w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'} max-h-[92dvh] overflow-y-auto rounded-b-none pb-[env(safe-area-inset-bottom)] animate-in sm:max-h-none sm:overflow-visible sm:rounded-b-2xl sm:pb-0`} onClick={(e) => e.stopPropagation()}>
+        <header className="card-header sticky top-0 z-10 bg-rink-850"><h2 className="card-title min-w-0 flex-1 truncate">{title}</h2><button className="-m-2 p-2 text-xl leading-none text-slate-400 hover:text-white" onClick={onClose} aria-label="Sulje">✕</button></header>
+        <div className="overflow-x-auto p-4 sm:p-5">{children}</div>
       </div>
     </div>
   );
@@ -125,7 +126,7 @@ export function EntityPicker({ pos, onPick, options, placeholder }: {
   }, [q, pos, options]);
   return (
     <div>
-      <input className="input" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder ?? 'Hae nimellä…'} />
+      <input className="input" autoFocus={window.matchMedia('(pointer: fine)').matches} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder ?? 'Hae nimellä…'} />
       {hits.length > 0 && (
         <ul className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-rink-950/80">
           {hits.map((h) => (
@@ -148,7 +149,7 @@ export function Toast({ msg, onDone }: { msg: { text: string; err?: boolean } | 
   useEffect(() => { if (msg) { const t = setTimeout(onDone, 3500); return () => clearTimeout(t); } }, [msg, onDone]);
   if (!msg) return null;
   return (
-    <div className={`fixed bottom-6 right-6 z-50 rounded-xl px-4 py-3 text-sm font-medium shadow-2xl animate-in ${msg.err ? 'bg-goal text-white' : 'bg-emerald-500 text-rink-950'}`}>
+    <div className={`fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[60] rounded-xl px-4 py-3 text-center text-sm font-medium shadow-2xl animate-in sm:inset-x-auto sm:bottom-6 sm:right-6 sm:text-left ${msg.err ? 'bg-goal text-white' : 'bg-emerald-500 text-rink-950'}`}>
       {msg.text}
     </div>
   );

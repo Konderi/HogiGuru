@@ -23,15 +23,17 @@
 }
 
 @layer base {
-  html { color-scheme: dark; }
+  html { color-scheme: dark; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
   body {
     @apply bg-rink-900 font-sans text-slate-200 antialiased;
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, rgb(14 165 233 / 0.18), transparent 70%),
       radial-gradient(ellipse 60% 40% at 100% 100%, rgb(239 68 68 / 0.07), transparent 70%);
-    background-attachment: fixed;
     min-height: 100dvh;
+    overflow-x: hidden;
   }
+  /* Kiinteä tausta vain isoilla näytöillä (mobiilissa nykii / iOS ei tue) */
+  @media (min-width: 1024px) { body { background-attachment: fixed; } }
   h1, h2, h3 { @apply font-display tracking-wide uppercase text-white; }
   ::selection { @apply bg-ice-500/40; }
 }
@@ -41,7 +43,7 @@
     @apply rounded-2xl border border-white/8 bg-rink-850/80 shadow-xl shadow-black/30 backdrop-blur;
   }
   .card-header {
-    @apply flex items-center justify-between gap-3 border-b border-white/6 px-5 py-4;
+    @apply flex flex-wrap items-center justify-between gap-3 border-b border-white/6 px-4 py-3 sm:px-5 sm:py-4;
   }
   .card-title { @apply font-display text-lg tracking-wider uppercase text-white; }
   .btn {
@@ -51,14 +53,17 @@
   .btn-primary { @apply bg-ice-500 text-rink-950 hover:bg-ice-400 shadow-lg shadow-ice-500/20; }
   .btn-ghost { @apply border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10; }
   .btn-danger { @apply bg-goal/90 text-white hover:bg-goal; }
+  /* 16px mobiilissa: estää iOS:n automaattisen zoomauksen kenttään kirjoitettaessa */
   .input {
-    @apply w-full rounded-xl border border-white/10 bg-rink-950/60 px-3 py-2 text-sm text-white placeholder:text-slate-500
+    @apply w-full rounded-xl border border-white/10 bg-rink-950/60 px-3 py-2.5 text-base text-white placeholder:text-slate-500 sm:py-2 sm:text-sm
       focus:border-ice-400 focus:outline-none focus:ring-2 focus:ring-ice-400/30;
   }
   .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-400; }
   .table { @apply w-full text-sm; }
-  .table th { @apply px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400; }
-  .table td { @apply border-t border-white/5 px-3 py-2.5; }
+  .table th { @apply whitespace-nowrap px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 sm:px-3; }
+  .table td { @apply border-t border-white/5 px-2 py-2.5 sm:px-3; }
+  .table th:first-child, .table td:first-child { @apply pl-4 sm:pl-5; }
+  .table th:last-child, .table td:last-child { @apply pr-4 sm:pr-5; }
   .table tbody tr { @apply transition hover:bg-white/[0.03]; }
   .num { @apply text-right font-mono tabular-nums; }
   /* Numerosarakkeet tiiviiksi ja oikealle (myös otsikot); nimisarake vie loput tilasta */

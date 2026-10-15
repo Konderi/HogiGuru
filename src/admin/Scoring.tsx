@@ -51,7 +51,7 @@ export default function Scoring() {
         </Card>
 
         <Card title="Kentällisen koko">
-          <div className="grid grid-cols-4 gap-4 p-5">
+          <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
             {POSITIONS.map((p) => (
               <div key={p}><label className="label">{POS_LABEL[p]}</label><input type="number" min={0} className="input" value={s.roster[p]} onChange={(e) => setS({ ...s, roster: { ...s.roster, [p]: Number(e.target.value) } })} /></div>
             ))}
@@ -59,7 +59,7 @@ export default function Scoring() {
         </Card>
 
         <Card title="Sama pelaaja voi olla valittuna enintään (kertaa)">
-          <div className="grid grid-cols-4 gap-4 p-5">
+          <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
             {POSITIONS.map((p) => (
               <div key={p}><label className="label">{POS_LABEL[p]}</label><input type="number" min={1} className="input" value={s.max_picks_by_pos?.[p] ?? s.max_picks_per_entity} onChange={(e) => setS({ ...s, max_picks_by_pos: { ...s.max_picks_by_pos, [p]: Number(e.target.value) } })} /></div>
             ))}
@@ -68,7 +68,7 @@ export default function Scoring() {
 
         {s.scoring.prediction && (
           <Card title="Veikkausosion pisteet (oikein / 1 päässä / 2 päässä)">
-            <div className="grid grid-cols-3 gap-4 p-5">
+            <div className="grid gap-4 p-5 sm:grid-cols-3">
               {([['standings', 'Sarjataulukko'], ['topScorer', 'Joukkueen paras pistemies'], ['category', 'Pörssit (oikein / top 3 / top 5)']] as const).map(([k, l]) => (
                 <div key={k}><label className="label">{l}</label>
                   <input className="input font-mono" value={s.scoring.prediction![k].join(' / ')}

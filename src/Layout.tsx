@@ -58,18 +58,18 @@ export default function Layout() {
           </button>
         </div>
         {open && (
-          <nav className="border-t border-white/6 px-4 py-3 lg:hidden" onClick={() => setOpen(false)}>
+          <nav className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/6 px-4 py-3 lg:hidden" onClick={() => setOpen(false)}>
             {[...nav, ...extra].map((n) => (
-              <NavLink key={n.to} to={n.to} end={'end' in n} className={({ isActive }) => `block rounded-lg px-3 py-2.5 font-semibold ${isActive ? 'bg-ice-500/10 text-ice-300' : 'text-slate-300'}`}>{n.label}</NavLink>
+              <NavLink key={n.to} to={n.to} end={'end' in n} className={({ isActive }) => `block rounded-lg px-3 py-3 font-semibold ${isActive ? 'bg-ice-500/10 text-ice-300' : 'text-slate-300'}`}>{n.label}</NavLink>
             ))}
             {user
-              ? <button className="mt-2 w-full rounded-lg px-3 py-2.5 text-left font-semibold text-slate-400" onClick={() => logout()}>Kirjaudu ulos</button>
-              : <Link to="/kirjaudu" className="btn btn-primary mt-2 w-full">Kirjaudu</Link>}
+              ? <button className="mt-2 w-full rounded-lg px-3 py-3 text-left font-semibold text-slate-400" onClick={async () => { await logout(); navigate('/'); }}>Kirjaudu ulos{me?.guru ? ` (${me.guru.name})` : ''}</button>
+              : <div className="mt-2 grid grid-cols-2 gap-2"><Link to="/ilmoittaudu" className="btn btn-ghost">Ilmoittaudu</Link><Link to="/kirjaudu" className="btn btn-primary">Kirjaudu</Link></div>}
           </nav>
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-6 sm:px-6 sm:py-12">
         <Outlet />
       </main>
 

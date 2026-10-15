@@ -77,7 +77,7 @@ export default function HallOfFame() {
             <div className="flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
               {([['marathon', 'Maratontaulukko'], ['seasons', 'Kausittain']] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k)}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider transition ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
+                  className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold uppercase tracking-wide sm:flex-none sm:px-4 sm:text-sm sm:tracking-wider transition ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
               ))}
             </div>
             {tab === 'marathon' && <input className="input max-w-xs" placeholder="Hae gurua…" value={q} onChange={(e) => setQ(e.target.value)} />}

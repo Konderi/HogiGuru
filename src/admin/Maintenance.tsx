@@ -147,7 +147,7 @@ function AuditTab() {
   if (!a.data) return <Spinner />;
   const rows = a.data.filter((r) => !q || `${r.user_name} ${r.path} ${r.body ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   return (
-    <Card title="Muutoshistoria (300 viimeisintä)" action={<input className="input w-56" placeholder="Suodata…" value={q} onChange={(e) => setQ(e.target.value)} />}>
+    <Card title="Muutoshistoria (300 viimeisintä)" action={<input className="input w-full sm:w-56" placeholder="Suodata…" value={q} onChange={(e) => setQ(e.target.value)} />}>
       {!rows.length ? <Empty>Ei muutoksia.</Empty> : (
         <table className="table">
           <thead><tr><th>Aika</th><th>Käyttäjä</th><th>Toiminto</th><th>Tiedot</th><th className="num">Tila</th></tr></thead>

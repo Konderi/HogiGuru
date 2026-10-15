@@ -62,7 +62,7 @@ export default function MyTeam() {
       {draft.data && draft.data.status !== 'live' && (
         <div className="mb-6 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
           {(['team', draft.data.status === 'setup' ? 'prefs' : 'swaps'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider ${tab === t ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold uppercase tracking-wide sm:flex-none sm:px-4 sm:text-sm sm:tracking-wider ${tab === t ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>
               {t === 'team' ? 'Kentällinen' : t === 'prefs' ? 'Draft-ennakkolista' : 'Vaihtotoiveet'}
             </button>
           ))}

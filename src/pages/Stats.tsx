@@ -52,7 +52,7 @@ export default function Stats() {
     <>
       <PageHeader kicker="HG-pisteet & varaustilanne" title="Tilastot">
         <div className="flex flex-wrap items-center gap-3">
-          <input className="input w-56" placeholder="Hae pelaajaa tai joukkuetta…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input w-full sm:w-56" placeholder="Hae pelaajaa tai joukkuetta…" value={q} onChange={(e) => setQ(e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} className="accent-ice-400" /> Vain vapaat
           </label>
@@ -62,7 +62,7 @@ export default function Stats() {
       <div className="mb-5 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
         {(['F', 'D', 'G', 'C'] as Position[]).map((p) => (
           <button key={p} onClick={() => setPos(p)}
-            className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider transition ${pos === p ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>
+            className={`flex-1 rounded-xl px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide transition sm:px-4 sm:text-sm sm:tracking-wider ${pos === p ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>
             {POS_PLURAL[p]}
           </button>
         ))}

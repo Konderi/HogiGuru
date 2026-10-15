@@ -31,7 +31,7 @@ export default function Gurukierros() {
       <PageHeader kicker="HogiGuru" title="Gurukierros" />
       <div className="mb-6 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
         {([['week', 'Viikkokatsaus'], ['swaps', 'Vaihtojen kuningas']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold uppercase tracking-wide sm:flex-none sm:px-4 sm:text-sm sm:tracking-wider ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>{l}</button>
         ))}
       </div>
       {tab === 'week' ? <Week /> : <Swaps />}
