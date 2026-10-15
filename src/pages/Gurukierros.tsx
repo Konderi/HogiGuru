@@ -55,7 +55,7 @@ function Week() {
         <button className="btn" disabled={!canPrev} onClick={() => setWeek(addDays(data.monday, -7))}>← Edellinen</button>
         <div className="text-center">
           <p className="font-display text-xl text-white">{fmtDate(data.monday)} – {fmtDate(data.sunday)}</p>
-          <p className="text-xs text-slate-400">{data.games} ottelua</p>
+          <p className="text-xs text-slate-400">{data.games} ottelua{data.sunday >= new Date().toISOString().slice(0, 10) ? ' · viikko kesken' : ''}</p>
         </div>
         <button className="btn" disabled={!canNext} onClick={() => setWeek(addDays(data.monday, 7))}>Seuraava →</button>
       </div>
@@ -122,9 +122,9 @@ function Week() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Gurujen suosikit">
             <table className="table">
-              <thead><tr><th>Pelaaja</th><th className="num">Omistajia</th><th className="num">Viikko</th></tr></thead>
+              <thead><tr><th>Pelaaja</th><th className="num">Omistajia</th><th className="num">Ott.</th><th className="num">Viikko</th></tr></thead>
               <tbody>
-                {data.popular.map((p) => <tr key={p.id}><td className="text-white">{p.name ?? '–'}</td><td className="num text-slate-400">{p.owners}</td><td className={`num font-mono ${tone(p.hg)}`}>{p.games ? sign(p.hg) : 'ei pelannut'}</td></tr>)}
+                {data.popular.map((p) => <tr key={p.id}><td className="text-white">{p.name ?? '–'}</td><td className="num text-slate-400">{p.owners}</td><td className="num text-slate-400">{p.games}</td><td className={`num font-mono ${tone(p.hg)}`}>{p.games ? sign(p.hg) : <span className="text-slate-500">ei pelejä</span>}</td></tr>)}
               </tbody>
             </table>
           </Card>

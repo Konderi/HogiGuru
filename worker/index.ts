@@ -6,7 +6,7 @@ import {
   type Season, type SlotRow,
 } from './data';
 import { autoPick, COUNTED_SWAP, draftState, finalizeDraft, makePick, swapSlot } from './draft';
-import { mondayOf, swapAnalysis, weeklyReview } from './weekly';
+import { addDays, mondayOf, swapAnalysis, weeklyReview } from './weekly';
 import { syncGamesOnly, syncLiiga } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
 import { entityName } from './data';
@@ -205,8 +205,10 @@ app.get('/weekly', async (c) => {
   const q = c.req.query('week');
   let monday = q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? mondayOf(q) : null;
   if (!monday) {
+    // Oletus: viimeisin päättynyt viikko (kuluva viikko on yleensä kesken)
     const last = await db.prepare('SELECT MAX(date) AS d FROM game_stats WHERE season = ?').bind(season.liiga_season).first<{ d: string | null }>();
-    monday = mondayOf(last?.d ?? helsinkiDate());
+    const prevWeek = addDays(mondayOf(helsinkiDate()), -7);
+    monday = last?.d && mondayOf(last.d) < prevWeek ? mondayOf(last.d) : prevWeek;
   }
   return c.json(await weeklyReview(db, season, monday));
 });
