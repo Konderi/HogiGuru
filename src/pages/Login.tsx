@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { api } from '../api';
 import { isAdminRole, useAuth } from '../auth';
 import { ErrorBox, Logo } from '../ui';
@@ -39,6 +39,7 @@ export default function Login() {
             <ErrorBox error={error} />
             <button className="btn btn-primary w-full py-3" disabled={busy}>{busy ? 'Hetki…' : setup ? 'Luo tunnus' : 'Kirjaudu'}</button>
           </form>
+          {!setup && <p className="mt-4 text-center text-sm"><Link to="/unohtunut" className="text-ice-300 hover:underline">Unohtuiko salasana?</Link></p>}
           {!setup && <p className="mt-6 text-center text-xs text-slate-500">Tunnukset saat HogiGurun ylläpidolta.</p>}
         </div>
       </div>

@@ -13,7 +13,7 @@ import { entityName } from './data';
 import { computeResults } from './predictions';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
 import { listBackups, makeBackup, pruneBackups } from './backup';
-import { layout, sendMail } from './mail';
+import { esc, layout, sendMail } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
@@ -396,6 +396,60 @@ app.post('/auth/password', requireUser, async (c) => {
   const u = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(c.get('user')!.id).first<{ password_hash: string }>();
   if (!u || !(await verifyPassword(current, u.password_hash))) throw new Error('Nykyinen salasana on väärin');
   await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(next), c.get('user')!.id).run();
+  return c.json({ ok: true });
+});
+
+// --- Salasanan palautus: linkki sähköpostiin, voimassa 1 h, kertakäyttöinen
+const RESET_MINUTES = 60;
+const sha256 = async (s: string) =>
+  [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+app.post('/auth/forgot', async (c) => {
+  const { email } = await c.req.json<{ email: string }>();
+  const db = c.env.DB;
+  const u = await db.prepare('SELECT id, name, email FROM users WHERE lower(email) = lower(?) AND active = 1')
+    .bind((email ?? '').trim()).first<{ id: number; name: string; email: string }>();
+  // Vastaus on aina sama, ettei sähköpostiosoitteiden olemassaoloa voi kalastella
+  if (u) {
+    const recent = await db.prepare("SELECT COUNT(*) AS n FROM password_resets WHERE user_id = ? AND created_at > datetime('now','-1 hour')")
+      .bind(u.id).first<{ n: number }>();
+    if ((recent?.n ?? 0) < 3) {
+      const token = newSessionId();
+      await db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?,?,?)')
+        .bind(u.id, await sha256(token), Date.now() + RESET_MINUTES * 60_000).run();
+      const url = `${new URL(c.req.url).origin}/salasana?t=${token}`;
+      await sendMail(c.env, 'auth:reset', u.email, 'HogiGuru – salasanan vaihto', layout('Salasanan vaihto', `
+        <p>Hei ${esc(u.name)},</p>
+        <p>Pyysit salasanan vaihtoa HogiGuruun. Valitse uusi salasana alla olevasta painikkeesta:</p>
+        <p style="margin:24px 0"><a href="${url}" style="background:#0ea5e9;color:#040814;padding:12px 22px;border-radius:10px;font-weight:bold;text-decoration:none;display:inline-block">Vaihda salasana</a></p>
+        <p style="font-size:13px;color:#94a3b8">Linkki on voimassa ${RESET_MINUTES} minuuttia ja toimii kerran. Jos et pyytänyt vaihtoa, voit jättää viestin huomiotta – salasanasi ei muutu.</p>
+        <p style="font-size:12px;color:#64748b;word-break:break-all">${url}</p>`));
+    }
+  }
+  return c.json({ ok: true });
+});
+
+app.get('/auth/reset', async (c) => {
+  const t = c.req.query('t') ?? '';
+  const r = t ? await c.env.DB.prepare('SELECT u.name, u.email FROM password_resets p JOIN users u ON u.id = p.user_id WHERE p.token_hash = ? AND p.used_at IS NULL AND p.expires_at > ? AND u.active = 1')
+    .bind(await sha256(t), Date.now()).first<{ name: string; email: string }>() : null;
+  return r ? c.json(r) : c.json({ error: 'Linkki on vanhentunut tai jo käytetty. Pyydä uusi linkki.' }, 400);
+});
+
+app.post('/auth/reset', async (c) => {
+  const { token, password } = await c.req.json<{ token: string; password: string }>();
+  if (!password || password.length < 8) throw new Error('Salasanan pitää olla vähintään 8 merkkiä');
+  const db = c.env.DB;
+  const r = await db.prepare('SELECT p.id, p.user_id FROM password_resets p JOIN users u ON u.id = p.user_id WHERE p.token_hash = ? AND p.used_at IS NULL AND p.expires_at > ? AND u.active = 1')
+    .bind(await sha256(token ?? ''), Date.now()).first<{ id: number; user_id: number }>();
+  if (!r) return c.json({ error: 'Linkki on vanhentunut tai jo käytetty. Pyydä uusi linkki.' }, 400);
+  await db.batch([
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), r.user_id),
+    // Kaikki saman käyttäjän avoimet linkit ja istunnot mitätöidään
+    db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').bind(Date.now(), r.user_id),
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(r.user_id),
+  ]);
+  await startSession(c, r.user_id);
   return c.json({ ok: true });
 });
 

@@ -282,6 +282,7 @@ Pääylläpitäjä = `users.role = 'admin'` + `users.maintainer = 1` (migraatio 
 - R2-säilö `hogiguru-backups`: `daily/` klo 03 (30 pv, kuun 1. pysyvä), `event/` ennen vaihtopäivän käsittelyä ja draftin lukitusta (90 pv), `manual/`.
 - Palautus: lataa `.sql` ylläpitosivulta ja aja `npx wrangler d1 execute hogiguru --remote --file=varmistus.sql` tyhjään kantaan.
 - Sähköposti Resendin kautta (`RESEND_API_KEY` salaisuutena, lähettäjä `no-reply@konderi.fi`). Viikkokatsaus ma klo 9, ylläpitoraportti pääylläpitäjille klo 7. Peruutus: `/api/unsubscribe?t=`.
+- Salasanan palautus: `/unohtunut` → `POST /api/auth/forgot` lähettää kertakäyttöisen linkin `/salasana?t=…` (60 min, tokenista tallennetaan vain SHA-256, max 3 pyyntöä/h/käyttäjä, vastaus aina sama). Vaihto mitätöi käyttäjän kaikki istunnot ja muut linkit.
 - Muutoshistoria (`audit_log`): ylläpidon ja gurujen muuttavat pyynnöt, salasanat peitetty.
 
 ---

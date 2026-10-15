@@ -24,7 +24,7 @@ Kun ylläpito on hyväksynyt ilmoittautumisen, saat tunnukset sivustolle.
 
 - Yläpalkki → **Kirjaudu** → sähköposti ja salasana.
 - Vaihda saamasi salasana heti: **Oma joukkue → Vaihda salasana**.
-- Unohtunut salasana: pyydä ylläpitoa asettamaan uusi.
+- Unohtunut salasana: kirjautumissivulla **Unohtuiko salasana?** → anna sähköpostiosoite → avaa sähköpostiin tullut linkki (voimassa 60 min, toimii kerran) ja aseta uusi salasana. Jos viestiä ei kuulu, katso roskaposti tai pyydä ylläpitoa asettamaan uusi.
 
 ---
 

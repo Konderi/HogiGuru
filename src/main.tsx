@@ -11,6 +11,7 @@ import Standings from './pages/Standings';
 import Stats from './pages/Stats';
 import HallOfFame from './pages/HallOfFame';
 import Login from './pages/Login';
+import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import MyTeam from './pages/MyTeam';
 import DraftBoard from './pages/DraftBoard';
 import AdminLayout from './admin/AdminLayout';
@@ -51,6 +52,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="hall-of-fame" element={<HallOfFame />} />
             <Route path="kokonaistulokset" element={<Results />} />
             <Route path="kirjaudu" element={<Login />} />
+            <Route path="unohtunut" element={<ForgotPassword />} />
+            <Route path="salasana" element={<ResetPassword />} />
             <Route path="ilmoittaudu" element={<Register />} />
             <Route path="oma-joukkue" element={<Protected><MyTeam /></Protected>} />
             <Route path="draft" element={<Protected><DraftBoard /></Protected>} />
