@@ -82,6 +82,96 @@ function TopLists({ season }: { season: number }) {
   );
 }
 
+interface PoSeason { id: number; name: string; reg_open: number; draft_status: string; max_picks_by_pos: string; max_swaps: number }
+interface Entry { id: number; name: string; email: string | null; champion: string | null; champion_name: string | null }
+
+function AdminCompetition() {
+  const { data, error, reload } = useApi<{ season: PoSeason | null; entries: Entry[] }>('/admin/playoff/season');
+  const [err, setErr] = useState<string | null>(null);
+  const run = async (fn: () => Promise<unknown>) => { setErr(null); try { await fn(); await reload(); } catch (e) { setErr((e as Error).message); } };
+  const s = data?.season;
+  const limits = s ? JSON.parse(s.max_picks_by_pos || '{}') as Record<string, number> : {};
+  const setLimit = (k: string, v: number) => run(() => api('/admin/playoff/season', { method: 'PUT', body: { max_picks_by_pos: { ...limits, [k]: v } } }));
+  return (
+    <Card title="Kisan hallinta (ylläpito)">
+      <div className="space-y-4 p-4">
+        <ErrorBox error={error ?? err} />
+        {!data ? <Spinner /> : !s ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-slate-400">Play-Off-kisaa ei ole vielä luotu tälle kaudelle.</p>
+            <button className="btn btn-primary" onClick={() => run(() => api('/admin/playoff/season', { method: 'POST' }))}>Luo Play-Off-kisa</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="font-semibold text-white">{s.name}</span>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={!!s.reg_open} onChange={(e) => run(() => api('/admin/playoff/season', { method: 'PUT', body: { reg_open: e.target.checked } }))} />
+                Ilmoittautuminen auki
+              </label>
+              <span className="text-sm text-slate-400">Vaihtoja: {s.max_swaps}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+              <span className="text-slate-400">Draftin valintarajat:</span>
+              {(['F', 'D', 'G'] as const).map((k) => (
+                <label key={k} className="flex items-center gap-1">{k === 'F' ? 'H' : k === 'D' ? 'P' : 'MV'}
+                  <input type="number" min={1} className="input w-16 py-1" defaultValue={limits[k]} onBlur={(e) => Number(e.target.value) !== limits[k] && setLimit(k, Number(e.target.value))} />
+                </label>
+              ))}
+              <span className="text-xs text-slate-500">(vaihdoissa ei rajoja)</span>
+            </div>
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Ilmoittautuneet ({data.entries.length})</h3>
+              {!data.entries.length ? <p className="text-sm text-slate-500">Ei vielä ilmoittautuneita.</p> : (
+                <ul className="divide-y divide-white/5 text-sm">
+                  {data.entries.map((e) => (
+                    <li key={e.id} className="flex items-center gap-3 py-1.5">
+                      <span className="flex-1 text-slate-200">{e.name} <span className="text-xs text-slate-500">{e.email}</span></span>
+                      <span className="text-xs text-slate-400">🏆 {e.champion_name ?? '–'}</span>
+                      <button className="text-xs text-red-300 hover:text-red-200" onClick={() => confirm(`Poistetaanko ${e.name}?`) && run(() => api(`/admin/playoff/entry/${e.id}`, { method: 'DELETE' }))}>Poista</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function MyEntry() {
+  const { data, error, reload } = useApi<{ season: { name: string; reg_open: boolean } | null; guru: { name: string } | null; champion: string | null; count: number }>('/playoff/me');
+  const teams = useApi<{ team_id: string; name: string }[]>('/standings');
+  const [err, setErr] = useState<string | null>(null);
+  if (!data?.season) return null;
+  const join = async (champion?: string | null) => { setErr(null); try { await api('/playoff/join', { method: 'POST', body: champion === undefined ? {} : { champion } }); await reload(); } catch (e) { setErr((e as Error).message); } };
+  const leave = async () => { setErr(null); try { await api('/playoff/join', { method: 'DELETE' }); await reload(); } catch (e) { setErr((e as Error).message); } };
+  const open = data.season.reg_open;
+  return (
+    <Card title="Oma ilmoittautuminen">
+      <div className="space-y-3 p-4 text-sm">
+        <ErrorBox error={error ?? err} />
+        <p className="text-slate-400">{data.count} gurua ilmoittautunut. {open ? 'Ilmoittautuminen on auki.' : 'Ilmoittautuminen on suljettu.'}</p>
+        {data.guru ? (
+          <>
+            <p className="text-ice-200">✓ Olet mukana nimellä <b>{data.guru.name}</b>.</p>
+            <label className="flex flex-wrap items-center gap-2 text-slate-300">
+              🏆 Mestariveikkaus:
+              <select className="input w-auto" disabled={!open} value={data.champion ?? ''} onChange={(e) => join(e.target.value || null)}>
+                <option value="">– valitse –</option>
+                {(teams.data ?? []).map((t) => <option key={t.team_id} value={t.team_id}>{t.name}</option>)}
+              </select>
+            </label>
+            {open && <button className="btn btn-ghost" onClick={() => confirm('Perutaanko ilmoittautuminen?') && leave()}>Peru ilmoittautuminen</button>}
+          </>
+        ) : open ? <button className="btn btn-primary" onClick={() => join()}>Ilmoittaudu Play-Off-kisaan</button> : null}
+      </div>
+    </Card>
+  );
+}
+
 export default function Playoff() {
   const [season, setSeason] = useState<number | null>(null);
   const { data, error, loading } = useApi<Bracket>(`/admin/playoff/bracket${season ? `?season=${season}` : ''}`, [season]);
@@ -96,6 +186,10 @@ export default function Playoff() {
         )}
       </PageHeader>
       <ErrorBox error={error} />
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <AdminCompetition />
+        <MyEntry />
+      </div>
       {loading && !data ? <Spinner /> : data && (
         <>
           {data.season !== data.current && <p className="text-sm text-amber-300/80">Kuluvan kauden pudotuspelit eivät ole alkaneet – näytetään kausi {data.season - 1}–{String(data.season).slice(2)}.</p>}

@@ -415,6 +415,52 @@ app.put('/me/fav-team', requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+// ================= PLAY-OFF (guru) =================
+interface PlayoffSeason { id: number; name: string; liiga_season: number; reg_open: number; draft_status: string; max_picks_by_pos: string; max_swaps: number }
+async function playoffSeasonOf(db: D1Database, parentId: number) {
+  return db.prepare("SELECT id, name, liiga_season, reg_open, draft_status, max_picks_by_pos, max_swaps FROM seasons WHERE kind = 'playoff' AND parent_season_id = ? ORDER BY id DESC LIMIT 1")
+    .bind(parentId).first<PlayoffSeason>();
+}
+app.get('/playoff/me', requireUser, async (c) => {
+  const db = c.env.DB; const user = c.get('user')!;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ season: null });
+  const guru = await db.prepare('SELECT id, name FROM gurus WHERE season_id = ? AND user_id = ?').bind(po.id, user.id).first<{ id: number; name: string }>();
+  const pred = guru ? await db.prepare('SELECT champion FROM playoff_predictions WHERE season_id = ? AND guru_id = ?').bind(po.id, guru.id).first<{ champion: string | null }>() : null;
+  const count = (await db.prepare('SELECT COUNT(*) AS n FROM gurus WHERE season_id = ?').bind(po.id).first<{ n: number }>())!.n;
+  return c.json({ season: { id: po.id, name: po.name, reg_open: !!po.reg_open, draft_status: po.draft_status }, guru, champion: pred?.champion ?? null, count });
+});
+app.post('/playoff/join', requireUser, async (c) => {
+  const db = c.env.DB; const user = c.get('user')!;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po || !po.reg_open) return c.json({ error: 'Ilmoittautuminen ei ole auki' }, 400);
+  const { champion } = await c.req.json<{ champion?: string | null }>().catch(() => ({ champion: null }));
+  let guru = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND user_id = ?').bind(po.id, user.id).first<{ id: number }>();
+  if (!guru) {
+    const main = await db.prepare('SELECT name FROM gurus WHERE season_id = ? AND user_id = ?').bind(c.get('season').id, user.id).first<{ name: string }>();
+    let name = main?.name ?? user.name;
+    if (await db.prepare('SELECT 1 FROM gurus WHERE season_id = ? AND name = ?').bind(po.id, name).first()) name = `${name} (${user.id})`;
+    guru = await db.prepare('INSERT INTO gurus (season_id, user_id, name, remote_draft) VALUES (?,?,?,1) RETURNING id').bind(po.id, user.id, name).first<{ id: number }>();
+  }
+  if (champion !== undefined) {
+    if (champion && !(await db.prepare('SELECT 1 FROM teams WHERE id = ?').bind(champion).first())) return c.json({ error: 'Tuntematon joukkue' }, 400);
+    await db.prepare('INSERT OR REPLACE INTO playoff_predictions (season_id, guru_id, champion, updated_at) VALUES (?,?,?,?)')
+      .bind(po.id, guru!.id, champion || null, new Date().toISOString()).run();
+  }
+  return c.json({ ok: true });
+});
+app.delete('/playoff/join', requireUser, async (c) => {
+  const db = c.env.DB; const user = c.get('user')!;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po || !po.reg_open) return c.json({ error: 'Ilmoittautuminen ei ole auki' }, 400);
+  const g = await db.prepare('SELECT id FROM gurus WHERE season_id = ? AND user_id = ?').bind(po.id, user.id).first<{ id: number }>();
+  if (g) await db.batch([
+    db.prepare('DELETE FROM playoff_predictions WHERE season_id = ? AND guru_id = ?').bind(po.id, g.id),
+    db.prepare('DELETE FROM gurus WHERE id = ?').bind(g.id),
+  ]);
+  return c.json({ ok: true });
+});
+
 /** Liigan otteluohjelma (välimuistissa 10 min) */
 async function liigaGames(waitUntil: (p: Promise<unknown>) => void, y: number) {
   const url = `https://liiga.fi/api/v2/games?tournament=runkosarja&season=${y}`;
@@ -798,6 +844,46 @@ admin.get('/playoff/bracket', async (c) => {
     if (!q && !b.rounds.length) b = await fetchBracket(cur - 1, wu);
     return c.json({ ...b, alive: [...aliveTeams(b)], current: cur });
   } catch (e) { return c.json({ error: (e as Error).message }, 502); }
+});
+admin.get('/playoff/season', async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ season: null, entries: [] });
+  const entries = (await db.prepare(
+    `SELECT g.id, g.name, u.email, p.champion, t.name AS champion_name FROM gurus g LEFT JOIN users u ON u.id = g.user_id
+     LEFT JOIN playoff_predictions p ON p.season_id = g.season_id AND p.guru_id = g.id LEFT JOIN teams t ON t.id = p.champion
+     WHERE g.season_id = ? ORDER BY g.name`,
+  ).bind(po.id).all()).results;
+  return c.json({ season: po, entries });
+});
+admin.post('/playoff/season', async (c) => {
+  const db = c.env.DB; const parent = c.get('season');
+  if (await playoffSeasonOf(db, parent.id)) return c.json({ error: 'Play-Off-kisa on jo luotu' }, 400);
+  await db.prepare(
+    `INSERT INTO seasons (name, liiga_season, active, max_swaps, max_picks_per_entity, roster, scoring, draft_status, draft_snake, kind, parent_season_id, max_picks_by_pos, draft_nav)
+     SELECT 'Play-Off ' || name, liiga_season, 0, 4, 12, '{"G":1,"D":2,"F":3}', scoring, 'setup', 0, 'playoff', id, '{"G":12,"D":8,"F":8}', 0 FROM seasons WHERE id = ?`,
+  ).bind(parent.id).run();
+  return c.json({ ok: true });
+});
+admin.put('/playoff/season', async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ error: 'Ei Play-Off-kisaa' }, 404);
+  const b = await c.req.json<{ reg_open?: boolean; max_picks_by_pos?: Record<string, number>; max_swaps?: number }>();
+  await db.prepare('UPDATE seasons SET reg_open = COALESCE(?, reg_open), max_picks_by_pos = COALESCE(?, max_picks_by_pos), max_swaps = COALESCE(?, max_swaps) WHERE id = ?')
+    .bind(b.reg_open === undefined ? null : b.reg_open ? 1 : 0, b.max_picks_by_pos ? JSON.stringify(b.max_picks_by_pos) : null, b.max_swaps ?? null, po.id).run();
+  return c.json({ ok: true });
+});
+admin.delete('/playoff/entry/:id', async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ error: 'Ei Play-Off-kisaa' }, 404);
+  const id = Number(c.req.param('id'));
+  await db.batch([
+    db.prepare('DELETE FROM playoff_predictions WHERE season_id = ? AND guru_id = ?').bind(po.id, id),
+    db.prepare('DELETE FROM gurus WHERE season_id = ? AND id = ?').bind(po.id, id),
+  ]);
+  return c.json({ ok: true });
 });
 admin.post('/playoff/sync', async (c) => {
   const y = Number(c.req.query('season')) || c.get('season').liiga_season;
