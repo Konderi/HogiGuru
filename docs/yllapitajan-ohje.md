@@ -53,20 +53,33 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 
 ## 2. Draft
 
-1. **Draft → Listat:** kokoa draft-listat paikoittain.
+1. **Draft → Listat:** kokoa draft-listat paikoittain. Ota käärmedraft käyttöön kohdassa *Pisteytys & kausi* (joka toinen kierros käänteisesti).
 2. Ennen tilaisuutta jokaisen gurun on täytettävä draft-lomake (*Oma joukkue*). Lomake on pakollinen niille, jotka eivät ole paikalla.
-3. Avaa **📺 Avaa heijastettava näkymä** (`/draft/naytto`) seinälle ja Teamsiin (⛶ = koko näyttö). Pidä hallinta omalla koneellasi.
+3. Avaa **📺 Seinänäkymä** (`/draft/naytto`) seinälle ja Teamsiin (⛶ = koko näyttö). Pidä hallinta omalla koneellasi tai puhelimella. Seinänäkymä vaihtaa sisältöä itse draftin tilan mukaan (aula → arvonta → järjestys → live → valmis), joten sitä ei tarvitse vaihdella kesken tilaisuuden. Painike näkyy, kun draft on valmistelussa tai käynnissä.
 4. **Vaihe 1 – läsnäolo:** merkitse *Ketkä ovat paikalla?* -kortissa paikalla olevat gurut. Poissaolevalta, jolta lomake puuttuu, näkyy ⚠. Draftia ei voi aloittaa, ennen kuin kaikilla poissaolevilla on lomake.
-5. **Vaihe 2 – 🎲 Arvo järjestys:** heijastettavassa näkymässä gurut nousevat ruudulle satunnaisessa järjestyksessä 10 s välein. Draft-numero paljastuu 4 s kohdalla. Numerot pysyvät salassa myös palvelimella, kunnes ne paljastetaan.
-6. **Vaihe 3 – ▶ Aloita draft.** Paikalla oleva guru kertoo vuorollaan valintansa (vapaasti mikä tahansa paikka/pelaaja), ja ylläpitäjä klikkaa sen. Poissaolevalle ⚙ **Valitse ennakkolistalta**. Virheen voi perua ↶.
-7. Heijastettava näkymä näyttää vuorossa olevan gurun ja hänen vapaat paikkansa sekä seuraavat vuorot. Siinä on myös koko draft-taulu, viimeisimmät valinnat ja 🔥 **varaustilanteen**: pelaajat, jotka on valittu vähintään 3 kertaa, sekä täynnä olevat. Uusi valinta välähtää koko ruudulle.
-8. Lopuksi **✓ Vie kentällisiin**. Järjestelmä ottaa ensin automaattisesti varmistuksen. Draftin tila muuttuu `done` ja gurut näkevät joukkueensa.
+5. **Vaihe 2 – 🎲 Arvo järjestys:** 10 s lähtölaskennan jälkeen gurut nousevat seinälle satunnaisessa järjestyksessä 10 s välein, ja draft-numero paljastuu 4 s kohdalla. Arvonnan voi tauottaa (⏸). Numerot ja järjestys pysyvät salassa myös palvelimella ja draft-taulussa, kunnes ne paljastetaan. Arvonnan jälkeen seinälle jää valintajärjestys – käy se läpi rauhassa.
+6. **Vaihe 3 – ▶ Aloita draft** (ei käynnisty automaattisesti arvonnan jälkeen). Paikalla oleva guru kertoo vuorollaan valintansa (vapaasti mikä tahansa paikka/pelaaja), ja ylläpitäjä klikkaa sen. Poissaolevalle ⚙ **Valitse ennakkolistalta**. Virheen voi perua ↶.
+7. **Seinänäkymä draftin aikana:**
+   - **Vasemmalla 🔥 varaustilanne** sarakkeittain (valmentajat, maalivahdit, puolustajat, hyökkääjät): kaikki vähintään kerran varatut, eniten varatut ylimpänä. Keltainen = kuuma (≥ 3), punainen = täynnä. Sarakkeet vierivät.
+   - Sen alla **draft-taulu**, joka vierii itsestään vuorossa olevan gurun kohdalle.
+   - **Oikealla** vuorossa oleva guru, hänen vapaat paikkansa, kierros (↩ = käänteinen kierros) ja seuraavat vuorot; alla viimeisimmät valinnat.
+   - Uusi valinta välähtää koko ruudulle.
+8. **Vaihe 4 – Tarkista ja hyväksy:** kun kaikki valinnat on tehty, seinällä lukee *Draft valmis*, mutta joukkueet **eivät vielä näy guruille**. Hallintaan aukeaa tarkistuskortti, jossa jokaisen gurun valinnat näkyvät. Virheellisen valinnan voi korjata klikkaamalla sitä ja valitsemalla tilalle toisen saman pelipaikan nimen (samat säännöt kuin draftissa).
+9. **✓ Hyväksy ja julkaise joukkueet:** järjestelmä ottaa automaattisen varmistuksen, vie valinnat kentällisiin ja lukitsee draftin (`done`). Joukkueet näkyvät guruille *Oma joukkue* -sivulla. Tämän jälkeen muutokset tehdään vaihtoina tai *Gurut & kentälliset* -sivulla.
 
 Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylityksen.
 
-**Harjoittelu ennen tilaisuutta** (mitään ei tallenneta):
-- 🧪 **Harjoitusarvonta** pyörittää numeroarvonnan seinänäkymässä.
-- 🧪 **Harjoitusdraft** (`/admin/draft/harjoitus`) on hallintanäkymä, jossa valinnat tehdään oikeilla guruilla, draft-listalla ja lomakkeilla. Poissaolevien valinnat tehdään lomakkeelta automaattisesti 3 sekunnin kuluttua. Avaa **📺 seinänäkymä samassa selaimessa**: se seuraa hallintaikkunaa reaaliajassa, ja seinällä ei näy hallintaa.
+**Draft yläpalkissa:** *Näytä yläpalkissa* -ruksi (Draft-sivun yläosassa) näyttää tai piilottaa Draft-linkin kaikkien käyttäjien yläpalkista. Oletuksena päällä; piilota kauden alettua. Sivu toimii edelleen suoralla osoitteella `/draft`.
+
+**Harjoittelu ennen tilaisuutta** (mitään ei tallenneta): paina **▶ Aloita draft** -painiketta, jossa on keltainen **HARJOITUS**-merkki (`/admin/draft/harjoitus`). Harjoitus kulkee samat vaiheet kuin oikea draft:
+1. **Läsnäolo:** 👥 *10 testigurua* (keksityt nimet, 3 lomakkeella) tai *Oikeat gurut*. 🎟 *Generoi testikupongit* tekee kaikille keksityt lomakkeet (paina gurujen valinnan jälkeen). Läsnäolon voi vaihtaa klikkaamalla.
+2. **🎲 Aloita arvonta:** seinänäkymässä arvonta (harjoituksessa 5 s per guru). Numerot ilmestyvät draft-tauluun vasta arvonnan edetessä.
+3. **Järjestys** → **▶ Aloita draft**.
+4. **Draft:** valinnat haulla (näytetään 6 osumaa, *Kaikki* tai pelipaikka). Lomakkeelta valitsevien vuoro tehdään automaattisesti 3 s kuluttua. Käärmedraft on harjoituksessa aina päällä. Tauko, ↶ peru, ↺ nollaa.
+5. **Tarkistus:** valintojen korjaus kuten oikeassa draftissa.
+6. **Julkaisu:** näyttää jokaisen gurun joukkueen pelipaikoittain.
+
+Avaa **📺 seinänäkymä samassa selaimessa** (`/draft/naytto?harjoitus`): se seuraa hallintaikkunaa reaaliajassa, ja sen painikkeet (arvonnan aloitus, tauko) ohjaavat harjoitusta. Jos draft-listaa ei ole koottu, harjoituksessa voi valita kaikista Liigan pelaajista ja valmentajista.
 
 ---
 

@@ -37,7 +37,13 @@ Ennen draftia **Oma joukkue → Draft-ennakkolista**:
 
 Jos et ole paikalla draft-illassa, ylläpito tekee valintasi ennakkolistasi perusteella. Ylimmäinen vapaa toive valitaan.
 
-Draftia voi seurata livenä sivulla **Draft**.
+Draft-illan kulku:
+1. **Arvonta:** valintajärjestys arvotaan seinällä guru kerrallaan.
+2. **Draft:** vuorossa oleva guru valitsee minkä tahansa vapaan paikan pelaajan. Käärmedraftissa joka toinen kierros menee käänteisessä järjestyksessä. Seinällä näkyy **varaustilanne**: keltainen = suosittu (≥ 3 varausta), punainen = täynnä. Mieti siis varavalinta valmiiksi.
+3. **Tarkistus:** ylläpito tarkistaa valinnat ja korjaa mahdolliset kirjausvirheet.
+4. **Julkaisu:** kun ylläpito hyväksyy draftin, joukkueesi ilmestyy **Oma joukkue** -sivulle.
+
+Draftia voi seurata livenä sivulla **Draft** (linkki yläpalkissa draftin aikaan).
 
 ---
 
@@ -117,6 +123,8 @@ Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihde
 | **Sarjataulukko** | Liigan runkosarja |
 | **Kokonaistulokset** | All-Stars-pisteet kauden aikana; veikkausosan tulokset paljastetaan kauden päätösgaalassa |
 | **Hall of Fame** | Maratontaulukko vuodesta 2001, mestarit ja kausikohtaiset tulokset |
+| **Joukkuesivu** | Valitse **suosikkijoukkue** *Oma joukkue* -sivulla, niin sen logo ilmestyy yläpalkkiin. Joukkuesivulla: tulevat ja viimeisimmät ottelut, vire, koti/vieras, pistepörssi, maalivahdit, valmentaja ja HogiGuru-nurkka |
+| **Tietosuoja** | Tietosuojaseloste (linkki sivun alalaidassa) |
 
 Tilastot päivittyvät automaattisesti liiga.fi:stä pelipäivien iltoina ja yöllä.
 

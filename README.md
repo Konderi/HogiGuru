@@ -72,20 +72,23 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Tilastot | `/tilastot` | Pelaajat ja valmentajat HG-pisteineen, lajittelu sarakkeista, varaustilanne, "vain vapaat" -suodatin, pelaajakortti klikkaamalla |
 | Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat; veikkausosa pimitetty, kunnes ylläpito julkaisee gaalassa |
 | Hall of Fame | `/hall-of-fame` | Maratontaulukko 2001–, mestarit, kausikohtaiset tulokset |
+| Joukkue | `/joukkue/:id` | Joukkuesivu: ottelut, vire, koti/vieras, pistepörssi, maalivahdit, valmentaja, HogiGuru-nurkka (liiga.fi-otteluohjelma 10 min välimuistissa) |
+| Tietosuoja | `/tietosuoja` | Tietosuojaseloste (GDPR) |
+| Draft-seinänäkymä | `/draft/naytto` | Heijastettava näkymä: aula, arvonta, varaustilanne, draft-taulu, vuorossa oleva guru. `?harjoitus` = harjoitustila (BroadcastChannel hallintaikkunasta) |
 | Kirjaudu / Unohtunut salasana | `/kirjaudu`, `/unohtunut`, `/salasana?t=` | Kirjautuminen ja salasanan palautus sähköpostilinkillä |
 
 ### Gurun näkymät (kirjautunut)
 | Sivu | Polku | Sisältö |
 |---|---|---|
-| Oma joukkue | `/oma-joukkue` | Kentällinen (pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), ottelukohtaiset HG-pisteet klikkaamalla pelaajaa, pisteerittely, vaihdetut pelaajat, korjaukset, uuden valmentajan valinta potkujen jälkeen, vaihtotoiveet varaustilanteineen, draft-ennakkolista, sähköposti-ilmoitukset, salasanan vaihto |
-| Draft | `/draft` | Live-draft-taulu |
+| Oma joukkue | `/oma-joukkue` | Kentällinen (pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), ottelukohtaiset HG-pisteet klikkaamalla pelaajaa, pisteerittely, vaihdetut pelaajat, korjaukset, uuden valmentajan valinta potkujen jälkeen, vaihtotoiveet varaustilanteineen, draft-ennakkolista, suosikkijoukkue, sähköposti-ilmoitukset, salasanan vaihto |
+| Draft | `/draft` | Live-draft-taulu (yläpalkissa, kun ylläpito ei ole piilottanut) |
 
 ### Ylläpito (`/admin`)
 | Osio | Toiminnot |
 |---|---|
 | Yleiskatsaus | Tilastopäivitys napista, päivitysloki, avainluvut |
 | Ilmoittautuminen | Lomakkeen avaus/sulku, määräaika, maksu, lisätieto, valintatapa (draft/korit); ilmoittautuneet, veikkausten tarkastelu, hyväksyntä guruksi (+ tunnus, liitos aiempaan guruun), CSV-vienti |
-| Draft | Listat, arvonta, live-valinnat, ennakkolistat, peruminen, vienti kentällisiin |
+| Draft | Listat, läsnäolo, animoitu arvonta (tauko), live-valinnat, ennakkolistat, peruminen, tarkistus ja korjaus, hyväksyntä ja julkaisu kentällisiin, yläpalkin näkyvyys, harjoitusdraft (`/admin/draft/harjoitus`) |
 | Vaihdot | Vaihtopäivät kellonaikoineen, vaihtotoiveiden esikatselu ja käsittely, vaihtoloki, peruminen |
 | Gurut & kentälliset | Gurut, kentälliset, vaihdot, paikkojen muokkaus, pistekorjaukset |
 | Pisteytys & kausi | Kertoimet, kentällisen koko, valintarajat paikoittain, vaihtojen määrä, veikkausosion pisteet |
@@ -157,7 +160,11 @@ HogiGuru-app/
 │   ├── 0007_audit_mail.sql      muutoshistoria, sähköpostiloki, sähköpostiasetukset
 │   ├── 0008_maintainer.sql      pääylläpitäjä-oikeus
 │   ├── 0009_password_resets.sql salasanan palautuslinkit
-│   └── 0010_rate_limits.sql     kirjautumisen ja lomakkeiden yritysrajoitus
+│   ├── 0010_rate_limits.sql     kirjautumisen ja lomakkeiden yritysrajoitus
+│   ├── 0011_draft_lottery.sql   animoitu arvonta (aloitusaika, arvontajärjestys)
+│   ├── 0012_fav_team.sql        käyttäjän suosikkijoukkue
+│   ├── 0013_lottery_pause.sql   arvonnan tauko
+│   └── 0014_draft_nav.sql       Draft-linkin näkyvyys yläpalkissa
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
@@ -172,10 +179,10 @@ HogiGuru-app/
 │   ├── reports.ts               viikkokatsaus- ja ylläpitoraporttisähköpostit
 │   └── auth.ts                  salasanat, istunnot
 ├── src/                         FRONTEND
-│   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css
+│   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css, draftLogic.ts (harjoitusdraftin selainlogiikka)
 │   ├── components/              HalfRink, GameLog, PlayerCard, CoachReplace, DraftPrefs, SwapRequests, ResultsView, GalaReveal, GoldConfetti
-│   ├── pages/                   Home, Register, Leaderboard, Gurukierros, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard
-│   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, Swaps, Gurus, Scoring, Coaches, Users, Results, HallOfFame, Maintenance
+│   ├── pages/                   Home, Register, Leaderboard, Gurukierros, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard, DraftScreen, Team, Privacy
+│   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, DraftPractice, Swaps, Gurus, Scoring, Coaches, Users, Results, HallOfFame, Maintenance
 ├── tools/
 │   ├── import_excel.py          kauden tuonti Excelistä
 │   └── import_hof.py            Hall of Fame -maratontaulukon tuonti
@@ -194,13 +201,13 @@ HogiGuru-app/
 
 | Taulu | Tarkoitus |
 |---|---|
-| `users`, `sessions` | Tunnukset (`role` admin/guru + `maintainer`-lippu = pääylläpitäjä, `email_prefs`, `unsub_token`) ja istunnot |
+| `users`, `sessions` | Tunnukset (`role` admin/guru + `maintainer`-lippu = pääylläpitäjä, `email_prefs`, `unsub_token`, `fav_team`) ja istunnot |
 | `password_resets` | Salasanan palautuslinkit (vain SHA-256-tiiviste, 60 min, kertakäyttöinen) |
-| `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, ilmoittautumisen asetukset, valintatapa, tulosten julkaisu |
+| `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, arvonta (`draft_lottery_at`, `draft_lottery_paused`), `draft_nav`, ilmoittautumisen asetukset, valintatapa, tulosten julkaisu |
 | `teams`, `players`, `player_stats`, `standings` | liiga.fi-data |
 | `game_stats`, `team_games`, `games_synced` | Ottelukohtaiset tilastot pelilokia ja Gurukierrosta varten |
 | `coaches` | Valmentajat + potkut |
-| `gurus` | Kisaajat, linkki tunnukseen, draft-numero |
+| `gurus` | Kisaajat, linkki tunnukseen, draft-numero, `remote_draft` (ei paikalla), `lottery_order` |
 | `roster_slots` | **Kentällisen paikat** aikaväleittäin |
 | `adjustments` | Pistekorjaukset |
 | `swap_days`, `swap_requests` | Vaihtopäivät (päivä, kellonajat, käsittelytila) ja gurujen vaihtotoiveet |
@@ -280,12 +287,16 @@ Roskapostin torjuntana lomakkeessa on piilokenttä.
 
 **Tilat:** `setup` → `live` → `done`
 
-1. **Valmistelu:** gurut, draft-listat paikoittain, etäosallistujat, järjestyksen arvonta 🎲
-2. **Ennakkolistat:** etäosallistuja antaa paikkajärjestyksen (esim. `H, MV, P, V, H, P, H`) ja toivelistat
-3. **Live:** vuorossa oleva guru valitsee minkä tahansa paikan pelaajan; ⚙ valinta ennakkolistalta; ↶ peru
-4. **Valmis:** ✓ vie kentällisiin
+1. **Valmistelu:** gurut, draft-listat paikoittain, läsnäolo (poissaolevilla oltava lomake)
+2. **Arvonta 🎲:** `POST /admin/draft/shuffle {animate}` – numerot arvotaan heti, mutta `draftState` piilottaa ne (ja järjestyksen) kunnes arvonta paljastaa ne (10 s/guru, paljastus 4 s). Tauko `POST /admin/draft/lottery {action}`
+3. **Ennakkolistat:** etäosallistuja antaa paikkajärjestyksen (esim. `H, MV, P, V, H, P, H`) ja toivelistat
+4. **Live:** käynnistetään erikseen (`/admin/draft/status`, estetty arvonnan aikana ja jos lomake puuttuu). Vuorossa oleva guru valitsee minkä tahansa paikan pelaajan; ⚙ valinta ennakkolistalta; ↶ peru
+5. **Tarkistus:** kaikkien valintojen jälkeen tila on yhä `live`; yksittäistä valintaa voi korjata `PUT /admin/draft/pick/:no {entity_id}` (`replacePick`)
+6. **Julkaisu:** `POST /admin/draft/finalize` – varmistus, valinnat `roster_slots`-tauluun, tila `done`. Vasta tämän jälkeen joukkueet näkyvät guruille
 
 Tarkistukset: pelaaja listalla, paikka ei täynnä, ei tuplavalintaa, paikkakohtainen enimmäismäärä (H 4, muut 5). Käärmedraft valinnainen.
+
+**Seinänäkymä** `/draft/naytto` pollaa `/api/draft` (3 s, arvonnan aikana 1 s) ja vaihtaa näkymää tilan mukaan. **Harjoitusdraft** `/admin/draft/harjoitus` ajaa koko kulun selaimessa (`src/draftLogic.ts`) ja lähettää tilan seinänäkymälle (`?harjoitus`) BroadcastChannelilla; mitään ei tallenneta.
 
 ---
 
