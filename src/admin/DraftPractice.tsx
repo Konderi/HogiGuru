@@ -77,7 +77,7 @@ export default function DraftPractice() {
     const order = numbered.map((g) => ({ g, r: Math.random() })).sort((a, b) => a.r - b.r).map(({ g }) => ({ id: g.id, name: g.name, draft_number: g.draft_number }));
     const now = Date.now();
     setGurus(numbered);
-    setLottery({ at: now + 10_000, now, step: 10_000, reveal: 4_000, paused: false, order });
+    setLottery({ at: now + 10_000, now, step: 5_000, reveal: 2_000, paused: false, order });
     setPhase('lottery');
   };
   const toggleLottery = () => setLottery((L) => {
@@ -248,7 +248,7 @@ export default function DraftPractice() {
           </p>
         </section>
       )}
-      {phase === 'lottery' && <section className="mb-6 rounded-3xl border border-ice-400/30 bg-ice-500/10 p-6 text-white"><p className="font-display text-3xl">🎲 Arvonta käynnissä seinänäkymässä</p><p className="mt-1 text-sm text-slate-300">Kestää noin {Math.round((gurus.length * 10 + 10) / 6) / 10} min. Järjestys tulee näkyviin, kun arvonta päättyy.</p></section>}
+      {phase === 'lottery' && <section className="mb-6 rounded-3xl border border-ice-400/30 bg-ice-500/10 p-6 text-white"><p className="font-display text-3xl">🎲 Arvonta käynnissä seinänäkymässä</p><p className="mt-1 text-sm text-slate-300">Kestää noin {Math.round((gurus.length * 5 + 10) / 6) / 10} min. Järjestys tulee näkyviin, kun arvonta päättyy.</p></section>}
       {phase === 'lobby' && <section className="mb-6 rounded-3xl border border-ice-400/30 bg-ice-500/10 p-6 text-white"><p className="font-display text-3xl">Järjestys arvottu</p><p className="mt-1 text-sm text-slate-300">Seinällä näkyy valintajärjestys. Käy se läpi ja paina ▶ Aloita draft.</p></section>}
       {phase === 'review' && (
         <Card title="Vaihe 5 · Tarkista ja hyväksy" className="mb-6"
