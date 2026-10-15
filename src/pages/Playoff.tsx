@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { api } from '../api';
-import { useApi } from '../auth';
-import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import { isAdminRole, useApi, useAuth } from '../auth';
+import { Avatar, Card, Empty, ErrorBox, Modal, PageHeader, ReservedBadge, Spinner } from '../ui';
 
 interface SeriesTeam { id: string; name: string; logo: string | null; wins: number }
 interface Series {
@@ -82,7 +82,7 @@ function TopLists({ season }: { season: number }) {
   );
 }
 
-interface PoSeason { id: number; name: string; reg_open: number; draft_status: string; max_picks_by_pos: string; max_swaps: number }
+interface PoSeason { id: number; name: string; reg_open: number; draft_status: string; max_picks_by_pos: string; max_swaps: number; swap_open: number }
 interface Entry { id: number; name: string; email: string | null; champion: string | null; champion_name: string | null }
 
 function AdminCompetition() {
@@ -108,6 +108,16 @@ function AdminCompetition() {
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" checked={!!s.reg_open} onChange={(e) => run(() => api('/admin/playoff/season', { method: 'PUT', body: { reg_open: e.target.checked } }))} />
                 Ilmoittautuminen auki
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-300">Draft-lomake
+                <select className="input w-auto py-1" value={s.draft_status} onChange={(e) => run(() => api('/admin/playoff/season', { method: 'PUT', body: { draft_status: e.target.value } }))}>
+                  <option value="setup">Ei vielä auki</option><option value="live">Auki</option><option value="done">Lukittu (kisa käynnissä)</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-300">Vaihdot
+                <select className="input w-auto py-1" value={s.swap_open} onChange={(e) => run(() => api('/admin/playoff/season', { method: 'PUT', body: { swap_open: Number(e.target.value) } }))}>
+                  <option value={0}>Automaattinen</option><option value={1}>Pakko auki</option><option value={-1}>Pakko kiinni</option>
+                </select>
               </label>
               <span className="text-sm text-slate-400">Vaihtoja: {s.max_swaps}</span>
             </div>
@@ -172,27 +182,223 @@ function MyEntry() {
   );
 }
 
-export default function Playoff() {
-  const [season, setSeason] = useState<number | null>(null);
-  const { data, error, loading } = useApi<Bracket>(`/admin/playoff/bracket${season ? `?season=${season}` : ''}`, [season]);
+// ---------- Joukkue, draft-lomake ja vaihdot ----------
+type PoPos = 'F' | 'D' | 'G';
+const POS_LABEL: Record<PoPos, string> = { F: 'Hyökkääjä', D: 'Puolustaja', G: 'Maalivahti' };
+interface Hit { id: number; name: string; team: string; picture: string | null; reserved: number; max: number }
+interface RSlot { slot_id: number; position: PoPos; player_id: number; name: string; team: string | null; picture: string | null; start_date: string | null; end_date: string | null; free: boolean; points: number; alive: boolean }
+interface State {
+  season: { id: number; name: string; draft_status: 'setup' | 'live' | 'done'; max_swaps: number; limits: Record<PoPos, number>; roster: Record<PoPos, number> } | null;
+  window: { open: boolean; reason: string; closesAt: string | null; round: string | null };
+  started: boolean; guru: { id: number; name: string } | null;
+  roster: { active: RSlot[]; history: RSlot[]; swapsUsed: number; total: number } | null;
+}
 
+function PoPicker({ pos, onPick, exclude }: { pos: PoPos; onPick: (h: Hit) => void; exclude: number[] }) {
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState<Hit[]>([]);
+  useEffect(() => {
+    const t = setTimeout(() => api<Hit[]>(`/playoff/search?pos=${pos}&q=${encodeURIComponent(q)}`).then(setHits).catch(() => {}), 200);
+    return () => clearTimeout(t);
+  }, [q, pos]);
   return (
-    <div className="space-y-8">
-      <PageHeader kicker="Play-Off · esikatselu (vain ylläpito)" title="Play-Off">
-        {data && (
-          <select className="input w-auto" value={data.season} onChange={(e) => setSeason(Number(e.target.value))}>
-            {[data.current, data.current - 1, data.current - 2].map((y) => <option key={y} value={y}>Kausi {y - 1}–{String(y).slice(2)}</option>)}
-          </select>
-        )}
-      </PageHeader>
-      <ErrorBox error={error} />
-      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-        <AdminCompetition />
-        <MyEntry />
+    <div>
+      <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hae nimellä…" />
+      <ul className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-rink-950/80">
+        {hits.filter((h) => !exclude.includes(h.id)).map((h) => {
+          const full = h.reserved >= h.max;
+          return (
+            <li key={h.id}>
+              <button disabled={full} className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ice-500/10 ${full ? 'opacity-40' : ''}`} onClick={() => onPick(h)}>
+                <Avatar src={h.picture} name={h.name} size="h-7 w-7" />
+                <span className="flex-1 text-sm text-white">{h.name}</span>
+                <span className="text-xs text-slate-400">{h.team}</span>
+                <ReservedBadge n={h.reserved} max={h.max} />
+              </button>
+            </li>
+          );
+        })}
+        {!hits.length && <li className="px-3 py-3 text-sm text-slate-500">Ei osumia.</li>}
+      </ul>
+    </div>
+  );
+}
+
+function DraftForm({ st, reload }: { st: State; reload: () => void }) {
+  const s = st.season!;
+  const init = () => {
+    const m: Record<PoPos, Hit[]> = { F: [], D: [], G: [] };
+    for (const r of st.roster?.active ?? []) m[r.position].push({ id: r.player_id, name: r.name, team: r.team ?? '', picture: r.picture, reserved: 0, max: 0 });
+    return m;
+  };
+  const [picks, setPicks] = useState(init);
+  const [adding, setAdding] = useState<PoPos | null>(null);
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null);
+  const ready = (['F', 'D', 'G'] as const).every((p) => picks[p].length === s.roster[p]);
+  const save = async () => {
+    try {
+      await api('/playoff/picks', { method: 'POST', body: { F: picks.F.map((x) => x.id), D: picks.D.map((x) => x.id), G: picks.G.map((x) => x.id) } });
+      setMsg({ text: 'Joukkue tallennettu ✓' }); reload();
+    } catch (e) { setMsg({ text: (e as Error).message, err: true }); }
+  };
+  return (
+    <Card title="Valitse Play-Off-joukkueesi">
+      <div className="space-y-4 p-4">
+        <p className="text-sm text-slate-400">Valitse {s.roster.F} hyökkääjää, {s.roster.D} puolustajaa ja {s.roster.G} maalivahdin. Sama pelaaja voi olla enintään {s.limits.F} gurulla (maalivahti {s.limits.G}) – nopeat syövät hitaat. Voit muokata valintoja niin kauan kuin lomake on auki.</p>
+        {(['F', 'D', 'G'] as const).map((p) => (
+          <div key={p}>
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">{POS_LABEL[p]}t ({picks[p].length}/{s.roster[p]})</h3>
+            <div className="flex flex-wrap gap-2">
+              {picks[p].map((h) => (
+                <span key={h.id} className="flex items-center gap-2 rounded-full bg-white/5 py-1 pl-1 pr-3 text-sm text-white ring-1 ring-white/10">
+                  <Avatar src={h.picture} name={h.name} size="h-6 w-6" />{h.name}<span className="text-xs text-slate-400">{h.team}</span>
+                  <button className="text-slate-400 hover:text-red-300" onClick={() => setPicks({ ...picks, [p]: picks[p].filter((x) => x.id !== h.id) })}>✕</button>
+                </span>
+              ))}
+              {picks[p].length < s.roster[p] && <button className="btn btn-ghost py-1" onClick={() => setAdding(p)}>+ Lisää</button>}
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center gap-3">
+          <button className="btn btn-primary" disabled={!ready} onClick={save}>Tallenna joukkue</button>
+          {msg && <span className={`text-sm ${msg.err ? 'text-red-300' : 'text-ice-200'}`}>{msg.text}</span>}
+        </div>
       </div>
+      <Modal open={!!adding} onClose={() => setAdding(null)} title={adding ? `Valitse ${POS_LABEL[adding].toLowerCase()}` : ''}>
+        {adding && <PoPicker pos={adding} exclude={picks[adding].map((x) => x.id)} onPick={(h) => { setPicks({ ...picks, [adding]: [...picks[adding], h] }); setAdding(null); }} />}
+      </Modal>
+    </Card>
+  );
+}
+
+function RosterView({ st, reload }: { st: State; reload: () => void }) {
+  const r = st.roster!; const s = st.season!; const w = st.window;
+  const [swap, setSwap] = useState<RSlot | null>(null);
+  const [msg, setMsg] = useState<{ text: string; err?: boolean } | null>(null);
+  const doSwap = async (h: Hit) => {
+    if (!swap) return;
+    try {
+      const res = await api<{ free: boolean }>('/playoff/swap', { method: 'POST', body: { slot_id: swap.slot_id, player_id: h.id } });
+      setMsg({ text: `${swap.name} → ${h.name}${res.free ? ' (ilmainen vaihto)' : ''}` }); setSwap(null); reload();
+    } catch (e) { setMsg({ text: (e as Error).message, err: true }); setSwap(null); }
+  };
+  return (
+    <Card title={`Oma joukkue · ${r.total} HG`} action={<span className="text-xs text-slate-400">Vaihtoja {r.swapsUsed}/{s.max_swaps}</span>}>
+      <div className="space-y-3 p-4">
+        <div className={`rounded-lg px-3 py-2 text-sm ${w.open ? 'bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-400/30' : 'bg-white/5 text-slate-400'}`}>
+          {w.open ? `🔁 Vaihtoikkuna auki${w.closesAt ? ` – sulkeutuu ${fmt(w.closesAt)}` : ''}` : `Vaihdot kiinni: ${w.reason}`}
+        </div>
+        {msg && <p className={`text-sm ${msg.err ? 'text-red-300' : 'text-ice-200'}`}>{msg.text}</p>}
+        <ul className="divide-y divide-white/5">
+          {r.active.map((x) => (
+            <li key={x.slot_id} className={`flex items-center gap-3 py-2 ${x.alive ? '' : 'opacity-60'}`}>
+              <span className="w-8 text-xs font-semibold text-slate-500">{x.position === 'F' ? 'H' : x.position === 'D' ? 'P' : 'MV'}</span>
+              <Avatar src={x.picture} name={x.name} size="h-8 w-8" />
+              <span className="flex-1 text-sm text-white">{x.name} <span className="text-xs text-slate-400">{x.team}</span>
+                {!x.alive && <span className="ml-2 rounded bg-goal/20 px-1.5 py-0.5 text-[10px] text-goal">pudonnut</span>}</span>
+              <span className="font-display text-lg text-ice-300">{x.points}</span>
+              {w.open && <button className="btn btn-ghost py-1 text-xs" onClick={() => setSwap(x)}>{x.alive ? 'Vaihda' : 'Vaihda ilmaiseksi'}</button>}
+            </li>
+          ))}
+        </ul>
+        {r.history.length > 0 && (
+          <details className="text-sm text-slate-400">
+            <summary className="cursor-pointer">Vaihdetut pelaajat ({r.history.length})</summary>
+            <ul className="mt-2 space-y-1">
+              {r.history.map((x) => <li key={x.slot_id} className="flex justify-between"><span>{x.name} <span className="text-xs">({x.end_date} asti)</span></span><span>{x.points}</span></li>)}
+            </ul>
+          </details>
+        )}
+      </div>
+      <Modal open={!!swap} onClose={() => setSwap(null)} title={swap ? `Vaihda ${swap.name}${swap.alive ? '' : ' (ilmainen)'}` : ''}>
+        {swap && <PoPicker pos={swap.position} exclude={r.active.map((x) => x.player_id)} onPick={doSwap} />}
+      </Modal>
+    </Card>
+  );
+}
+
+function MyTeamTab() {
+  const { data, error, reload } = useApi<State>('/playoff/state');
+  if (error) return <ErrorBox error={error} />;
+  if (!data) return <Spinner />;
+  if (!data.season) return <Empty>Play-Off-kisaa ei ole vielä avattu.</Empty>;
+  if (!data.guru) return <MyEntry />;
+  const ds = data.season.draft_status;
+  return (
+    <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+      {ds === 'live' ? <DraftForm st={data} reload={reload} /> : ds === 'done' && data.roster?.active.length
+        ? <RosterView st={data} reload={reload} />
+        : <Card title="Oma joukkue"><Empty>{ds === 'setup' ? 'Draft-lomake aukeaa myöhemmin.' : 'Et valinnut joukkuetta ennen lukitusta.'}</Empty></Card>}
+      <MyEntry />
+    </div>
+  );
+}
+
+interface LbRow { id: number; rank: number; name: string; points: number; alive: number; size: number; swaps: number; champion_name: string | null; champion_logo: string | null; champion_hit: boolean | null }
+
+function LeaderboardTab() {
+  const { data, error } = useApi<{ season: { draft_status: string } | null; rows: LbRow[] }>('/playoff/leaderboard');
+  const [open, setOpen] = useState<number | null>(null);
+  const team = useApi<{ roster: State['roster'] }>(open ? `/playoff/guru/${open}` : null, [open]);
+  if (error) return <ErrorBox error={error} />;
+  if (!data) return <Spinner />;
+  if (!data.season) return <Empty>Play-Off-kisaa ei ole vielä avattu.</Empty>;
+  return (
+    <Card title="Play-Off Leaderboard">
+      {!data.rows.length ? <Empty>Ei vielä osallistujia.</Empty> : (
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Elossa</th><th className="num">Vaihdot</th><th>Mestari</th><th className="num">HG</th></tr></thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <Fragment key={r.id}>
+                  <tr className="cursor-pointer hover:bg-white/[0.03]" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                    <td className="font-display text-slate-400">{r.rank}</td>
+                    <td className="font-semibold text-white">{r.name}</td>
+                    <td className={`num ${r.alive === r.size && r.size ? 'text-emerald-300' : r.alive ? 'text-amber-300' : 'text-slate-500'}`}>{r.alive}/{r.size}</td>
+                    <td className="num text-slate-400">{r.swaps}</td>
+                    <td><span className="flex items-center gap-1.5 text-sm text-slate-300">{r.champion_logo && <img src={r.champion_logo} alt="" className="h-5 w-5 object-contain" />}{r.champion_name ?? '–'}{r.champion_hit === true && ' ✅'}{r.champion_hit === false && ' ❌'}</span></td>
+                    <td className="num font-display text-lg text-ice-300">{r.points}</td>
+                  </tr>
+                  {open === r.id && (
+                    <tr><td colSpan={6} className="bg-white/[0.02]">
+                      {!team.data ? <Spinner /> : !team.data.roster ? <p className="py-2 text-sm text-slate-500">Kokoonpanot julkaistaan, kun draft on lukittu.</p> : (
+                        <ul className="grid gap-1 py-2 text-sm sm:grid-cols-2">
+                          {[...team.data.roster.active, ...team.data.roster.history].map((x) => (
+                            <li key={x.slot_id} className={`flex items-center gap-2 ${x.end_date ? 'opacity-50' : x.alive ? '' : 'opacity-70'}`}>
+                              <span className="w-7 text-xs text-slate-500">{x.position === 'F' ? 'H' : x.position === 'D' ? 'P' : 'MV'}</span>
+                              <span className="flex-1 text-slate-200">{x.name} <span className="text-xs text-slate-500">{x.team}{x.end_date ? ' · vaihdettu' : !x.alive ? ' · pudonnut' : ''}</span></span>
+                              <span className="text-ice-300">{x.points}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td></tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BracketTab({ admin }: { admin: boolean }) {
+  const [season, setSeason] = useState<number | null>(null);
+  const { data, error, loading } = useApi<Bracket>(`/playoff/bracket${season ? `?season=${season}` : ''}`, [season]);
+  return (
+    <div className="space-y-6">
+      <ErrorBox error={error} />
       {loading && !data ? <Spinner /> : data && (
         <>
-          {data.season !== data.current && <p className="text-sm text-amber-300/80">Kuluvan kauden pudotuspelit eivät ole alkaneet – näytetään kausi {data.season - 1}–{String(data.season).slice(2)}.</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            <select className="input w-auto" value={data.season} onChange={(e) => setSeason(Number(e.target.value))}>
+              {[data.current, data.current - 1, data.current - 2].map((y) => <option key={y} value={y}>Kausi {y - 1}–{String(y).slice(2)}</option>)}
+            </select>
+            {data.season !== data.current && <p className="text-sm text-amber-300/80">Kuluvan kauden pudotuspelit eivät ole alkaneet – näytetään kausi {data.season - 1}–{String(data.season).slice(2)}.</p>}
+          </div>
           <Card title="Hakemistopuu">
             {!data.rounds.length ? <Empty>Ei pudotuspeliotteluita.</Empty> : (
               <div className="grid gap-4 p-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
@@ -209,10 +415,55 @@ export default function Playoff() {
               </div>
             )}
           </Card>
-          <TopLists season={data.season} />
-          <p className="text-xs text-slate-500">Elossa gurukisan kannalta: {data.alive.length} joukkuetta. Tulossa: ilmoittautuminen, lomakedraft, kokoonpanot, leaderboard ja vaihtoikkunat.</p>
+          {admin && <TopLists season={data.season} />}
         </>
       )}
+    </div>
+  );
+}
+
+const TABS = [
+  { id: 'lb', label: 'Leaderboard' },
+  { id: 'team', label: 'Oma joukkue' },
+  { id: 'bracket', label: 'Hakemistopuu' },
+  { id: 'rules', label: 'Säännöt' },
+  { id: 'admin', label: 'Hallinta', admin: true },
+] as const;
+
+function Rules() {
+  return (
+    <Card title="Play-Off-säännöt">
+      <ul className="list-disc space-y-2 p-5 pl-9 text-sm text-slate-300">
+        <li>Kisa alkaa puolivälieristä ja päättyy finaaliin. Pronssiottelu ja 1. kierros eivät kerrytä pisteitä.</li>
+        <li>Joukkue: 3 hyökkääjää, 2 puolustajaa ja 1 maalivahti. Valmentajia ei ole.</li>
+        <li>Valinnat tehdään lomakkeella. Sama pelaaja voi olla draftissa enintään 8 gurulla (maalivahti 12) – nopeat syövät hitaat.</li>
+        <li>Pisteet lasketaan samoilla HG-säännöillä kuin runkosarjassa, ottelu kerrallaan.</li>
+        <li>Vaihtoja on 4. Pudonneen joukkueen pelaajan saa vaihtaa ilmaiseksi. Vaihdoissa ei ole valintarajoja.</li>
+        <li>Vaihtoikkuna aukeaa automaattisesti, kun kierroksen kaikki sarjat ovat ratkenneet, ja sulkeutuu 2 tuntia ennen seuraavan kierroksen ensimmäistä ottelua.</li>
+        <li>Mestariveikkaus on kunniakysymys – ei vaikuta pisteisiin. Tasapisteissä parempi on se, jolla on enemmän pelaajia elossa.</li>
+        <li>Ei osallistumismaksua eikä palkintoja – pelkkää kunniaa.</li>
+      </ul>
+    </Card>
+  );
+}
+
+export default function Playoff() {
+  const { me } = useAuth();
+  const admin = isAdminRole(me?.user?.role);
+  const [tab, setTab] = useState<string>('lb');
+  return (
+    <div className="space-y-6">
+      <PageHeader kicker="HogiGuru Play-Off" title="Play-Off" />
+      <div className="flex flex-wrap gap-1">
+        {TABS.filter((t) => !('admin' in t) || admin).map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${tab === t.id ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{t.label}</button>
+        ))}
+      </div>
+      {tab === 'lb' && <LeaderboardTab />}
+      {tab === 'team' && <MyTeamTab />}
+      {tab === 'bracket' && <BracketTab admin={admin} />}
+      {tab === 'rules' && <Rules />}
+      {tab === 'admin' && admin && <AdminCompetition />}
     </div>
   );
 }

@@ -19,7 +19,10 @@ async function chunked(db: D1Database, stmts: D1PreparedStatement[], size = 80) 
 /** Pelkkä ottelulokin täydennys (cron-ajot tilastopäivitysten välissä → historia täyttyy nopeasti). */
 export async function syncGamesOnly(db: D1Database): Promise<number> {
   const season = await getActiveSeason(db);
-  return season ? syncGames(db, season.liiga_season) : 0;
+  if (!season) return 0;
+  const n = await syncGames(db, season.liiga_season);
+  const p = await syncGames(db, season.liiga_season, 12, 'playoffs').catch(() => 0);
+  return n + p;
 }
 
 /** Hakee pelaajat, maalivahdit ja sarjataulukon liiga.fi:stä ja päivittää kannan. */
@@ -81,6 +84,7 @@ export async function syncLiiga(db: D1Database): Promise<string> {
     let gmsg = '';
     try { const n = await syncPlayoffStats(db, y); if (n) gmsg += `, ${n} playoff-tilastoa`; } catch (e) { gmsg += `, playoff: ${(e as Error).message}`; }
     try { const n = await syncGames(db, y); if (n) gmsg = `, ${n} ottelua`; } catch (e) { gmsg = `, ottelut: ${(e as Error).message}`; }
+    try { const n = await syncGames(db, y, 12, 'playoffs'); if (n) gmsg += `, ${n} playoff-ottelua`; } catch (e) { gmsg += `, playoff-ottelut: ${(e as Error).message}`; }
     await db.prepare('UPDATE sync_log SET finished_at=?, ok=1, message=? WHERE id=?').bind(new Date().toISOString(), msg + gmsg, log!.id).run();
     return msg + gmsg;
   } catch (e) {
@@ -119,8 +123,9 @@ export async function syncPlayoffStats(db: D1Database, y: number): Promise<numbe
  * Pelanneet = kokoonpanossa rivillä (line ≠ null). +/- jäsennetään maalitapahtumien numeroista.
  * Maalivahdeista aloittaja (line 1) saa koko ottelun torjunnat/päästetyt (vaihdot ovat harvinaisia).
  */
-export async function syncGames(db: D1Database, y: number, max = 12): Promise<number> {
-  const list = await getJson<ApiPlayer[]>(`${BASE}/games?tournament=runkosarja&season=${y}`);
+export async function syncGames(db: D1Database, y: number, max = 12, tournament: 'runkosarja' | 'playoffs' = 'runkosarja'): Promise<number> {
+  const po = tournament === 'playoffs';
+  const list = await getJson<ApiPlayer[]>(`${BASE}/games?tournament=${tournament}&season=${y}`);
   const done = new Set((await db.prepare('SELECT game_id FROM games_synced WHERE season = ?').bind(y).all<{ game_id: number }>()).results.map((r) => r.game_id));
   const todo = list.filter((g) => g.ended && !done.has(g.id)).sort((a, b) => String(a.start).localeCompare(String(b.start))).slice(0, max);
   for (const g of todo) {
@@ -141,8 +146,10 @@ export async function syncGames(db: D1Database, y: number, max = 12): Promise<nu
       const gf = t.goals ?? 0, ga = o.goals ?? 0;
       const won = gf > ga;
       const pts = won ? (extended ? 2 : 3) : extended ? 1 : 0;
-      stmts.push(db.prepare('INSERT OR REPLACE INTO team_games (season, game_id, date, team_id, opponent, home, gf, ga, points) VALUES (?,?,?,?,?,?,?,?,?)')
-        .bind(y, g.id, date, String(t.teamId), o.teamName ?? null, s.home, gf, ga, pts));
+      stmts.push(po
+        ? db.prepare('SELECT 1')
+        : db.prepare('INSERT OR REPLACE INTO team_games (season, game_id, date, team_id, opponent, home, gf, ga, points) VALUES (?,?,?,?,?,?,?,?,?)')
+          .bind(y, g.id, date, String(t.teamId), o.teamName ?? null, s.home, gf, ga, pts));
 
       const played = (s.players ?? []).filter((p) => p.line != null && !p.removed);
       const byJersey = new Map(played.map((p) => [String(p.jersey), p.id as number]));
@@ -183,7 +190,12 @@ export async function syncGames(db: D1Database, y: number, max = 12): Promise<nu
         r.win = won && id === mainGk ? 1 : 0;
       }
       for (const [pid, r] of row) {
-        stmts.push(db.prepare(
+        stmts.push(po
+          ? db.prepare(
+            `INSERT OR REPLACE INTO playoff_game_stats (season, game_id, phase, date, player_id, team_id, opponent, home, goals, assists, pim, plus_minus, saves, goals_against, shutout, win)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          ).bind(y, g.id, g.playOffPhase ?? 0, date, pid, String(t.teamId), o.teamName ?? null, s.home, r.goals, r.assists, r.pim, r.pm, r.saves, r.ga, r.so, r.win)
+          : db.prepare(
           `INSERT OR REPLACE INTO game_stats (season, game_id, date, player_id, team_id, opponent, home, goals, assists, pim, plus_minus, saves, goals_against, shutout, win)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         ).bind(y, g.id, date, pid, String(t.teamId), o.teamName ?? null, s.home, r.goals, r.assists, r.pim, r.pm, r.saves, r.ga, r.so, r.win));

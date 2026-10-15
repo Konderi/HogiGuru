@@ -16,6 +16,7 @@ import { listBackups, makeBackup, pruneBackups } from './backup';
 import { esc, layout, sendMail, SITE } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 import { aliveTeams, fetchBracket } from './playoff';
+import { leaderboard as poLeaderboard, limitsOf, loadContext as poContext, playoffSeasonOf, PO_POS, PO_ROSTER, posOfRole, reservedCounts, rosterOf, swapWindow, today, type PoPos } from './playoffGame';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
@@ -416,11 +417,121 @@ app.put('/me/fav-team', requireUser, async (c) => {
 });
 
 // ================= PLAY-OFF (guru) =================
-interface PlayoffSeason { id: number; name: string; liiga_season: number; reg_open: number; draft_status: string; max_picks_by_pos: string; max_swaps: number }
-async function playoffSeasonOf(db: D1Database, parentId: number) {
-  return db.prepare("SELECT id, name, liiga_season, reg_open, draft_status, max_picks_by_pos, max_swaps FROM seasons WHERE kind = 'playoff' AND parent_season_id = ? ORDER BY id DESC LIMIT 1")
-    .bind(parentId).first<PlayoffSeason>();
-}
+const poGuru = (db: D1Database, poId: number, userId: number) =>
+  db.prepare('SELECT id, name FROM gurus WHERE season_id = ? AND user_id = ?').bind(poId, userId).first<{ id: number; name: string }>();
+
+app.get('/playoff/state', requireUser, async (c) => {
+  const db = c.env.DB; const user = c.get('user')!;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ season: null });
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const guru = await poGuru(db, po.id, user.id);
+  const win = swapWindow(po, ctx.bracket);
+  return c.json({
+    season: { id: po.id, name: po.name, draft_status: po.draft_status, max_swaps: po.max_swaps, limits: limitsOf(po), roster: PO_ROSTER },
+    window: win, started: ctx.started, guru, roster: guru ? rosterOf(ctx, guru.id) : null,
+  });
+});
+
+app.get('/playoff/leaderboard', requireUser, async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ season: null, rows: [] });
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  return c.json({ season: { name: po.name, draft_status: po.draft_status }, rows: poLeaderboard(ctx) });
+});
+
+app.get('/playoff/guru/:id', requireUser, async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ error: 'Ei kisaa' }, 404);
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const g = ctx.gurus.find((x) => x.id === Number(c.req.param('id')));
+  if (!g) return c.json({ error: 'Tuntematon guru' }, 404);
+  // Kokoonpanot julki vasta lukituksen jälkeen
+  if (po.draft_status !== 'done' && g.user_id !== c.get('user')!.id && !isAdmin(c.get('user'))) return c.json({ guru: g, roster: null });
+  return c.json({ guru: { id: g.id, name: g.name }, roster: rosterOf(ctx, g.id) });
+});
+
+app.get('/playoff/search', requireUser, async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json([]);
+  const pos = c.req.query('pos') as PoPos;
+  const words = (c.req.query('q') ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+  const role = pos === 'G' ? "role = 'MV'" : pos === 'D' ? "role = 'P'" : "role NOT IN ('MV','P')";
+  const where = words.length ? words.map(() => "(first_name || ' ' || last_name) LIKE ?").join(' AND ') : '1=1';
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const res = await db.prepare(
+    `SELECT p.id, p.first_name || ' ' || p.last_name AS name, p.team_id, p.team_name AS team, p.picture, COALESCE(s.goals,0) + COALESCE(s.assists,0) AS pts
+     FROM players p LEFT JOIN player_stats s ON s.player_id = p.id AND s.season = ?
+     WHERE ${role} AND ${where} ORDER BY pts DESC, p.last_name LIMIT 200`,
+  ).bind(po.liiga_season, ...words.map((w) => `%${w}%`)).all<{ id: number; name: string; team_id: string; team: string; picture: string | null }>();
+  const guru = await poGuru(db, po.id, c.get('user')!.id);
+  const reserved = reservedCounts(ctx, guru?.id);
+  const max = limitsOf(po)[pos] ?? 99;
+  return c.json(res.results.filter((r) => ctx.isAlive(r.team_id)).slice(0, 25).map((r) => ({ ...r, reserved: reserved.get(r.id) ?? 0, max })));
+});
+
+app.post('/playoff/picks', requireUser, async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po || po.draft_status !== 'live') return c.json({ error: 'Draft-lomake ei ole auki' }, 400);
+  const guru = await poGuru(db, po.id, c.get('user')!.id);
+  if (!guru) return c.json({ error: 'Ilmoittaudu ensin kisaan' }, 400);
+  const body = await c.req.json<Partial<Record<PoPos, number[]>>>();
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const reserved = reservedCounts(ctx, guru.id);
+  const limits = limitsOf(po);
+  const all: { pos: PoPos; id: number }[] = [];
+  for (const pos of PO_POS) {
+    const list = [...new Set(body[pos] ?? [])];
+    if (list.length > PO_ROSTER[pos]) return c.json({ error: `Liikaa valintoja (${pos})` }, 400);
+    for (const id of list) all.push({ pos, id });
+  }
+  for (const x of all) {
+    const p = await db.prepare('SELECT first_name || \' \' || last_name AS name, team_id, role FROM players WHERE id = ?').bind(x.id).first<{ name: string; team_id: string; role: string }>();
+    if (!p) return c.json({ error: `Tuntematon pelaaja ${x.id}` }, 400);
+    if (posOfRole(p.role) !== x.pos) return c.json({ error: `${p.name}: väärä pelipaikka` }, 400);
+    if (!ctx.isAlive(p.team_id)) return c.json({ error: `${p.name}: joukkue ei ole mukana` }, 400);
+    if ((reserved.get(x.id) ?? 0) >= limits[x.pos]) return c.json({ error: `${p.name} on jo täynnä (${limits[x.pos]} gurua)` }, 409);
+  }
+  const now = new Date().toISOString();
+  await db.batch([
+    db.prepare('DELETE FROM playoff_slots WHERE season_id = ? AND guru_id = ?').bind(po.id, guru.id),
+    ...all.map((x) => db.prepare('INSERT INTO playoff_slots (season_id, guru_id, position, player_id, created_at) VALUES (?,?,?,?,?)').bind(po.id, guru.id, x.pos, x.id, now)),
+  ]);
+  return c.json({ ok: true, saved: all.length });
+});
+
+app.post('/playoff/swap', requireUser, async (c) => {
+  const db = c.env.DB;
+  const po = await playoffSeasonOf(db, c.get('season').id);
+  if (!po) return c.json({ error: 'Ei kisaa' }, 404);
+  const guru = await poGuru(db, po.id, c.get('user')!.id);
+  if (!guru) return c.json({ error: 'Et ole mukana kisassa' }, 400);
+  const { slot_id, player_id } = await c.req.json<{ slot_id: number; player_id: number }>();
+  const ctx = await poContext(db, po, (p: Promise<unknown>) => c.executionCtx.waitUntil(p));
+  const win = swapWindow(po, ctx.bracket);
+  if (!win.open) return c.json({ error: `Vaihtoikkuna ei ole auki: ${win.reason}` }, 400);
+  const slot = ctx.slots.find((s) => s.id === slot_id && s.guru_id === guru.id && !s.end_date);
+  if (!slot) return c.json({ error: 'Tuntematon paikka' }, 400);
+  const outP = ctx.players.get(slot.player_id);
+  const inP = await db.prepare('SELECT first_name || \' \' || last_name AS name, team_id, role FROM players WHERE id = ?').bind(player_id).first<{ name: string; team_id: string; role: string }>();
+  if (!inP) return c.json({ error: 'Tuntematon pelaaja' }, 400);
+  if (posOfRole(inP.role) !== slot.position) return c.json({ error: 'Väärä pelipaikka' }, 400);
+  if (!ctx.isAlive(inP.team_id)) return c.json({ error: `${inP.name}: joukkue on pudonnut` }, 400);
+  if (ctx.slots.some((s) => s.guru_id === guru.id && !s.end_date && s.player_id === player_id)) return c.json({ error: 'Pelaaja on jo joukkueessasi' }, 400);
+  const free = !ctx.isAlive(outP?.team_id);
+  const r = rosterOf(ctx, guru.id);
+  if (!free && r.swapsUsed >= po.max_swaps) return c.json({ error: `Vaihdot käytetty (${po.max_swaps}). Pudonneen joukkueen pelaajan saa vaihtaa ilmaiseksi.` }, 400);
+  const d = today(); const now = new Date().toISOString();
+  await db.batch([
+    db.prepare('UPDATE playoff_slots SET end_date = ? WHERE id = ?').bind(d, slot.id),
+    db.prepare('INSERT INTO playoff_slots (season_id, guru_id, position, player_id, start_date, free, created_at) VALUES (?,?,?,?,?,?,?)').bind(po.id, guru.id, slot.position, player_id, d, free ? 1 : 0, now),
+  ]);
+  return c.json({ ok: true, free });
+});
 app.get('/playoff/me', requireUser, async (c) => {
   const db = c.env.DB; const user = c.get('user')!;
   const po = await playoffSeasonOf(db, c.get('season').id);
@@ -835,7 +946,7 @@ admin.use('*', requireAdmin);
 admin.use('*', audit);
 
 // Play-Off (vaihe 1: vain ylläpidolle). ?season=YYYY, oletus nykyinen; jos tyhjä → edellinen kausi esikatseluun.
-admin.get('/playoff/bracket', async (c) => {
+app.get('/playoff/bracket', requireUser, async (c) => {
   const wu = (p: Promise<unknown>) => c.executionCtx.waitUntil(p);
   const q = Number(c.req.query('season'));
   const cur = c.get('season').liiga_season;
@@ -869,9 +980,12 @@ admin.put('/playoff/season', async (c) => {
   const db = c.env.DB;
   const po = await playoffSeasonOf(db, c.get('season').id);
   if (!po) return c.json({ error: 'Ei Play-Off-kisaa' }, 404);
-  const b = await c.req.json<{ reg_open?: boolean; max_picks_by_pos?: Record<string, number>; max_swaps?: number }>();
-  await db.prepare('UPDATE seasons SET reg_open = COALESCE(?, reg_open), max_picks_by_pos = COALESCE(?, max_picks_by_pos), max_swaps = COALESCE(?, max_swaps) WHERE id = ?')
-    .bind(b.reg_open === undefined ? null : b.reg_open ? 1 : 0, b.max_picks_by_pos ? JSON.stringify(b.max_picks_by_pos) : null, b.max_swaps ?? null, po.id).run();
+  const b = await c.req.json<{ reg_open?: boolean; max_picks_by_pos?: Record<string, number>; max_swaps?: number; draft_status?: string; swap_open?: number }>();
+  if (b.draft_status && !['setup', 'live', 'done'].includes(b.draft_status)) return c.json({ error: 'Virheellinen tila' }, 400);
+  await db.prepare(`UPDATE seasons SET reg_open = COALESCE(?, reg_open), max_picks_by_pos = COALESCE(?, max_picks_by_pos), max_swaps = COALESCE(?, max_swaps),
+    draft_status = COALESCE(?, draft_status), swap_open = COALESCE(?, swap_open) WHERE id = ?`)
+    .bind(b.reg_open === undefined ? null : b.reg_open ? 1 : 0, b.max_picks_by_pos ? JSON.stringify(b.max_picks_by_pos) : null, b.max_swaps ?? null,
+      b.draft_status ?? null, b.swap_open ?? null, po.id).run();
   return c.json({ ok: true });
 });
 admin.delete('/playoff/entry/:id', async (c) => {
