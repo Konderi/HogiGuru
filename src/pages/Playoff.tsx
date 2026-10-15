@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { api } from '../api';
 import { useApi } from '../auth';
 import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 
@@ -48,6 +49,39 @@ function SeriesCard({ s }: { s: Series }) {
   );
 }
 
+interface TopRow { id: number; name: string; team: string; picture: string | null; games: number; goals: number; assists: number; hg: number }
+
+function TopLists({ season }: { season: number }) {
+  const { data, error, reload } = useApi<{ total: number; top: Record<'F' | 'D' | 'G', TopRow[]> }>(`/admin/playoff/top?season=${season}`, [season]);
+  const [busy, setBusy] = useState(false);
+  const sync = async () => { setBusy(true); try { await api(`/admin/playoff/sync?season=${season}`, { method: 'POST' }); await reload(); } finally { setBusy(false); } };
+  const labels = { F: 'Hyökkääjät', D: 'Puolustajat', G: 'Maalivahdit' } as const;
+  return (
+    <Card title="Pudotuspelien HG-kärki" action={<button className="btn btn-ghost" disabled={busy} onClick={sync}>{busy ? 'Haetaan…' : '↻ Hae tilastot'}</button>}>
+      <ErrorBox error={error} />
+      {!data?.total ? <Empty>Ei pudotuspelitilastoja tälle kaudelle – paina "Hae tilastot".</Empty> : (
+        <div className="grid gap-4 p-4 md:grid-cols-3">
+          {(['F', 'D', 'G'] as const).map((k) => (
+            <div key={k}>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">{labels[k]}</h3>
+              <ol className="space-y-1 text-sm">
+                {data.top[k].map((r, i) => (
+                  <li key={r.id} className="flex items-center gap-2">
+                    <span className="w-5 text-right text-slate-500">{i + 1}.</span>
+                    <span className="flex-1 truncate text-slate-200">{r.name} <span className="text-xs text-slate-500">{r.team}</span></span>
+                    <span className="text-xs text-slate-500">{r.games} O</span>
+                    <span className="w-10 text-right font-display text-ice-300">{r.hg}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function Playoff() {
   const [season, setSeason] = useState<number | null>(null);
   const { data, error, loading } = useApi<Bracket>(`/admin/playoff/bracket${season ? `?season=${season}` : ''}`, [season]);
@@ -81,6 +115,7 @@ export default function Playoff() {
               </div>
             )}
           </Card>
+          <TopLists season={data.season} />
           <p className="text-xs text-slate-500">Elossa gurukisan kannalta: {data.alive.length} joukkuetta. Tulossa: ilmoittautuminen, lomakedraft, kokoonpanot, leaderboard ja vaihtoikkunat.</p>
         </>
       )}

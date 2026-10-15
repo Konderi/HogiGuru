@@ -79,6 +79,7 @@ export async function syncLiiga(db: D1Database): Promise<string> {
 
     const msg = `${skaters.length} pelaajaa, ${goalies.length} maalivahtia, ${standings.season?.length ?? 0} joukkuetta`;
     let gmsg = '';
+    try { const n = await syncPlayoffStats(db, y); if (n) gmsg += `, ${n} playoff-tilastoa`; } catch (e) { gmsg += `, playoff: ${(e as Error).message}`; }
     try { const n = await syncGames(db, y); if (n) gmsg = `, ${n} ottelua`; } catch (e) { gmsg = `, ottelut: ${(e as Error).message}`; }
     await db.prepare('UPDATE sync_log SET finished_at=?, ok=1, message=? WHERE id=?').bind(new Date().toISOString(), msg + gmsg, log!.id).run();
     return msg + gmsg;
@@ -87,6 +88,29 @@ export async function syncLiiga(db: D1Database): Promise<string> {
     await db.prepare('UPDATE sync_log SET finished_at=?, ok=0, message=? WHERE id=?').bind(new Date().toISOString(), msg, log!.id).run();
     throw e;
   }
+}
+
+/** Pudotuspelien summatilastot (tyhjä ennen pudotuspelejä). Palauttaa rivimäärän. */
+export async function syncPlayoffStats(db: D1Database, y: number): Promise<number> {
+  const [sk, gk] = await Promise.all([
+    getJson<ApiPlayer[]>(`${BASE}/players/stats/summed/${y}/${y}/playoffs/true?dataType=basicStats`).catch(() => [] as ApiPlayer[]),
+    getJson<ApiPlayer[]>(`${BASE}/players/stats/summed/${y}/${y}/playoffs/true?dataType=basicStatsGk`).catch(() => [] as ApiPlayer[]),
+  ]);
+  const now = new Date().toISOString();
+  const stmts: D1PreparedStatement[] = [];
+  const row = (p: ApiPlayer, g: boolean) => db.prepare(
+    `INSERT OR REPLACE INTO playoff_stats (season, player_id, games, goals, assists, pim, plus_minus, shutouts, saves, goals_against, wins, save_pct, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  ).bind(y, p.playerId, p.playedGames ?? 0, p.goals ?? 0, p.assists ?? 0, p.penaltyMinutes ?? 0, p.plusMinus ?? 0,
+    g ? p.shutOut ?? 0 : 0, g ? p.blockedOrSavedShots ?? 0 : 0, g ? p.goalsAgainst ?? 0 : 0, g ? p.gkWins ?? 0 : 0, g ? p.savePercentage ?? null : null, now);
+  const upsertPlayer = (p: ApiPlayer) => db.prepare(
+    `INSERT INTO players (id, first_name, last_name, team_id, team_name, role, jersey, picture, nationality, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING`,
+  ).bind(p.playerId, p.firstName, p.lastName, String(p.teamId), p.teamName, p.role, p.jersey ?? null, p.pictureUrl ?? null, p.nationality ?? null, now);
+  for (const p of sk) stmts.push(upsertPlayer(p), row(p, false));
+  for (const p of gk) stmts.push(upsertPlayer(p), row(p, true));
+  await chunked(db, stmts);
+  return sk.length + gk.length;
 }
 
 /**

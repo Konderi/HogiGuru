@@ -7,7 +7,7 @@ import {
 } from './data';
 import { autoPick, COUNTED_SWAP, draftState, finalizeDraft, makePick, replacePick, swapSlot } from './draft';
 import { mondayOf, swapAnalysis, weeklyReview } from './weekly';
-import { syncGamesOnly, syncLiiga } from './liiga';
+import { syncGamesOnly, syncLiiga, syncPlayoffStats } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
 import { entityName } from './data';
 import { computeResults } from './predictions';
@@ -798,6 +798,26 @@ admin.get('/playoff/bracket', async (c) => {
     if (!q && !b.rounds.length) b = await fetchBracket(cur - 1, wu);
     return c.json({ ...b, alive: [...aliveTeams(b)], current: cur });
   } catch (e) { return c.json({ error: (e as Error).message }, 502); }
+});
+admin.post('/playoff/sync', async (c) => {
+  const y = Number(c.req.query('season')) || c.get('season').liiga_season;
+  return c.json({ ok: true, rows: await syncPlayoffStats(c.env.DB, y) });
+});
+admin.get('/playoff/top', async (c) => {
+  const season = c.get('season');
+  const y = Number(c.req.query('season')) || season.liiga_season;
+  const rows = (await c.env.DB.prepare(
+    `SELECT p.id, p.first_name || ' ' || p.last_name AS name, p.team_id, p.team_name AS team, p.role, p.picture, s.*
+     FROM playoff_stats s JOIN players p ON p.id = s.player_id WHERE s.season = ?`,
+  ).bind(y).all<StatRow & { id: number; name: string; team_id: string; team: string; role: string; picture: string | null }>()).results;
+  const out: Record<string, unknown[]> = { F: [], D: [], G: [] };
+  for (const r of rows) {
+    const pos = r.role === 'MV' ? 'G' : r.role === 'P' ? 'D' : 'F';
+    const hg = pos === 'G' ? goaliePoints(r, season.scoring.G) : skaterPoints(r, season.scoring[pos]);
+    out[pos].push({ id: r.id, name: r.name, team: r.team, team_id: r.team_id, picture: r.picture, games: r.games, goals: r.goals, assists: r.assists, hg });
+  }
+  for (const k of Object.keys(out)) out[k] = (out[k] as { hg: number }[]).sort((a, b) => b.hg - a.hg).slice(0, 15);
+  return c.json({ season: y, total: rows.length, top: out });
 });
 
 admin.get('/overview', async (c) => {
