@@ -10,15 +10,27 @@ const AUTO_DELAY = 3000;
 /** Harjoitusdraftin hallintanäkymä. Kaikki tapahtuu selaimessa – mitään ei tallenneta.
  *  Seinänäkymä (/draft/naytto?harjoitus) samassa selaimessa seuraa tätä BroadcastChannelin kautta. */
 export default function DraftPractice() {
-  const { data: real } = useApi<DraftState>('/draft');
+  const { data: realRaw } = useApi<DraftState>('/draft');
   const { data: prefs } = useApi<Record<number, Prefs>>('/admin/draft/prefs-all');
+  // Jos draft-listaa ei ole koottu, harjoituksessa voi valita kaikista Liigan pelaajista ja valmentajista
+  type Row = { id: number; name: string; team: string | null };
+  const sF = useApi<{ players: Row[] }>('/stats?pos=F');
+  const sD = useApi<{ players: Row[] }>('/stats?pos=D');
+  const sG = useApi<{ players: Row[] }>('/stats?pos=G');
+  const sC = useApi<Row[]>('/coaches');
+  const real = useMemo(() => {
+    if (!realRaw || realRaw.pool.length) return realRaw;
+    if (!sF.data || !sD.data || !sG.data || !sC.data) return null;
+    const mk = (position: Position, rows: Row[]) => rows.map((r) => ({ position, entity_id: r.id, name: r.name, team: r.team, used: 0 }));
+    return { ...realRaw, pool: [...mk('F', sF.data.players), ...mk('D', sD.data.players), ...mk('G', sG.data.players), ...mk('C', sC.data)].sort((a, b) => a.name.localeCompare(b.name, 'fi')) };
+  }, [realRaw, sF.data, sD.data, sG.data, sC.data]);
   const [gurus, setGurus] = useState<Guru[] | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [status, setStatus] = useState<DraftState['status']>('setup');
   const [paused, setPaused] = useState(false);
   const [autoAt, setAutoAt] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [pos, setPos] = useState<Position>('F');
+  const [pos, setPos] = useState<Position | 'all'>('all');
   const [q, setQ] = useState('');
 
   // Alkutila oikeasta draftista (gurut, läsnäolo, numerot)
@@ -73,7 +85,7 @@ export default function DraftPractice() {
 
   const mine = st.picks.filter((p) => p.guru_id === st.onClock?.id);
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
-  const pool = st.pool.filter((p) => p.position === pos && matchName(`${p.name} ${p.team ?? ''}`, q));
+  const pool = st.pool.filter((p) => (pos === 'all' || p.position === pos) && matchName(`${p.name} ${p.team ?? ''}`, q)).slice(0, 200);
   const remoteNoPrefs = gurus.filter((g) => g.remote_draft && !prefs?.[g.id]);
   const reset = () => { setPicks([]); setStatus('setup'); setPaused(false); setErr(null); failedFor.current = null; };
 
@@ -137,7 +149,8 @@ export default function DraftPractice() {
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <Card title="Valitse">
-          <div className="grid grid-cols-4 gap-1 p-3">
+          <div className="grid grid-cols-5 gap-1 p-3">
+            <button onClick={() => setPos('all')} className={`rounded-lg px-1 py-1.5 text-xs font-semibold ${pos === 'all' ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400 hover:text-white'}`}>Kaikki</button>
             {POSITIONS.map((p) => (
               <button key={p} onClick={() => setPos(p)} className={`rounded-lg px-1 py-1.5 text-xs font-semibold ${pos === p ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400 hover:text-white'} ${status === 'live' && !left(p) ? 'opacity-40' : ''}`}>
                 {POS_PLURAL[p]}
@@ -149,9 +162,10 @@ export default function DraftPractice() {
             {pool.map((p) => {
               const full = p.used >= st.maxPicks[p.position];
               const owned = mine.some((m) => m.position === p.position && m.entity_id === p.entity_id);
-              const disabled = status !== 'live' || full || owned || left(pos) <= 0;
+              const disabled = status !== 'live' || full || owned || left(p.position) <= 0;
               return (
-                <li key={p.entity_id} className="flex items-center gap-2 border-t border-white/5 px-4 py-2">
+                <li key={`${p.position}-${p.entity_id}`} className="flex items-center gap-2 border-t border-white/5 px-4 py-2">
+                  <PosBadge pos={p.position} />
                   <span className={`flex-1 text-sm ${full ? 'text-slate-600 line-through' : 'text-white'}`}>{p.name} <span className="text-xs text-slate-500">{p.team}</span></span>
                   <span className={`font-mono text-xs ${full ? 'text-goal' : p.used >= 3 ? 'text-amber-300' : 'text-slate-400'}`}>{p.used}/{st.maxPicks[p.position]}</span>
                   <button className="btn btn-primary px-3 py-1 text-xs" disabled={disabled} onClick={() => doPick(p.position, p.entity_id, false)}>Valitse</button>
