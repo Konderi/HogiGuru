@@ -77,7 +77,8 @@ export default function Layout() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4">
           <span className="font-display tracking-widest text-slate-400">HOGIGURU</span>
           <span>Liiga-veikkaus</span>
-          <span>Tilastot: liiga.fi</span>
+          <span>Tilastot: <a href="https://liiga.fi" target="_blank" rel="noopener noreferrer" className="text-slate-400 underline-offset-2 hover:text-white hover:underline">liiga.fi</a></span>
+          <Link to="/tietosuoja" className="text-slate-400 underline-offset-2 hover:text-white hover:underline">Tietosuojaseloste</Link>
         </div>
       </footer>
     </div>

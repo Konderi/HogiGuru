@@ -315,6 +315,7 @@ export default function Register() {
           {missing.length > 0 && <p className="text-xs text-amber-300">Puuttuu vielä: {missing.join(', ')}</p>}
           {err && <ErrorBox error={err} />}
           <button className="btn btn-primary w-full py-3 text-base" disabled={busy}>{busy ? 'Lähetetään…' : 'Lähetä ilmoittautuminen'}</button>
+          <p className="text-center text-xs text-slate-500">Ilmoittautumalla hyväksyt tietojesi käsittelyn <Link to="/tietosuoja" target="_blank" className="text-orange-300 hover:underline">tietosuojaselosteen</Link> mukaisesti.</p>
         </div>
         <div className="lg:sticky lg:top-24 lg:self-start">{Rules}</div>
       </form>
