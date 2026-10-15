@@ -231,17 +231,28 @@ function Live({ st, note }: { st: DraftState; note?: string | null }) {
   const upcoming = Array.from({ length: 4 }, (_, i) => st.pickNo + 1 + i).filter((n) => n <= st.total)
     .map((n) => ({ n, g: guruForPick(st.gurus, n, st.snake) }));
   const recent = st.picks.slice(-5).reverse();
-  const hot = st.pool.filter((p) => p.used >= Math.min(HOT, st.maxPicks[p.position]))
-    .sort((a, b) => (b.used >= st.maxPicks[b.position] ? 1 : 0) - (a.used >= st.maxPicks[a.position] ? 1 : 0) || b.used - a.used || a.name.localeCompare(b.name, 'fi'));
+  const hot = st.pool.filter((p) => p.used >= Math.min(HOT, st.maxPicks[p.position]));
+  const isFull = (p: (typeof hot)[number]) => p.used >= st.maxPicks[p.position];
+  const hotOpen = hot.filter((p) => !isFull(p)).sort((a, b) => b.used - a.used || a.name.localeCompare(b.name, 'fi'));
+  const full = hot.filter(isFull).sort((a, b) => a.name.localeCompare(b.name, 'fi'));
   const name = (id: number) => st.gurus.find((g) => g.id === id)?.name ?? '';
 
+  // Draft-taulu vierii itsestään niin, että vuorossa oleva guru pysyy näkyvissä
+  const boardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = boardRef.current;
+    const row = box?.querySelector<HTMLElement>('[data-onclock]');
+    if (!box || !row) return;
+    box.scrollTo({ top: row.offsetTop - box.clientHeight / 2 + row.clientHeight / 2, behavior: 'smooth' });
+  }, [st.pickNo]);
+
   return (
-    <main className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,24%)]">
-      <div className="min-w-0 space-y-5">
+    <main className="grid h-[calc(100vh-65px)] gap-4 overflow-hidden p-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,24%)]">
+      <div className="flex min-h-0 min-w-0 flex-col gap-4">
         {st.status === 'live' && st.onClock ? (
           <section className="flex flex-wrap items-center gap-8 rounded-3xl border border-ice-400/40 bg-gradient-to-r from-ice-500/25 via-rink-850 to-rink-850 px-8 py-5">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-ice-300">Vuorossa · kierros {st.round} · valinta {st.pickNo}/{st.total}</p>
+              <p className="text-sm uppercase tracking-[0.3em] text-ice-300">Vuorossa · kierros {st.round}{st.snake && st.round % 2 === 0 ? ' ↩ käänteinen' : ''} · valinta {st.pickNo}/{st.total}</p>
               <p className="font-display text-[clamp(2.5rem,5vw,5rem)] leading-tight">{st.onClock.name}</p>
               <p className="text-slate-300">{st.onClock.remote_draft ? '📋 Ei paikalla – valinta tehdään draft-lomakkeelta' : '🏒 Paikalla – valitsee nyt'}</p>
               {note && <p className="mt-1 animate-pulse text-lg font-semibold text-amber-300">{note}</p>}
@@ -273,33 +284,43 @@ function Live({ st, note }: { st: DraftState; note?: string | null }) {
           <section className="rounded-3xl border border-ice-400/40 bg-ice-500/10 px-8 py-5 text-center font-display text-4xl">Draft valmis – onnea kaudelle! 🏆</section>
         ) : null}
 
-        <div className="rounded-3xl border border-white/10 bg-rink-900 p-2">
+        <div ref={boardRef} className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-white/10 bg-rink-900 px-2 pb-2">
           <DraftGrid st={st} compact />
         </div>
       </div>
 
-      <aside className="space-y-5">
-        <section className="rounded-3xl border border-amber-400/30 bg-rink-850/80 p-5">
+      <aside className="flex min-h-0 flex-col gap-4">
+        <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-amber-400/30 bg-rink-850/80 p-4">
           <p className="text-sm uppercase tracking-[0.3em] text-amber-300">🔥 Varaustilanne</p>
-          <p className="mt-1 text-xs text-slate-400">Valittu vähintään {HOT} kertaa – mieti varavalinta!</p>
-          <ul className="mt-3 space-y-1.5">
-            {hot.map((p) => {
-              const full = p.used >= st.maxPicks[p.position];
-              return (
-                <li key={`${p.position}-${p.entity_id}`} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${full ? 'bg-goal/20 ring-1 ring-goal/50' : 'bg-amber-400/10 ring-1 ring-amber-400/30'}`}>
-                  <PosBadge pos={p.position} />
-                  <span className={`min-w-0 flex-1 truncate font-semibold ${full ? 'text-slate-400 line-through' : ''}`}>{p.name}</span>
-                  <span className={`font-mono text-lg font-bold ${full ? 'text-goal' : 'text-amber-300'}`}>{p.used}/{st.maxPicks[p.position]}</span>
-                  {full && <span className="rounded bg-goal px-1.5 text-xs font-bold">TÄYNNÄ</span>}
-                </li>
-              );
-            })}
-            {!hot.length && <li className="text-sm text-slate-500">Ei vielä yhtään.</li>}
-          </ul>
+          <div className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            <div>
+              <p className="mb-1.5 text-[11px] uppercase tracking-wider text-slate-400">Kuumat – mieti varavalinta</p>
+              <div className="grid grid-cols-1 gap-1 2xl:grid-cols-2">
+                {hotOpen.map((p) => (
+                  <div key={`${p.position}-${p.entity_id}`} className="flex items-center gap-1.5 rounded-lg bg-amber-400/10 px-2 py-1 ring-1 ring-amber-400/30">
+                    <PosBadge pos={p.position} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+                    <span className="font-mono text-sm font-bold text-amber-300">{p.used}/{st.maxPicks[p.position]}</span>
+                  </div>
+                ))}
+                {!hotOpen.length && <p className="text-sm text-slate-500">Ei vielä yhtään.</p>}
+              </div>
+            </div>
+            {full.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[11px] uppercase tracking-wider text-goal">Täynnä ({full.length}) – ei enää valittavissa</p>
+                <div className="flex flex-wrap gap-1">
+                  {full.map((p) => (
+                    <span key={`${p.position}-${p.entity_id}`} className="rounded-md bg-goal/20 px-1.5 py-0.5 text-xs text-red-200 line-through decoration-red-300/60 ring-1 ring-goal/40">{p.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </section>
-        <section className="rounded-3xl border border-white/10 bg-rink-850/80 p-5">
+        <section className="shrink-0 rounded-3xl border border-white/10 bg-rink-850/80 p-4">
           <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Viimeisimmät</p>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-2 space-y-1.5">
             {recent.map((p, i) => (
               <li key={p.id} className={`flex items-center gap-2 ${i === 0 ? 'text-lg' : 'text-sm text-slate-300'}`}>
                 <span className="w-7 font-mono text-xs text-slate-500">{p.pick_no}</span>

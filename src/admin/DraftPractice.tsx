@@ -19,11 +19,20 @@ export default function DraftPractice() {
   const sG = useApi<{ players: Row[] }>('/stats?pos=G');
   const sC = useApi<Row[]>('/coaches');
   const real = useMemo(() => {
-    if (!realRaw || realRaw.pool.length) return realRaw;
+    if (!realRaw) return null;
+    const snake = { ...realRaw, snake: true }; // harjoituksessa aina käärmedraft: joka toinen kierros käänteisesti
+    if (realRaw.pool.length) return snake;
     if (!sF.data || !sD.data || !sG.data || !sC.data) return null;
     const mk = (position: Position, rows: Row[]) => rows.map((r) => ({ position, entity_id: r.id, name: r.name, team: r.team, used: 0 }));
-    return { ...realRaw, pool: [...mk('F', sF.data.players), ...mk('D', sD.data.players), ...mk('G', sG.data.players), ...mk('C', sC.data)].sort((a, b) => a.name.localeCompare(b.name, 'fi')) };
+    return { ...snake, pool: [...mk('F', sF.data.players), ...mk('D', sD.data.players), ...mk('G', sG.data.players), ...mk('C', sC.data)].sort((a, b) => a.name.localeCompare(b.name, 'fi')) };
   }, [realRaw, sF.data, sD.data, sG.data, sC.data]);
+  // Testikupongit: paremmuusjärjestys HG-pisteiden mukaan (stats tulee valmiiksi järjestettynä)
+  const ranked = useMemo<Record<Position, number[]>>(() => ({
+    F: (sF.data?.players ?? []).map((p) => p.id), D: (sD.data?.players ?? []).map((p) => p.id),
+    G: (sG.data?.players ?? []).map((p) => p.id), C: (sC.data ?? []).map((p) => p.id),
+  }), [sF.data, sD.data, sG.data, sC.data]);
+  const [fakePrefs, setFakePrefs] = useState<Record<number, Prefs>>({});
+  const allPrefs = useMemo(() => ({ ...(prefs ?? {}), ...fakePrefs }), [prefs, fakePrefs]);
   const [gurus, setGurus] = useState<Guru[] | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [status, setStatus] = useState<DraftState['status']>('setup');
@@ -72,12 +81,12 @@ export default function DraftPractice() {
     const at = Date.now() + AUTO_DELAY;
     setAutoAt(at);
     const t = setTimeout(() => {
-      const c = autoChoice(st, prefs?.[remoteTurn.id]);
+      const c = autoChoice(st, allPrefs[remoteTurn.id]);
       if (c) doPick(c.position, c.entityId, true);
       else { failedFor.current = st.pickNo; setAutoAt(null); setErr(`${remoteTurn.name}: lomakkeella ei vapaita vaihtoehtoja – valitse käsin`); }
     }, AUTO_DELAY);
     return () => clearTimeout(t);
-  }, [st?.pickNo, remoteTurn?.id, paused, prefs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [st?.pickNo, remoteTurn?.id, paused, allPrefs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (st && st.status === 'live' && st.picks.length >= st.total) setStatus('done'); }, [st]);
 
@@ -86,7 +95,22 @@ export default function DraftPractice() {
   const mine = st.picks.filter((p) => p.guru_id === st.onClock?.id);
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
   const pool = st.pool.filter((p) => (pos === 'all' || p.position === pos) && matchName(`${p.name} ${p.team ?? ''}`, q)).slice(0, 200);
-  const remoteNoPrefs = gurus.filter((g) => g.remote_draft && !prefs?.[g.id]);
+  const remoteNoPrefs = gurus.filter((g) => g.remote_draft && !allPrefs[g.id]);
+  const genPrefs = () => {
+    // Painotettu satunnaisuus: kärkipelaajat suosittuja → realistisia päällekkäisyyksiä ja täyttyviä pelaajia
+    const pickSome = (ids: number[], n: number) => {
+      const pool = ids.slice(0, Math.max(n * 3, 25)).map((id, i) => ({ id, w: Math.random() / (i + 4) }));
+      return pool.sort((a, b) => b.w - a.w).slice(0, n).map((x) => x.id);
+    };
+    const out: Record<number, Prefs> = {};
+    for (const g of gurus) {
+      const slots = POSITIONS.flatMap((p) => Array(st.roster[p]).fill(p) as Position[]);
+      const positionOrder = slots.map((p) => ({ p, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.p);
+      const rankings = Object.fromEntries(POSITIONS.map((p) => [p, pickSome(ranked[p], st.roster[p] * 3 + 4)]));
+      out[g.id] = { positionOrder, rankings };
+    }
+    setFakePrefs(out);
+  };
   const reset = () => { setPicks([]); setStatus('setup'); setPaused(false); setErr(null); failedFor.current = null; };
 
   return (
@@ -107,7 +131,12 @@ export default function DraftPractice() {
 
       {status === 'setup' && (
         <Card title="Läsnäolo harjoituksessa" className="mb-6"
-          action={<button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(shuffle(gurus))}>🎲 Arvo numerot uudelleen</button>}>
+          action={<div className="flex flex-wrap gap-2">
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={genPrefs} title="Keksityt draft-lomakkeet kaikille guruille (vain harjoitukseen)">🎟 Generoi testikupongit</button>
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 1 })))}>Kaikki lomakkeelta</button>
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 0 })))}>Kaikki paikalla</button>
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(shuffle(gurus))}>🎲 Arvo numerot</button>
+          </div>}>
           <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {[...gurus].sort((a, b) => (a.draft_number ?? 0) - (b.draft_number ?? 0)).map((g) => {
               const present = !g.remote_draft;
@@ -116,7 +145,7 @@ export default function DraftPractice() {
                   className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left ${present ? 'border-ice-400/50 bg-ice-500/10' : 'border-white/10 bg-white/[0.02]'}`}>
                   <span className="w-6 font-display text-ice-300">{g.draft_number}</span>
                   <span className="flex-1 truncate font-semibold text-white">{g.name}</span>
-                  <span className={`text-xs ${present ? 'text-ice-300' : prefs?.[g.id] ? 'text-slate-400' : 'text-goal'}`}>{present ? '🏒 paikalla' : prefs?.[g.id] ? '📋 lomake' : '⚠ ei lomaketta'}</span>
+                  <span className={`text-xs ${present ? 'text-ice-300' : allPrefs[g.id] ? 'text-slate-400' : 'text-goal'}`}>{present ? '🏒 paikalla' : fakePrefs[g.id] ? '🎟 testikuponki' : allPrefs[g.id] ? '📋 lomake' : '⚠ ei lomaketta'}</span>
                 </button>
               );
             })}

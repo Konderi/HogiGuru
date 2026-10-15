@@ -23,7 +23,7 @@ export function DraftGrid({ st, compact = false }: { st: DraftState; compact?: b
     <div className={compact ? '' : 'overflow-x-auto'}>
       <table className={`w-full border-separate border-spacing-0 ${compact ? 'table-fixed text-[clamp(10px,0.85vw,16px)]' : 'text-sm'}`}>
         <thead>
-          <tr className="text-xs uppercase tracking-wider text-slate-400">
+          <tr className={`text-xs uppercase tracking-wider text-slate-400 ${compact ? '[&>th]:sticky [&>th]:top-0 [&>th]:z-20 [&>th]:bg-rink-900' : ''}`}>
             <th className={`${stick} left-0 w-10 px-2 py-2 text-left`}>#</th>
             <th className={`${stick} left-10 px-2 py-2 text-left ${compact ? 'w-[12%]' : 'min-w-36'} border-r border-white/10`}>Guru</th>
             {Array.from({ length: perGuru }, (_, i) => <th key={i} className="px-1.5 py-2 text-center">K{i + 1}</th>)}
@@ -35,7 +35,7 @@ export function DraftGrid({ st, compact = false }: { st: DraftState; compact?: b
             const onClock = st.onClock?.id === g.id && st.status === 'live';
             const rowBg = onClock ? 'bg-[#0b2a45]' : 'bg-rink-900';
             return (
-              <tr key={g.id} className={onClock ? 'outline outline-2 -outline-offset-2 outline-ice-400' : ''}>
+              <tr key={g.id} data-onclock={onClock || undefined} className={onClock ? 'outline outline-2 -outline-offset-2 outline-ice-400' : ''}>
                 <td className={`sticky left-0 z-10 ${rowBg} border-t border-white/5 px-2 py-1.5 font-display text-slate-400`}>{g.draft_number ?? '–'}</td>
                 <td className={`sticky left-10 z-10 ${rowBg} truncate whitespace-nowrap border-r border-t border-white/10 px-2 py-1.5 font-semibold text-white`}>
                   {onClock && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-goal" />}
