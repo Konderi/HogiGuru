@@ -94,7 +94,8 @@ export default function DraftPractice() {
 
   const mine = st.picks.filter((p) => p.guru_id === st.onClock?.id);
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
-  const pool = st.pool.filter((p) => (pos === 'all' || p.position === pos) && matchName(`${p.name} ${p.team ?? ''}`, q)).slice(0, 200);
+  const pool = st.pool.filter((p) => (pos === 'all' || p.position === pos) && matchName(`${p.name} ${p.team ?? ''}`, q));
+  const shown = pool.slice(0, 6);
   const remoteNoPrefs = gurus.filter((g) => g.remote_draft && !allPrefs[g.id]);
   const genPrefs = () => {
     // Painotettu satunnaisuus: kärkipelaajat suosittuja → realistisia päällekkäisyyksiä ja täyttyviä pelaajia
@@ -187,8 +188,8 @@ export default function DraftPractice() {
             ))}
           </div>
           <div className="p-3"><input className="input" placeholder="Hae pelaajaa…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <ul className="max-h-[55vh] overflow-y-auto">
-            {pool.map((p) => {
+          <ul>
+            {shown.map((p) => {
               const full = p.used >= st.maxPicks[p.position];
               const owned = mine.some((m) => m.position === p.position && m.entity_id === p.entity_id);
               const disabled = status !== 'live' || full || owned || left(p.position) <= 0;
@@ -201,6 +202,7 @@ export default function DraftPractice() {
                 </li>
               );
             })}
+            {pool.length > shown.length && <li className="border-t border-white/5 px-4 py-2 text-xs text-slate-500">+ {pool.length - shown.length} muuta – tarkenna hakua</li>}
             {!pool.length && <li><Empty>Ei osumia.</Empty></li>}
           </ul>
         </Card>
