@@ -310,8 +310,8 @@ export default function DraftPractice() {
       )}
       {err && <div className="mb-4"><ErrorBox error={err} /></div>}
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
-        <Card title="Valitse">
+      <div className="grid grid-cols-1 items-start gap-6 2xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)] [&>*]:min-w-0">
+        <Card title="Valitse" className="2xl:sticky 2xl:top-20">
           <div className="grid grid-cols-5 gap-1 p-3">
             <button onClick={() => setPos('all')} className={`rounded-lg px-1 py-1.5 text-xs font-semibold ${pos === 'all' ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400 hover:text-white'}`}>Kaikki</button>
             {POSITIONS.map((p) => (
@@ -339,7 +339,7 @@ export default function DraftPractice() {
             {!pool.length && <li><Empty>Ei osumia.</Empty></li>}
           </ul>
         </Card>
-        <Card title="Draft-taulu"><DraftGrid st={st} /></Card>
+        <Card title="Draft-taulu"><div className="max-h-[70vh] overflow-auto"><DraftGrid st={st} /></div></Card>
       </div>
     </>
   );

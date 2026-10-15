@@ -107,8 +107,8 @@ export default function Draft() {
       )}
 
       {st.status === 'live' && st.picks.length >= st.total && <Review st={st} busy={busy} act={act} />}
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-        <Card title={st.status === 'live' ? 'Valitse' : 'Draft-lista'}>
+      <div className="grid grid-cols-1 items-start gap-6 2xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)] [&>*]:min-w-0">
+        <Card title={st.status === 'live' ? 'Valitse' : 'Draft-lista'} className="2xl:sticky 2xl:top-20">
           <div className="grid grid-cols-4 gap-1 p-3">
             {POSITIONS.map((p) => (
               <button key={p} title={POS_PLURAL[p]} onClick={() => setPos(p)} className={`min-w-0 rounded-lg px-1 py-1.5 text-xs font-semibold ${pos === p ? 'bg-ice-500 text-rink-950' : 'bg-white/5 text-slate-400 hover:text-white'}`}>
@@ -145,7 +145,7 @@ export default function Draft() {
         </Card>
 
         <Card title="Draft-taulu">
-          {st.gurus.length ? <DraftGrid st={st} /> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
+          {st.gurus.length ? <div className="max-h-[70vh] overflow-auto"><DraftGrid st={st} /></div> : <Empty>Lisää gurut ensin (Gurut & kentälliset).</Empty>}
           {st.status === 'setup' && st.gurus.length > 0 && (
             <p className="border-t border-white/5 px-5 py-3 text-xs text-slate-400">
               Ennakkolista tehty: {st.hasPrefs.length}/{st.gurus.length}. Etäosallistujat merkitään gurun asetuksista; heidän vuorollaan valinta tehdään ennakkolistalta.
