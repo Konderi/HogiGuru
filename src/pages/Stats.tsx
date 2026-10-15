@@ -9,6 +9,7 @@ interface PlayerStat {
   plusMinus: number; shutouts: number; saves: number; goalsAgainst: number; wins: number; savePct: number | null; hg: number; reserved: number;
 }
 interface CoachStat { id: number; name: string; team: string; logo: string | null; team_points: number | null; hg: number; reserved: number; fired: number }
+type SortKey = 'name' | 'games' | 'goals' | 'assists' | 'points' | 'plusMinus' | 'pim' | 'wins' | 'saves' | 'goalsAgainst' | 'savePct' | 'shutouts' | 'reserved' | 'hg';
 
 function Reserved({ n, max }: { n: number; max: number }) {
   return (
@@ -26,10 +27,26 @@ export default function Stats() {
   const coaches = useApi<CoachStat[]>(pos === 'C' ? '/coaches' : null, [pos]);
   const max = players.data?.maxPicks ?? 5;
   const [card, setCard] = useState<CardSeed | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'hg', desc: true });
+  const sortBy = (key: SortKey) => setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: key !== 'goalsAgainst' && key !== 'name' }));
 
-  const rows = useMemo(() => (players.data?.players ?? [])
-    .filter((p) => matchName(`${p.name} ${p.team}`, q))
-    .filter((p) => !onlyFree || p.reserved < max), [players.data, q, onlyFree, max]);
+  const rows = useMemo(() => {
+    const val = (p: PlayerStat): number | string => (sort.key === 'points' ? p.goals + p.assists : sort.key === 'savePct' ? p.savePct ?? -1 : p[sort.key]);
+    return (players.data?.players ?? [])
+      .filter((p) => matchName(`${p.name} ${p.team}`, q))
+      .filter((p) => !onlyFree || p.reserved < max)
+      .sort((a, b) => {
+        const x = val(a), y = val(b);
+        const c = typeof x === 'string' ? x.localeCompare(String(y), 'fi') : x - (y as number);
+        return (sort.desc ? -c : c) || b.hg - a.hg;
+      });
+  }, [players.data, q, onlyFree, max, sort]);
+
+  const Th = ({ k, children, title }: { k: SortKey; children: React.ReactNode; title?: string }) => (
+    <th className={`num cursor-pointer select-none whitespace-nowrap hover:text-white ${sort.key === k ? 'text-ice-300' : ''}`} title={title ?? 'Järjestä'} onClick={() => sortBy(k)}>
+      {children}{sort.key === k ? (sort.desc ? ' ▼' : ' ▲') : ''}
+    </th>
+  );
 
   return (
     <>
@@ -75,11 +92,13 @@ export default function Stats() {
             <table className="table">
               <thead>
                 <tr>
-                  <th className="w-10">#</th><th>Pelaaja</th><th className="num">O</th>
+                  <th className="w-10">#</th>
+                  <th className={`cursor-pointer select-none hover:text-white ${sort.key === 'name' ? 'text-ice-300' : ''}`} onClick={() => sortBy('name')}>Pelaaja{sort.key === 'name' ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>
+                  <Th k="games" title="Ottelut">O</Th>
                   {pos === 'G'
-                    ? <><th className="num">V</th><th className="num">Torj.</th><th className="num">PM</th><th className="num">Torj-%</th><th className="num">NP</th></>
-                    : <><th className="num">M</th><th className="num">S</th><th className="num">+/−</th><th className="num">J</th></>}
-                  <th className="num">Varattu</th><th className="num">HG</th>
+                    ? <><Th k="wins" title="Voitot">V</Th><Th k="saves" title="Torjunnat">Torj.</Th><Th k="goalsAgainst" title="Päästetyt maalit">PM</Th><Th k="savePct" title="Torjuntaprosentti">Torj-%</Th><Th k="shutouts" title="Nollapelit">NP</Th></>
+                    : <><Th k="goals" title="Maalit">M</Th><Th k="assists" title="Syötöt">S</Th><Th k="points" title="Pisteet (M+S)">P</Th><Th k="plusMinus" title="Plus/miinus">+/−</Th><Th k="pim" title="Jäähyminuutit">J</Th></>}
+                  <Th k="reserved" title="Varaukset">Varattu</Th><Th k="hg" title="HG-pisteet">HG</Th>
                 </tr>
               </thead>
               <tbody>
@@ -96,7 +115,7 @@ export default function Stats() {
                     <td className="num">{p.games}</td>
                     {pos === 'G'
                       ? <><td className="num">{p.wins}</td><td className="num">{p.saves}</td><td className="num">{p.goalsAgainst}</td><td className="num">{p.savePct != null ? fmt(p.savePct) : '–'}</td><td className="num">{p.shutouts}</td></>
-                      : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className={`num ${p.plusMinus > 0 ? 'text-emerald-400' : p.plusMinus < 0 ? 'text-goal' : ''}`}>{p.plusMinus > 0 ? `+${p.plusMinus}` : p.plusMinus}</td><td className="num">{p.pim}</td></>}
+                      : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className="num font-semibold text-white">{p.goals + p.assists}</td><td className={`num ${p.plusMinus > 0 ? 'text-emerald-400' : p.plusMinus < 0 ? 'text-goal' : ''}`}>{p.plusMinus > 0 ? `+${p.plusMinus}` : p.plusMinus}</td><td className="num">{p.pim}</td></>}
                     <td className="num"><Reserved n={p.reserved} max={max} /></td>
                     <td className="num scoreboard">{fmt(p.hg)}</td>
                   </tr>
@@ -106,7 +125,7 @@ export default function Stats() {
           </div>
         )}
       </Card>
-      <p className="mt-4 text-xs text-slate-500">Klikkaa pelaajaa avataksesi pelaajakortin. Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa.</p>
+      <p className="mt-4 text-xs text-slate-500">Klikkaa sarakkeen otsikkoa järjestääksesi (uudelleen klikkaus kääntää suunnan). Klikkaa pelaajaa avataksesi pelaajakortin. Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa.</p>
       <PlayerCard seed={card} onClose={() => setCard(null)} />
     </>
   );
