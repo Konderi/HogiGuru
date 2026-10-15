@@ -24,13 +24,17 @@ function useNow(ms: number) {
 
 /** Draft-tilaisuuden heijastettava näkymä (seinä / Teams-jako). */
 export default function DraftScreen() {
-  const { data: st, reload } = useApi<DraftState>('/draft');
+  const { data: real, reload } = useApi<DraftState>('/draft');
+  const demo = new URLSearchParams(location.search).has('harjoitus');
+  const demoSt = useDemo(demo ? real : null);
+  const st = demo ? demoSt : real;
   const offset = useRef(0);
-  useEffect(() => { if (st?.lottery) offset.current = st.lottery.now - Date.now(); }, [st]);
+  useEffect(() => { if (st?.lottery && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
   useEffect(() => {
+    if (demo) return;
     const t = setInterval(reload, st?.lottery ? 1000 : 3000);
     return () => clearInterval(t);
-  }, [st?.lottery, reload]);
+  }, [st?.lottery, reload, demo]);
 
   // Uuden valinnan ilmoitus koko ruudulle
   const [flash, setFlash] = useState<DraftState['picks'][number] & { guru: string } | null>(null);
@@ -57,6 +61,7 @@ export default function DraftScreen() {
         <Logo className="h-10 w-10" />
         <div className="font-display text-2xl tracking-[0.2em]">HOGIGURU <span className="text-ice-400">DRAFT</span></div>
         <div className="ml-auto flex items-center gap-4 text-sm text-slate-400">
+          {demo && <span className="rounded-full bg-amber-400/20 px-3 py-1 font-semibold text-amber-300">HARJOITUS – ei tallennu</span>}
           {st.status === 'live' && <span className="flex items-center gap-2 font-semibold text-goal"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-goal" />LIVE</span>}
           <Clock />
           <button onClick={fs} className="rounded-lg border border-white/10 px-3 py-1 hover:bg-white/5" title="Koko näyttö">⛶</button>
@@ -79,6 +84,29 @@ export default function DraftScreen() {
       )}
     </div>
   );
+}
+
+/** Harjoitustila (?harjoitus): arvonta oikeilla guruilla vain selaimessa – ei tallenna mitään. */
+function useDemo(real: DraftState | null): DraftState | null {
+  const [base, setBase] = useState<DraftState | null>(null);
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    if (!real || base) return;
+    const rnd = (n: number) => [...Array(n).keys()].map((i) => ({ i, r: Math.random() })).sort((a, b) => a.r - b.r).map((x) => x.i);
+    const nums = rnd(real.gurus.length), order = rnd(real.gurus.length);
+    const gurus = real.gurus.map((g, i) => ({ ...g, draft_number: nums[i] + 1 }));
+    const at = Date.now() + 3000;
+    setBase({
+      ...real, status: 'setup', picks: [], gurus: [...gurus].sort((a, b) => a.draft_number - b.draft_number),
+      lottery: { at, now: Date.now(), step: 10_000, reveal: 4_000, order: order.map((i) => ({ id: gurus[i].id, name: gurus[i].name, draft_number: gurus[i].draft_number })) },
+    });
+  }, [real, base]);
+  useEffect(() => {
+    if (!base?.lottery) return;
+    const t = setTimeout(() => setOver(true), base.lottery.at - Date.now() + base.gurus.length * 10_000 + 1500);
+    return () => clearTimeout(t);
+  }, [base]);
+  return base && over ? { ...base, lottery: null } : base;
 }
 
 function Clock() {
@@ -198,6 +226,12 @@ function Live({ st }: { st: DraftState }) {
                 </ol>
               </div>
             )}
+          </section>
+        ) : st.status === 'done' && !st.picks.length ? (
+          <section className="rounded-3xl border border-white/10 bg-rink-850/80 px-8 py-10 text-center">
+            <p className="font-display text-4xl">Kauden kentälliset on jo luotu</p>
+            <p className="mt-3 text-slate-300">Tämän kauden joukkueet on syötetty suoraan, joten draft-tilaisuutta ei ole. Arvonta ja live-draft käynnistyvät, kun uuden kauden draft on valmistelutilassa.</p>
+            <a href="/draft/naytto?harjoitus" className="btn btn-primary mt-6 inline-flex">🧪 Kokeile harjoitusarvontaa</a>
           </section>
         ) : st.status === 'done' || st.picks.length >= st.total ? (
           <section className="rounded-3xl border border-ice-400/40 bg-ice-500/10 px-8 py-5 text-center font-display text-4xl">Draft valmis – onnea kaudelle! 🏆</section>
