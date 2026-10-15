@@ -64,12 +64,17 @@ export default function DraftScreen() {
     const last = st.picks[st.picks.length - 1];
     if (lastId.current !== null && last && last.id !== lastId.current) {
       setFlash({ ...last, guru: st.gurus.find((g) => g.id === last.guru_id)?.name ?? '' });
-      const t = setTimeout(() => setFlash(null), 5000);
       lastId.current = last.id;
-      return () => clearTimeout(t);
+      return;
     }
     lastId.current = last?.id ?? 0;
   }, [st]);
+  // Oma ajastin: tilan päivitykset (esim. lomakevalinnan ajastus) eivät saa nollata sitä
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 5000);
+    return () => clearTimeout(t);
+  }, [flash]);
 
   const fs = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
 
