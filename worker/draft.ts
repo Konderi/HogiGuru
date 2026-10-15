@@ -108,6 +108,22 @@ export async function autoPick(db: D1Database, season: Season) {
   throw new Error(`${g.name}: ennakkolistalla ei ole vapaita vaihtoehtoja – valitse käsin`);
 }
 
+/** Ylläpitäjän korjaus: vaihtaa yksittäisen valinnan toiseen saman pelipaikan nimeen ennen kentällisiin vientiä. */
+export async function replacePick(db: D1Database, season: Season, pickNo: number, entityId: number) {
+  const st = await draftState(db, season);
+  if (st.status !== 'live') throw new Error('Valintoja voi korjata vain ennen kentällisiin vientiä');
+  const pick = st.picks.find((p) => p.pick_no === pickNo);
+  if (!pick) throw new Error('Valintaa ei löydy');
+  const pos = pick.position;
+  if (!st.pool.some((p) => p.position === pos && p.entity_id === entityId)) throw new Error('Valinta ei ole draft-listalla');
+  const others = st.picks.filter((p) => p.pick_no !== pickNo);
+  if (others.some((p) => p.guru_id === pick.guru_id && usageKey(p.position, p.entity_id) === usageKey(pos, entityId))) throw new Error('Gurulla on jo tämä valinta');
+  const used = others.filter((p) => usageKey(p.position, p.entity_id) === usageKey(pos, entityId)).length;
+  if (used >= maxFor(season, pos)) throw new Error(`Valittu jo ${used} kertaa (max ${maxFor(season, pos)})`);
+  await db.prepare('UPDATE draft_picks SET entity_id = ?, auto = 0 WHERE season_id = ? AND pick_no = ?').bind(entityId, season.id, pickNo).run();
+  return { ok: true };
+}
+
 /** Vie valinnat kentällisiksi ja lukitsee draftin. */
 export async function finalizeDraft(db: D1Database, season: Season) {
   const st = await draftState(db, season);

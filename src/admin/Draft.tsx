@@ -46,7 +46,6 @@ export default function Draft() {
           </>}
           {st.status === 'live' && <>
             <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => api('/admin/draft/status', { body: { status: 'setup' } }), 'Draft keskeytetty')}>⏸ Keskeytä</button>
-            <button className="btn btn-primary" disabled={busy || st.picks.length < st.total} onClick={() => confirm('Viedäänkö valinnat kentällisiin? Tätä ei voi perua.') && act(() => api('/admin/draft/finalize', { method: 'POST' }), 'Kentälliset luotu!')}>✓ Vie kentällisiin</button>
           </>}
         </div>
       </PageHeader>
@@ -99,6 +98,7 @@ export default function Draft() {
         </section>
       )}
 
+      {st.status === 'live' && st.picks.length >= st.total && <Review st={st} busy={busy} act={act} />}
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <Card title={st.status === 'live' ? 'Valitse' : 'Draft-lista'}>
           <div className="grid grid-cols-4 gap-1 p-3">
@@ -146,5 +146,56 @@ export default function Draft() {
         </Card>
       </div>
     </>
+  );
+}
+
+/** Vaihe 4: valinnat tarkistetaan ja tarvittaessa korjataan ennen kuin ne viedään kentällisiin. */
+function Review({ st, busy, act }: { st: DraftState; busy: boolean; act: (fn: () => Promise<unknown>, ok?: string) => Promise<void> }) {
+  const [edit, setEdit] = useState<number | null>(null);
+  const [q, setQ] = useState('');
+  const pick = st.picks.find((p) => p.pick_no === edit);
+  const cands = pick ? st.pool.filter((p) => p.position === pick.position && p.entity_id !== pick.entity_id && matchName(`${p.name} ${p.team ?? ''}`, q)) : [];
+  const owned = (id: number) => !!pick && st.picks.some((x) => x.guru_id === pick.guru_id && x.position === pick.position && x.entity_id === id);
+  return (
+    <Card title="Vaihe 4 · Tarkista ja hyväksy" className="mb-6"
+      action={<button className="btn btn-primary" disabled={busy} onClick={() => confirm('Hyväksytäänkö valinnat ja julkaistaanko joukkueet guruille? Tätä ei voi perua.') && act(() => api('/admin/draft/finalize', { method: 'POST' }), 'Joukkueet julkaistu!')}>✓ Hyväksy ja julkaise joukkueet</button>}>
+      <p className="px-5 pt-4 text-sm text-slate-300">Kaikki valinnat on tehty. Joukkueet eivät näy guruille ennen hyväksyntää. Jos huomaat virheen, klikkaa valintaa ja vaihda tilalle toinen saman pelipaikan nimi.</p>
+      <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
+        {st.gurus.map((g) => (
+          <div key={g.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <p className="mb-2 font-semibold text-white">{g.name}</p>
+            <div className="flex flex-wrap gap-1">
+              {st.picks.filter((p) => p.guru_id === g.id).sort((a, b) => POSITIONS.indexOf(a.position) - POSITIONS.indexOf(b.position)).map((p) => (
+                <button key={p.pick_no} onClick={() => { setEdit(edit === p.pick_no ? null : p.pick_no); setQ(''); }}
+                  className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs ${edit === p.pick_no ? 'bg-amber-400/30 ring-1 ring-amber-300' : 'bg-white/5 hover:bg-white/10'}`}>
+                  <PosBadge pos={p.position} />{p.name}
+                </button>
+              ))}
+            </div>
+            {pick?.guru_id === g.id && (
+              <div className="mt-3 rounded-lg border border-amber-400/30 p-2">
+                <p className="mb-1 text-xs text-amber-300">Vaihda {pick.name} (valinta #{pick.pick_no}) →</p>
+                <input className="input" autoFocus placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} />
+                <ul className="mt-1">
+                  {cands.slice(0, 6).map((c) => {
+                    const full = c.used >= st.maxPicks[c.position];
+                    const dis = busy || full || owned(c.entity_id);
+                    return (
+                      <li key={c.entity_id} className="flex items-center gap-2 border-t border-white/5 py-1 text-sm">
+                        <span className={`flex-1 truncate ${dis ? 'text-slate-600' : 'text-white'}`}>{c.name} <span className="text-xs text-slate-500">{c.team}</span></span>
+                        <span className="font-mono text-xs text-slate-400">{c.used}/{st.maxPicks[c.position]}</span>
+                        <button className="btn btn-primary px-2 py-0.5 text-xs" disabled={dis}
+                          onClick={() => act(() => api(`/admin/draft/pick/${pick.pick_no}`, { method: 'PUT', body: { entity_id: c.entity_id } }), `${g.name}: ${pick.name} → ${c.name}`).then(() => setEdit(null))}>Vaihda</button>
+                      </li>
+                    );
+                  })}
+                  {!cands.length && <li className="py-1 text-xs text-slate-500">Ei osumia.</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

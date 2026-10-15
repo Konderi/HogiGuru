@@ -5,7 +5,7 @@ import {
   computeLeaderboard, getActiveSeason, helsinkiDate, loadContext, maxFor, slotView, usageCounts, usageKey,
   type Season, type SlotRow,
 } from './data';
-import { autoPick, COUNTED_SWAP, draftState, finalizeDraft, makePick, swapSlot } from './draft';
+import { autoPick, COUNTED_SWAP, draftState, finalizeDraft, makePick, replacePick, swapSlot } from './draft';
 import { mondayOf, swapAnalysis, weeklyReview } from './weekly';
 import { syncGamesOnly, syncLiiga } from './liiga';
 import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder, processSwapDay, type SwapDay } from './swaps';
@@ -1218,6 +1218,10 @@ admin.post('/draft/pick', async (c) => {
   return c.json(await makePick(c.env.DB, c.get('season'), b.position, b.entity_id));
 });
 admin.post('/draft/auto', async (c) => c.json(await autoPick(c.env.DB, c.get('season'))));
+admin.put('/draft/pick/:no', async (c) => {
+  const b = await c.req.json<{ entity_id: number }>();
+  return c.json(await replacePick(c.env.DB, c.get('season'), Number(c.req.param('no')), b.entity_id));
+});
 admin.post('/draft/undo', async (c) => {
   await c.env.DB.prepare('DELETE FROM draft_picks WHERE season_id = ?1 AND pick_no = (SELECT MAX(pick_no) FROM draft_picks WHERE season_id = ?1)').bind(c.get('season').id).run();
   return c.json({ ok: true });
