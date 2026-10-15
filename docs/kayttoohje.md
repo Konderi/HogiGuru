@@ -53,9 +53,11 @@ Draftia voi seurata livenä sivulla **Draft**.
 
 Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
+**Sähköposti-ilmoitukset:** sivun alaosassa voit valita, haluatko maanantaisin Gurukierros-viikkokatsauksen sähköpostiisi (oletuksena päällä). Viestin lopussa on myös peruutuslinkki.
+
 ---
 
-## Gurukierros
+## 5. Gurukierros
 
 **Gurukierros**-sivulla on kaksi näkymää:
 
@@ -64,7 +66,7 @@ Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
 ---
 
-## 5. Vaihdot – vaihtotoiveet
+## 6. Vaihdot – vaihtotoiveet
 
 Vaihtoja on kaudessa **4**. Vaihtopäivät ovat 11.10., 29.11., 10.1. ja 21.2. klo 9–21.
 
@@ -106,19 +108,22 @@ Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihde
 
 ---
 
-## 6. Muut sivut
+## 7. Muut sivut
 
 | Sivu | Mitä näet |
 |---|---|
 | **Leaderboard** | Kaikkien gurujen pisteet, sijoitusmuutokset ▲▼ ja ero kärkeen |
-| **Tilastot** | Pelaajien ja valmentajien HG-pisteet, varaustilanne ja "vain vapaat" -suodatin |
+| **Tilastot** | Pelaajien ja valmentajien HG-pisteet, varaustilanne ja "vain vapaat" -suodatin. Järjestä klikkaamalla sarakkeen otsikkoa; klikkaa pelaajaa avataksesi pelaajakortin |
 | **Sarjataulukko** | Liigan runkosarja |
-| **Hall of Fame** | Aiempien kausien mitalistit |
+| **Kokonaistulokset** | All-Stars-pisteet kauden aikana; veikkausosan tulokset paljastetaan kauden päätösgaalassa |
+| **Hall of Fame** | Maratontaulukko vuodesta 2001, mestarit ja kausikohtaiset tulokset |
 
 Tilastot päivittyvät automaattisesti liiga.fi:stä pelipäivien iltoina ja yöllä.
 
+Sivusto toimii myös puhelimella: leveät taulukot vierivät sivusuunnassa sormella.
+
 ---
 
-## 7. Kysymykset ja valitukset
+## 8. Kysymykset ja valitukset
 
 Ota yhteyttä HG-komiteaan (WhatsApp-ryhmä). Kaikilla on valitusoikeus.

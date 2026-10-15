@@ -122,6 +122,7 @@ export default function MyTeam() {
               </table>
             </Card>
           )}
+          <EmailPrefs />
           <ChangePassword />
           <Modal open={!!sel} onClose={() => setSel(null)} title={`${sel?.name ?? ''} · ottelukohtaiset HG-pisteet`} wide>
             {sel && <GameLog slot={sel} />}
@@ -129,6 +130,27 @@ export default function MyTeam() {
         </div>
       )}
     </>
+  );
+}
+
+function EmailPrefs() {
+  const prefs = useApi<{ weekly?: boolean; swaps?: boolean; coach?: boolean }>('/me/email-prefs');
+  const [saving, setSaving] = useState(false);
+  if (!prefs.data) return null;
+  const weekly = prefs.data.weekly ?? true;
+  return (
+    <Card title="Sähköposti-ilmoitukset">
+      <label className="flex cursor-pointer items-start gap-3 p-5">
+        <input type="checkbox" className="mt-1 h-5 w-5 accent-ice-400" checked={weekly} disabled={saving}
+          onChange={async (e) => {
+            setSaving(true);
+            await api('/me/email-prefs', { method: 'PUT', body: { ...prefs.data, weekly: e.target.checked } }).catch(() => {});
+            await prefs.reload(); setSaving(false);
+          }} />
+        <span><span className="block font-semibold text-white">Gurukierros-viikkokatsaus</span>
+          <span className="text-sm text-slate-400">Maanantaisin: oman viikkosi pisteet ja sijoitus, viikon tähdet ja huippupelit.</span></span>
+      </label>
+    </Card>
   );
 }
 

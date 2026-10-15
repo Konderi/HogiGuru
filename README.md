@@ -23,13 +23,15 @@ Sivusto korvaa aiemman Excel-laskimen ja paperisen osallistumiskaavakkeen: tilas
 9. [Draft](#draft)
 10. [Vaihdot](#vaihdot)
 11. [Käyttäjät ja oikeudet](#käyttäjät-ja-oikeudet)
-12. [API-rajapinta](#api-rajapinta)
-13. [Kehitysympäristö](#kehitysympäristö)
-14. [Julkaisu Cloudflareen](#julkaisu-cloudflareen)
-15. [Excel-tuonti](#excel-tuonti)
-16. [Ylläpitäjän ohje](#ylläpitäjän-ohje)
-17. [Tietoturva](#tietoturva)
-18. [Tiekartta](#tiekartta)
+12. [Varmistukset, sähköposti ja muutoshistoria](#varmistukset-sähköposti-ja-muutoshistoria)
+13. [Kokonaistulokset ja gaala](#kokonaistulokset-ja-gaala)
+14. [API-rajapinta](#api-rajapinta)
+15. [Kehitysympäristö](#kehitysympäristö)
+16. [Julkaisu Cloudflareen](#julkaisu-cloudflareen)
+17. [Excel-tuonti](#excel-tuonti)
+18. [Ylläpitäjän ohje](#ylläpitäjän-ohje)
+19. [Tietoturva](#tietoturva)
+20. [Tiekartta](#tiekartta)
 
 ---
 
@@ -49,8 +51,9 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 
 - Pisteet lasketaan **runkosarjan** tilastoista.
 - Vaihdossa poistuvan pelaajan keräämät pisteet **jäävät gurulle**; uusi pelaaja kerää pisteitä vaihtohetkestä eteenpäin.
-- Valmentajan saa vaihtaa aina potkujen yhteydessä. Jos ei vaihda, saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
-- Vaihdot ilmoitetaan WhatsApp-ryhmään vaihtopäivänä; ne astuvat voimaan, kun HG-komitea on kuitannut ne.
+- Valmentajan potkuista guru saa −10 p ja voi valita uuden valmentajan **heti itse** (Oma joukkue). Tämä ei vaadi vaihtopäivää eikä kuluta vaihtokiintiötä. Jos ei vaihda, saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
+- Pelaajille ei ole poikkeuksia: Liigasta lähtenyt pelaaja vaihdetaan normaalisti seuraavana vaihtopäivänä.
+- Vaihdot tehdään vaihtopäivänä sivustolla vaihtotoiveina, ja ylläpito käsittelee ne päivän päätyttyä.
 - Gurun kentällinen näkyy vain hänelle itselleen ja ylläpidolle. Julkisesti näkyy vain, **kuinka monella** pelaaja on (esim. 3/5).
 - HG-komitea päättää mahdollisista sääntömuutoksista. Kaikilla on valitusoikeus.
 
@@ -64,29 +67,35 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Etusivu | `/` | Ilmoittautumisbanneri (kun auki), palkintopalli, Top 10, seuraavan vaihtopäivän lähtölaskenta, viimeisin päivitys, sarjataulukko |
 | Ilmoittaudu | `/ilmoittaudu` | Osallistumislomake veikkauksineen ja säännöt |
 | Leaderboard | `/leaderboard` | Kaikki gurut, sijoitusmuutokset ▲▼, ero kärkeen |
+| Gurukierros | `/gurukierros` | Viikkokatsaus (ma–su, oletuksena kuluva viikko): viikon parhaat gurut, tähdet, huippupelit, suosikkipelaajat, "olisi kannattanut". Vaihtojen kuningas: vaihtojen nettovaikutus. Kentällisiä ei paljasteta |
 | Sarjataulukko | `/sarjataulukko` | Liigan runkosarja |
-| Tilastot | `/tilastot` | Pelaajat ja valmentajat HG-pisteineen, varaustilanne, "vain vapaat" -suodatin |
-| Hall of Fame | `/hall-of-fame` | Aiempien kausien mitalistit |
+| Tilastot | `/tilastot` | Pelaajat ja valmentajat HG-pisteineen, lajittelu sarakkeista, varaustilanne, "vain vapaat" -suodatin, pelaajakortti klikkaamalla |
+| Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat; veikkausosa pimitetty, kunnes ylläpito julkaisee gaalassa |
+| Hall of Fame | `/hall-of-fame` | Maratontaulukko 2001–, mestarit, kausikohtaiset tulokset |
+| Kirjaudu / Unohtunut salasana | `/kirjaudu`, `/unohtunut`, `/salasana?t=` | Kirjautuminen ja salasanan palautus sähköpostilinkillä |
 
 ### Gurun näkymät (kirjautunut)
 | Sivu | Polku | Sisältö |
 |---|---|---|
-| Oma joukkue | `/oma-joukkue` | Kentällinen (mittasuhteiltaan oikea pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), pisteerittely, vaihdetut pelaajat, korjaukset, vaihtotoiveet varaustilanteineen, draft-ennakkolista, salasanan vaihto |
-| Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat eriteltynä. Pimitetty, kunnes ylläpito julkaisee gaalassa |
+| Oma joukkue | `/oma-joukkue` | Kentällinen (pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), ottelukohtaiset HG-pisteet klikkaamalla pelaajaa, pisteerittely, vaihdetut pelaajat, korjaukset, uuden valmentajan valinta potkujen jälkeen, vaihtotoiveet varaustilanteineen, draft-ennakkolista, sähköposti-ilmoitukset, salasanan vaihto |
 | Draft | `/draft` | Live-draft-taulu |
 
 ### Ylläpito (`/admin`)
 | Osio | Toiminnot |
 |---|---|
 | Yleiskatsaus | Tilastopäivitys napista, päivitysloki, avainluvut |
-| Ilmoittautuminen | Lomakkeen avaus/sulku, määräaika, maksu, lisätieto; ilmoittautuneet, veikkausten tarkastelu, hyväksyntä guruksi (+ tunnus), CSV-vienti |
+| Ilmoittautuminen | Lomakkeen avaus/sulku, määräaika, maksu, lisätieto, valintatapa (draft/korit); ilmoittautuneet, veikkausten tarkastelu, hyväksyntä guruksi (+ tunnus, liitos aiempaan guruun), CSV-vienti |
 | Draft | Listat, arvonta, live-valinnat, ennakkolistat, peruminen, vienti kentällisiin |
 | Vaihdot | Vaihtopäivät kellonaikoineen, vaihtotoiveiden esikatselu ja käsittely, vaihtoloki, peruminen |
 | Gurut & kentälliset | Gurut, kentälliset, vaihdot, paikkojen muokkaus, pistekorjaukset |
 | Pisteytys & kausi | Kertoimet, kentällisen koko, valintarajat paikoittain, vaihtojen määrä, veikkausosion pisteet |
 | Valmentajat | Valmentajat, potkut |
-| Käyttäjät | Tunnukset, roolit, salasanat, liitos guruun |
+| Käyttäjät | Tunnukset, roolit (guru / ylläpitäjä / pääylläpitäjä), salasanat, liitos guruun |
+| Kokonaistulokset | Veikkausosan esikatselu, oikeiden vastausten korjaus, julkaisu, gaalaesitys, tallennus Hall of Fameen |
 | Hall of Fame | Historiatulokset |
+| Tekninen ylläpito | *Vain pääylläpitäjä:* järjestelmän tila, varmistukset (R2), sähköpostit ja lähetysloki, muutoshistoria |
+
+Koko sivusto on optimoitu mobiilille: taulukot vierivät sivuttain kortin sisällä, ponnahdusikkunat avautuvat alapaneelina, kenttien 16 px fontti estää iOS-zoomauksen.
 
 ---
 
@@ -97,12 +106,12 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
   Selain ──────────▶│  Cloudflare Worker  (guru.konderi.fi)        │
                     │  /*        → staattiset tiedostot (React SPA)│
                     │  /api/*    → Hono-API (worker/index.ts)      │
-                    │  cron      → syncLiiga() illat + 6 h välein│
-                    └──────────────┬───────────────────┬───────────┘
-                            ┌──────▼──────┐     ┌──────▼─────────┐
-                            │ Cloudflare  │     │ liiga.fi       │
-                            │ D1 (SQLite) │     │ /api/v2 (JSON) │
-                            └─────────────┘     └────────────────┘
+                    │  cron      → tilastot, varmistus, raportit   │
+                    └───┬──────────────┬─────────────┬─────────┬───┘
+                 ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼─────┐ ┌─▼──────────┐
+                 │ D1 (SQLite) │ │ R2         │ │ Resend   │ │ liiga.fi   │
+                 │ hogiguru    │ │ varmistukset│ │ sähköposti│ │ /api/v2    │
+                 └─────────────┘ └────────────┘ └──────────┘ └────────────┘
 ```
 
 | Kerros | Teknologia |
@@ -110,13 +119,25 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Frontend | React 19, React Router, Vite, Tailwind CSS v4 |
 | Backend | Cloudflare Workers + [Hono](https://hono.dev) |
 | Tietokanta | Cloudflare D1 (SQLite) |
-| Ajastus | Workers Cron Triggers (`*/30 * * * *`); worker rajaa ajot Suomen aikaan: 17.00–23.00 puolen tunnin välein, sitten 6 h välein (05.00, 11.00) |
-| Kirjautuminen | PBKDF2-salasanat + HttpOnly-istuntoeväste |
+| Varmistukset | Cloudflare R2 (`hogiguru-backups`, binding `BACKUPS`) |
+| Sähköposti | [Resend](https://resend.com), lähettäjä `no-reply@konderi.fi` |
+| Ajastus | Workers Cron Triggers (`*/30 * * * *`), worker rajaa ajot Suomen aikaan (ks. alla) |
+| Kirjautuminen | PBKDF2-salasanat + HttpOnly-istuntoeväste, palautus sähköpostilinkillä |
 | Build | `@cloudflare/vite-plugin` |
 
 Frontend ja API julkaistaan **yhtenä Workerina**; vain `/api/*` ohjataan koodille (`run_worker_first`).
 
-**Ilme:** tumma jäähalliteema, jäänsininen korostus, maalivalon punainen, kaukalon viivat taustalla, tulostaulumainen numerofontti. Responsiivinen.
+**Ajastetut tehtävät (Suomen aikaa):**
+
+| Aika | Tehtävä |
+|---|---|
+| 17.00–23.00 puolen tunnin välein, lisäksi 05.00 ja 11.00 | Täysi tilastopäivitys liiga.fi:stä + vanhojen istuntojen siivous |
+| Muulloin 30 min välein | Ottelulokin täydennys (max 12 ottelua / ajo) |
+| 03.00 | Tietokannan varmistus R2:een + vanhojen varmistusten siivous |
+| 07.00 | Ylläpitoraportti pääylläpitäjille |
+| ma 09.00 | Gurukierros-viikkokatsaus guruille |
+
+**Ilme:** tumma jäähalliteema, jäänsininen korostus, maalivalon punainen, kaukalon viivat taustalla, tulostaulumainen numerofontti. Responsiivinen, mobiili ensisijainen.
 
 ---
 
@@ -124,26 +145,39 @@ Frontend ja API julkaistaan **yhtenä Workerina**; vain `/api/*` ohjataan koodil
 
 ```
 HogiGuru-app/
-├── wrangler.jsonc               Cloudflare-konfiguraatio (D1, cron, domain)
+├── wrangler.jsonc               Cloudflare-konfiguraatio (D1, R2, cron, domain, MAIL_FROM)
 ├── vite.config.ts
 ├── migrations/
 │   ├── 0001_init.sql            tietokantarakenne + oletuspisteytys
 │   ├── 0002_registration.sql    ilmoittautuminen, valintarajat, kauden 26–27 säännöt ja vaihtopäivät
-│   └── 0003_swap_requests.sql   vaihtotoiveet, vaihtopäivien käsittelytila
+│   ├── 0003_swap_requests.sql   vaihtotoiveet, vaihtopäivien käsittelytila
+│   ├── 0004_registration_draft.sql  ilmoittautumisen draft-toiveet
+│   ├── 0005_results_baskets.sql kokonaistulosten julkaisu, valintatapa (draft/korit)
+│   ├── 0006_game_stats.sql      ottelukohtaiset tilastot
+│   ├── 0007_audit_mail.sql      muutoshistoria, sähköpostiloki, sähköpostiasetukset
+│   ├── 0008_maintainer.sql      pääylläpitäjä-oikeus
+│   └── 0009_password_resets.sql salasanan palautuslinkit
 ├── worker/                      BACKEND
-│   ├── index.ts                 API-reitit, istunnot, cron
+│   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
 │   ├── scoring.ts               pisteytyskaavat
-│   ├── draft.ts                 draft, automaattivalinta, vaihdot
+│   ├── draft.ts                 draft, automaattivalinta, vaihdot, vaihtokiintiö
 │   ├── swaps.ts                 vaihtotoiveiden vuorojärjestys, esikatselu ja käsittely
-│   ├── liiga.ts                 liiga.fi-synkronointi
+│   ├── weekly.ts                Gurukierros: viikkokatsaus, vaihtojen analyysi
+│   ├── predictions.ts           veikkausosion pisteet
+│   ├── liiga.ts                 liiga.fi-synkronointi (tilastot + ottelut)
+│   ├── backup.ts                SQL-dump R2:een, säilytys ja listaus
+│   ├── mail.ts                  Resend-lähetys, HTML-pohja
+│   ├── reports.ts               viikkokatsaus- ja ylläpitoraporttisähköpostit
 │   └── auth.ts                  salasanat, istunnot
 ├── src/                         FRONTEND
 │   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css
-│   ├── components/              DraftPrefs.tsx, SwapRequests.tsx
-│   ├── pages/                   Home, Register, Leaderboard, Standings, Stats, HallOfFame, Login, MyTeam, DraftBoard
-│   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, Swaps, Gurus, Scoring, Coaches, Users, HallOfFame
-├── tools/import_excel.py        kauden tuonti Excelistä
+│   ├── components/              HalfRink, GameLog, PlayerCard, CoachReplace, DraftPrefs, SwapRequests, ResultsView, GalaReveal, GoldConfetti
+│   ├── pages/                   Home, Register, Leaderboard, Gurukierros, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard
+│   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, Swaps, Gurus, Scoring, Coaches, Users, Results, HallOfFame, Maintenance
+├── tools/
+│   ├── import_excel.py          kauden tuonti Excelistä
+│   └── import_hof.py            Hall of Fame -maratontaulukon tuonti
 ├── docs/
 │   ├── kayttoohje.md            käyttöohje guruille
 │   ├── yllapitajan-ohje.md      ylläpitäjän ohje
@@ -158,19 +192,23 @@ HogiGuru-app/
 
 | Taulu | Tarkoitus |
 |---|---|
-| `users`, `sessions` | Tunnukset (`admin`/`guru`) ja istunnot |
-| `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, ilmoittautumisen asetukset |
+| `users`, `sessions` | Tunnukset (`role` admin/guru + `maintainer`-lippu = pääylläpitäjä, `email_prefs`, `unsub_token`) ja istunnot |
+| `password_resets` | Salasanan palautuslinkit (vain SHA-256-tiiviste, 60 min, kertakäyttöinen) |
+| `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, ilmoittautumisen asetukset, valintatapa, tulosten julkaisu |
 | `teams`, `players`, `player_stats`, `standings` | liiga.fi-data |
+| `game_stats`, `team_games`, `games_synced` | Ottelukohtaiset tilastot pelilokia ja Gurukierrosta varten |
 | `coaches` | Valmentajat + potkut |
 | `gurus` | Kisaajat, linkki tunnukseen, draft-numero |
 | `roster_slots` | **Kentällisen paikat** aikaväleittäin |
 | `adjustments` | Pistekorjaukset |
-| `swap_days` | Vaihtopäivät (päivä, alku- ja loppuaika) |
+| `swap_days`, `swap_requests` | Vaihtopäivät (päivä, kellonajat, käsittelytila) ja gurujen vaihtotoiveet |
 | `registrations` | Ilmoittautumiset: yhteystiedot, veikattu sarjataulukko, parhaat pistemiehet, kategoriat, tila |
 | `draft_pool`, `draft_picks`, `draft_prefs` | Draft |
 | `leaderboard_history` | Päivittäiset sijat |
 | `hall_of_fame` | Aiemmat kaudet |
 | `sync_log` | Päivitysloki |
+| `audit_log` | Muutoshistoria (ylläpidon ja gurujen muuttavat pyynnöt) |
+| `mail_log` | Sähköpostien lähetysloki |
 
 **Kentällisen paikka:** aktiivinen kun `end_date IS NULL`. Pisteet = `(end_points ?? nykyiset) − start_points`. Vaihto jäädyttää vanhan paikan ja avaa uuden, jonka alkupisteet ovat uuden pelaajan pisteet vaihtohetkellä (vastaa Excelin `…)-9.2`-vähennystä).
 
@@ -201,7 +239,7 @@ Esimerkki: hyökkääjä 11 O, 2+6, +5, 2 J → 3 + 5,4 + 0,2 + 2 − 5,5 = **5,
 | Pörssit (piste, maali, syöttö, +/−, puolustajat, jäähy) | 12 | 6 | 3 |
 | Eniten nollapelejä | puolitetut pisteet | | |
 
-Veikkaukset tallennetaan ilmoittautumisen yhteydessä; pisteiden automaattinen laskenta on tiekartalla.
+Veikkaukset tallennetaan ilmoittautumisen yhteydessä ja pisteet lasketaan automaattisesti (`worker/predictions.ts`); ne näkyvät julkisesti vasta kun ylläpito julkaisee kokonaistulokset.
 
 Kaikki kertoimet: Ylläpito → Pisteytys & kausi. Koodi: [`worker/scoring.ts`](worker/scoring.ts).
 
@@ -218,7 +256,7 @@ Kaikki kertoimet: Ylläpito → Pisteytys & kausi. Koodi: [`worker/scoring.ts`](
 
 Ottelukohtainen loki: synkka käsittelee enintään 12 uutta päättynyttä ottelua kerrallaan tauluihin `game_stats` (pelaajat), `team_games` (joukkueen pisteet, valmentajille) ja `games_synced` (migraatio 0006). Frontend hakee `GET /api/game-log/:id?pos=F|D|G|C`. Maalivahtien torjunnat, päästetyt ja peliaika tulevat tarkkoina erätilastoista (`goaliePeriodStats`).
 
-`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajetaan Suomen aikaa klo 17.00–23.00 puolen tunnin välein, sen jälkeen 6 h välein (05.00 ja 11.00) sekä napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
+`{kausi}` = päättymisvuosi (2026–2027 → `2027`). Ajastus: ks. [Arkkitehtuuri](#arkkitehtuuri); lisäksi napista. Rajapinta on epävirallinen; muutokset korjataan tiedostoon `worker/liiga.ts`.
 
 ---
 
@@ -259,9 +297,11 @@ Vaihdot tehdään sivustolla **vaihtotoiveina**. Kellon kanssa ei tarvitse kilpa
 5. Jos tulija on jo täynnä (tai gurulla jo), otetaan seuraava varavaihtoehto. Jos mikään ei käy, vaihto ei toteudu eikä vaihtokertaa kulu. Edellisen gurun vaihdossa vapautunut pelaaja on heti seuraavien valittavissa.
 6. Vaihtokiintiö (4) tarkistetaan; yksittäisen vaihdon voi perua vaihtolokista.
 
-Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vaihda**), esim. valmentajan potkujen yhteydessä.
+Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vaihda**).
 
-**Potkut:** Valmentajat → Potkut (−10 p), sitten tarvittaessa vaihto.
+Ennen vaihtopäivän käsittelyä otetaan automaattisesti tapahtumavarmistus R2:een.
+
+**Potkut:** Ylläpito → Valmentajat → Potkut (−10 p kaikille, joilla valmentaja on). Gurun Oma joukkue -sivulle ilmestyy valintalaatikko (`POST /api/me/coach`), josta hän valitsee uuden valmentajan heti. Tämä vaihto ei kuluta vaihtokiintiötä (`COUNTED_SWAP`-ehto `worker/draft.ts`:ssä).
 
 ---
 
@@ -270,20 +310,53 @@ Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vai
 | Rooli | Näkee | Voi tehdä |
 |---|---|---|
 | Vierailija | Julkiset sivut | Ilmoittautua |
-| Guru | + oma kentällinen, draft | Ennakkolista, vaihtotoiveet, salasanan vaihto |
+| Guru | + oma kentällinen, draft | Ennakkolista, vaihtotoiveet, valmentajan valinta potkujen jälkeen, sähköpostiasetukset, salasanan vaihto ja palautus |
 | Ylläpitäjä | Ylläpito (`/admin`) | Pelin hallinta: draft, vaihdot, gurut, pisteytys, valmentajat, käyttäjät |
 | Pääylläpitäjä | + Tekninen ylläpito (`/admin/yllapito`) | Varmistukset (R2), sähköposti, muutoshistoria, järjestelmän tila; vain pääylläpitäjä voi nimetä toisen pääylläpitäjän |
 
 Ensimmäinen käyttäjä luodaan sivulla `/kirjaudu` pääylläpitäjäksi, kun kannassa ei ole käyttäjiä.
-Pääylläpitäjä = `users.role = 'admin'` + `users.maintainer = 1` (migraatio 0008). Tekninen API: `/api/admin/maint/*`.
+Pääylläpitäjä = `users.role = 'admin'` + `users.maintainer = 1` (migraatio 0008). Tekninen API: `/api/admin/maint/*`. Uuden ylläpitäjän lisäys: Ylläpito → Käyttäjät → rooli.
 
-### Varmistukset ja sähköposti
+---
 
-- R2-säilö `hogiguru-backups`: `daily/` klo 03 (30 pv, kuun 1. pysyvä), `event/` ennen vaihtopäivän käsittelyä ja draftin lukitusta (90 pv), `manual/`.
-- Palautus: lataa `.sql` ylläpitosivulta ja aja `npx wrangler d1 execute hogiguru --remote --file=varmistus.sql` tyhjään kantaan.
-- Sähköposti Resendin kautta (`RESEND_API_KEY` salaisuutena, lähettäjä `no-reply@konderi.fi`). Viikkokatsaus ma klo 9, ylläpitoraportti pääylläpitäjille klo 7. Peruutus: `/api/unsubscribe?t=`.
-- Salasanan palautus: `/unohtunut` → `POST /api/auth/forgot` lähettää kertakäyttöisen linkin `/salasana?t=…` (60 min, tokenista tallennetaan vain SHA-256, max 3 pyyntöä/h/käyttäjä, vastaus aina sama). Vaihto mitätöi käyttäjän kaikki istunnot ja muut linkit.
-- Muutoshistoria (`audit_log`): ylläpidon ja gurujen muuttavat pyynnöt, salasanat peitetty.
+## Varmistukset, sähköposti ja muutoshistoria
+
+Hallinta: **Ylläpito → Tekninen ylläpito** (vain pääylläpitäjä).
+
+### Varmistukset (Cloudflare R2)
+| Tyyppi | Milloin | Säilytys |
+|---|---|---|
+| `daily/YYYY-MM-DD.sql` | joka yö klo 03 | 30 pv, kuun 1. päivän varmistus pysyvästi |
+| `event/<aika>-<syy>.sql` | ennen vaihtopäivän käsittelyä ja draftin vientiä kentällisiin | 90 pv |
+| `manual/<aika>.sql` | napista *Tee varmistus nyt* | pysyvästi |
+
+Varmistus on koko kannan SQL-dump (rakenne + data, istunnot pois lukien). Lisäksi D1 Time Travel palauttaa minkä tahansa hetken 30 päivän ajalta.
+
+**Palautus:**
+1. Lataa `.sql` Tekninen ylläpito → Varmistukset -sivulta.
+2. Pienet korjaukset: poimi tarvittavat `INSERT`-rivit ja aja `npx wrangler d1 execute hogiguru --remote --command "…"`.
+3. Koko kanta: luo tyhjä D1 (`npx wrangler d1 create hogiguru-restore`), aja `npx wrangler d1 execute hogiguru-restore --remote --file=varmistus.sql`, tarkista ja vaihda `database_id` `wrangler.jsonc`:iin → `npm run deploy`.
+4. Vaihtoehto: `npx wrangler d1 time-travel restore hogiguru --timestamp=<ISO-aika>`.
+
+### Sähköposti (Resend)
+- Asetukset: salaisuus `RESEND_API_KEY` (Cloudflare → Workers → hogiguru → Settings → Variables and Secrets, tyyppi *Secret*) ja `MAIL_FROM` (`wrangler.jsonc`, `HogiGuru <no-reply@konderi.fi>`). Resendissä vahvistettu domain: `konderi.fi`.
+- **Viikkokatsaus** guruille ma klo 9: oman viikon pisteet ja sijoitus + Gurukierroksen kooste. Sama viikko lähetetään kullekin vain kerran.
+- **Ylläpitoraportti** pääylläpitäjille klo 7: tilastopäivitykset, yön varmistus, lähetetyt viestit, uudet ilmoittautumiset, muutosten määrä.
+- **Salasanan palautus:** `/unohtunut` → `POST /api/auth/forgot` lähettää kertakäyttöisen linkin `/salasana?t=…` (60 min, tokenista tallennetaan vain SHA-256, max 3 pyyntöä/h/käyttäjä, vastaus aina sama). Vaihto mitätöi käyttäjän kaikki istunnot ja muut linkit.
+- **Peruutus:** jokaisessa viikkokatsauksessa linkki ja `List-Unsubscribe`-otsake (`/api/unsubscribe?t=`); guru voi myös säätää asetuksen Oma joukkue → Sähköposti-ilmoitukset.
+- Kaikki lähetykset kirjautuvat `mail_log`-tauluun (näkyy Tekninen ylläpito → Sähköposti).
+
+### Muutoshistoria
+`audit_log` tallentaa kaikki ylläpidon (`/api/admin/*`) ja gurujen (`/api/me/*`) muuttavat pyynnöt: aika, käyttäjä, toiminto, sisältö (salasanat peitetty) ja tulos.
+
+---
+
+## Kokonaistulokset ja gaala
+
+- **Pimitys:** kauden aikana julkisesti näkyy vain All-Stars. Veikkauskategoriat (sarjataulukko, joukkueiden pistemiehet, pörssit) lasketaan `worker/predictions.ts`:ssä, mutta `/api/results` palauttaa ne vasta kun `seasons.results_published = 1`.
+- **Ylläpito → Kokonaistulokset:** esikatselu eriteltynä, julkaisukytkin, käsikorjaukset oikeisiin vastauksiin (`results_override`, JSON) ja tallennus Hall of Fameen.
+- **Gaalaesitys** 🎬: koko näytön vaiheittainen tulosten paljastus, ks. [ylläpitäjän ohje](docs/yllapitajan-ohje.md#gaalaesitys).
+- **Valintatapa** (Ylläpito → Ilmoittautuminen): `draft` (toivelistat + valintajärjestys) tai `baskets` (korit: yksi valinta per kori, kentällinen syntyy suoraan hyväksynnässä).
 
 ---
 
@@ -293,11 +366,12 @@ Kaikki reitit polun `/api` alla, JSON, virheet `{ "error": "…" }`.
 
 | Ryhmä | Reitit |
 |---|---|
-| Julkiset | `GET /public/overview`, `/leaderboard`, `/standings`, `/stats?pos=F\|D\|G`, `/coaches`, `/players/search`, `/swap-days`, `/public/swaps`, `/hall-of-fame`, `/teams` |
+| Julkiset | `GET /public/overview`, `/leaderboard`, `/leaderboard/history`, `/standings`, `/stats?pos=F\|D\|G`, `/coaches`, `/teams`, `/players/search`, `/players/:id/info`, `/game-log/:id?pos=`, `/swap-days`, `/public/swaps`, `/weekly?week=`, `/swap-analysis`, `/results`, `/hall-of-fame`, `GET/POST /unsubscribe?t=` |
 | Ilmoittautuminen | `GET /public/registration`, `POST /public/registration` |
-| Kirjautuminen | `GET /auth/me`, `POST /auth/login`, `/auth/logout`, `/auth/password`, `/setup` |
-| Guru | `GET /me/team`, `GET/PUT /me/draft-prefs`, `GET/PUT /me/swaps`, `GET /draft` |
-| Ylläpito | `/admin/overview`, `/admin/sync`, `/admin/season`, `/admin/registrations` (+ `/accept`, `/reject`), `/admin/users`, `/admin/gurus`, `/admin/slots`, `/admin/swaps` (+ `/undo`), `/admin/adjustments`, `/admin/coaches` (+ `/fire`), `/admin/swap-days` (+ `/:id/preview`, `/:id/process`), `/admin/draft/*`, `/admin/hall-of-fame` |
+| Kirjautuminen | `GET /auth/me`, `POST /auth/login`, `/auth/logout`, `/auth/password`, `/auth/forgot`, `GET/POST /auth/reset`, `POST /setup` |
+| Guru | `GET /me/team`, `GET/PUT /me/draft-prefs`, `GET/PUT /me/swaps`, `POST /me/coach`, `GET/PUT /me/email-prefs`, `GET /draft` |
+| Ylläpito | `/admin/overview`, `/admin/sync`, `/admin/season`, `/admin/registrations` (+ `/:id/accept`, `/:id/reject`, `/:id/matches`), `/admin/users`, `/admin/gurus` (+ `/:id/team`, `/:id/draft-prefs`), `/admin/slots`, `/admin/swaps` (+ `/:id/undo`), `/admin/adjustments`, `/admin/coaches` (+ `/:id/fire`), `/admin/swap-days` (+ `/:id/preview`, `/:id/process`), `/admin/draft/*`, `/admin/results` (+ `/override`, `/hall-of-fame`), `/admin/hall-of-fame` |
+| Tekninen ylläpito | `/admin/maint/status`, `/admin/maint/backups` (+ `/file?key=`), `/admin/maint/audit`, `/admin/maint/mail-log`, `/admin/maint/mail/test`, `/admin/maint/mail/weekly`, `/admin/maint/mail/admin-report` |
 
 ---
 
@@ -322,20 +396,24 @@ Avaa `/kirjaudu` → luo ylläpitäjä → Ylläpito → **Päivitä tilastot**.
 
 ## Julkaisu Cloudflareen
 
-**API-avaimen oikeudet:** Workers Scripts · Edit, D1 · Edit, Account Settings · Read; zonelle konderi.fi Workers Routes · Edit ja DNS · Edit.
+**API-avaimen oikeudet:** Workers Scripts · Edit, D1 · Edit, Workers R2 Storage · Edit, Account Settings · Read; zonelle konderi.fi Workers Routes · Edit ja DNS · Edit.
 
 ```bash
 export CLOUDFLARE_API_TOKEN=...
 export CLOUDFLARE_ACCOUNT_ID=...
-npx wrangler d1 create hogiguru      # database_id → wrangler.jsonc
+npx wrangler d1 create hogiguru            # database_id → wrangler.jsonc
+npx wrangler r2 bucket create hogiguru-backups
+npx wrangler secret put RESEND_API_KEY     # Resendin API-avain
 npm run db:migrate:remote
-npm run deploy                       # → guru.konderi.fi
+npm run deploy                             # → guru.konderi.fi
 ```
 Jatkossa: `git pull && npm run deploy`. Uudet kantamuutokset tiedostoina `migrations/000N_….sql` → `npm run db:migrate:remote` ennen julkaisua.
 
-**Nykyinen tuotanto:** Worker `hogiguru`, D1 `hogiguru` (EEUR, `29dc5201-…`), custom domain `guru.konderi.fi`, migraatiot 0001–0003 ajettu. Paikallisesti voi julkaista myös `npx wrangler login` -kirjautumisella ilman API-avainta.
+**Nykyinen tuotanto:** Worker `hogiguru`, D1 `hogiguru` (EEUR, `29dc5201-…`), R2 `hogiguru-backups`, custom domain `guru.konderi.fi`, Resend-domain `konderi.fi`, migraatiot 0001–0009 ajettu. Paikallisesti voi julkaista myös `npx wrangler login` -kirjautumisella ilman API-avainta.
 
-**Varmuuskopio:** `npx wrangler d1 export hogiguru --remote --output backup.sql` (lisäksi D1 Time Travel 30 pv).
+**Käsin varmistus komentoriviltä:** `npx wrangler d1 export hogiguru --remote --output backup.sql` (automaattiset varmistukset: ks. [Varmistukset](#varmistukset-sähköposti-ja-muutoshistoria)).
+
+**Domainin vaihto** omaan osoitteeseen: [docs/domainin-vaihto.md](docs/domainin-vaihto.md).
 
 ---
 
@@ -365,11 +443,11 @@ Tuo kaikkien kausien (2001–2026) sijoitukset ja gaalapaikat. Kauden maratonpis
 ## Ylläpitäjän ohje
 
 📘 **Käyttöohjeet:**
-- [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, draft, vaihtotoiveet, varaustilanne
-- [Ylläpitäjän ohje](docs/yllapitajan-ohje.md): kauden valmistelu, draft, vaihtopäivän käsittely, potkut, korjaukset, kertoimien muutos kesken kauden, ongelmatilanteet
+- [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, kirjautuminen ja salasanan palautus, draft, oma joukkue, Gurukierros, vaihtotoiveet, potkut, sähköposti-ilmoitukset
+- [Ylläpitäjän ohje](docs/yllapitajan-ohje.md): roolit, kauden valmistelu, draft, vaihtopäivän käsittely, potkut, korjaukset, kertoimien muutos kesken kauden, kauden päätös ja gaala, tekninen ylläpito, ongelmatilanteet
 - [Domainin vaihto](docs/domainin-vaihto.md): siirto guru.konderi.fi → oma domain (Cloudflare, Resend, uudelleenohjaus, istunnot, testaus)
 
-Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset → valmentajat → draft. Kauden aikana tilastot päivittyvät itsestään, ja vaihtopäivien toiveet käsitellään esikatselun kautta. Kauden lopussa mitalistit Hall of Fameen.
+Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset → valmentajat → draft. Kauden aikana tilastot, varmistukset ja sähköpostit hoituvat itsestään, ja vaihtopäivien toiveet käsitellään esikatselun kautta. Kauden lopussa kokonaistulokset gaalassa ja Hall of Fameen.
 
 ⚠️ Pistekertoimet vaikuttavat **takautuvasti** koko kauden pisteisiin, myös jo pelattuihin peleihin. Muutoksen voi perua palauttamalla vanhat kertoimet, mutta niiden aikana käsitellyt vaihdot jäävät uusilla kertoimilla laskettuina. Älä siksi muuta kertoimia kesken kauden; ks. [ohjeen kohta 6](docs/yllapitajan-ohje.md#6-️-pistekertoimien-muuttaminen-kesken-kauden).
 
@@ -378,9 +456,12 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 ## Tietoturva
 
 - PBKDF2-SHA256 (100 000 kierrosta, suola), vakioaikainen vertailu
-- Istuntoeväste `HttpOnly; Secure; SameSite=Lax`, 30 vrk
+- Istuntoeväste `HttpOnly; Secure; SameSite=Lax`, 30 vrk; salasanan vaihto palautuslinkillä kirjaa ulos kaikilta laitteilta
+- Palautuslinkit kertakäyttöisiä, 60 min, kannassa vain tiiviste; pyyntöjen määrä rajattu eikä vastaus paljasta tunnusten olemassaoloa
+- Roolit: guru / ylläpitäjä / pääylläpitäjä; tekninen ylläpito vain pääylläpitäjälle, omaa roolia ei voi poistaa
+- Muutoshistoria kaikista muuttavista ylläpito- ja guruoperaatioista
 - Kentälliset ja ilmoittautujien yhteystiedot vain ylläpidolle
-- `data/` ja salaisuudet eivät ole versionhallinnassa
+- `data/` ja salaisuudet (`RESEND_API_KEY`) eivät ole versionhallinnassa
 
 ---
 
@@ -396,24 +477,26 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 - Hall of Fame: maratontaulukko 2001–2026, mestarit, kausikohtaiset tulokset ja gaalapaikat
 - Käyttö- ja ylläpito-ohjeet
 - Tuotantojulkaisu (guru.konderi.fi, D1, ajastetut päivitykset) – lokakuu 2026
+- Ottelukohtaiset HG-pisteet (pelaajan peliloki), pelaajakortti, tilastojen lajittelu
+- Gurukierros: viikkokatsaus ja vaihtojen kuningas
+- Valmentajan potkut: välitön oma valinta ilman vaihtokiintiötä
+- Veikkausosion automaattinen laskenta, kokonaistulokset ja gaalaesitys
+- Varmistukset R2:een, muutoshistoria, pääylläpitäjä-rooli ja Tekninen ylläpito -sivu
+- Sähköposti (Resend): viikkokatsaus, ylläpitoraportti, salasanan palautus
+- Mobiilioptimointi
 
 **Seuraavaksi**
-- [ ] Sähköpostihälytys ylläpidolle, jos tilastopäivitys epäonnistuu
-- [ ] Veikkausosion pisteiden automaattinen laskenta ja oma tulostaulu
+- [ ] Vaihtopäivän muistutus- ja tulossähköpostit, ilmoitus valmentajan potkuista
+- [ ] Sähköpostihälytys heti, jos tilastopäivitys epäonnistuu (nyt päiväraportissa)
 - [ ] Pistekehityskäyrät
 - [ ] Kausien hallinta
 - [ ] GitHub Actions -julkaisu
+- [ ] Oma domain (ks. [docs/domainin-vaihto.md](docs/domainin-vaihto.md))
 
 **Myöhemmin**
 - [ ] Workers AI -viikkokatsaukset
-- [ ] Sähköposti-ilmoitukset
+- [ ] Kuukausittainen varmistuksen palautustesti
 
 ---
 
 *HogiGuru – tehty lätkäfaneilta lätkäfaneille.* 🏒
-
-## Kokonaistulokset ja valintatapa
-
-- **Pimitys:** kauden aikana julkisesti näkyy vain All-Stars. Veikkauskategoriat (sarjataulukko, joukkueiden pistemiehet, kategoriat) lasketaan `worker/predictions.ts`:ssä, mutta `/api/results` palauttaa ne vasta kun `seasons.results_published = 1`.
-- **Ylläpito → Kokonaistulokset:** esikatselu eriteltynä, julkaisukytkin, käsikorjaukset oikeisiin vastauksiin (`results_override`, JSON) ja tallennus Hall of Fameen.
-- **Valintatapa** (Ylläpito → Ilmoittautuminen): `draft` (toivelistat + valintajärjestys) tai `baskets` (korit: yksi valinta per kori, kentällinen syntyy suoraan hyväksynnässä).

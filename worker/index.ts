@@ -77,7 +77,7 @@ const unsubscribe = async (c: C) => {
   const t = c.req.query('t') ?? '';
   const r = t ? await c.env.DB.prepare("UPDATE users SET email_prefs = '{\"weekly\":false,\"swaps\":false,\"coach\":true}' WHERE unsub_token = ? RETURNING email").bind(t).first<{ email: string }>() : null;
   return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;background:#060b18;color:#e2e8f0;padding:40px;text-align:center">
-    <h2>${r ? 'Tilaus peruttu' : 'Linkki ei kelpaa'}</h2><p>${r ? 'Et saa enää HogiGurun viikkokatsauksia etkä vaihtoviestejä. Voit ottaa ne takaisin Oma joukkue -sivulta.' : ''}</p>
+    <h2>${r ? 'Tilaus peruttu' : 'Linkki ei kelpaa'}</h2><p>${r ? 'Et saa enää HogiGurun viikkokatsauksia. Voit ottaa ne takaisin Oma joukkue -sivun kohdasta Sähköposti-ilmoitukset.' : ''}</p>
     <p><a style="color:#7dd3fc" href="/">guru.konderi.fi</a></p></body>`);
 };
 app.get('/unsubscribe', unsubscribe);

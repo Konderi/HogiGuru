@@ -1,14 +1,20 @@
 # HogiGuru – Ylläpitäjän ohje
 
-Ylläpito löytyy osoitteesta **/admin** (vaatii admin-roolin). Gurujen ohje: [kayttoohje.md](kayttoohje.md).
+Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttoohje.md).
+
+| Rooli | Pääsy |
+|---|---|
+| **Ylläpitäjä** | Pelin hallinta: kaikki ylläpidon osiot paitsi Tekninen ylläpito |
+| **Pääylläpitäjä** | Lisäksi **Tekninen ylläpito** (varmistukset, sähköposti, muutoshistoria, järjestelmän tila) ja oikeus nimetä muita pääylläpitäjiä. Saa joka aamu ylläpitoraportin sähköpostiin |
 
 ---
 
 ## 0. Ensimmäinen käyttöönotto
 
-1. Julkaise sivusto (ks. README → *Julkaisu Cloudflareen*) ja aja `npm run db:migrate:remote`.
-2. Avaa `/kirjaudu`. Kun kannassa ei ole käyttäjiä, sivu tarjoaa ensimmäisen ylläpitäjän luonnin.
+1. Julkaise sivusto (ks. README → *Julkaisu Cloudflareen*): D1, R2-säilö, `RESEND_API_KEY` ja `npm run db:migrate:remote`.
+2. Avaa `/kirjaudu`. Kun kannassa ei ole käyttäjiä, sivu tarjoaa ensimmäisen käyttäjän luonnin; hänestä tulee pääylläpitäjä.
 3. **Yleiskatsaus → Päivitä tilastot** hakee pelaajat, tilastot ja sarjataulukon liiga.fi:stä.
+4. **Tekninen ylläpito → Sähköposti → Testiviesti itselle** varmistaa, että sähköposti toimii.
 
 ---
 
@@ -36,7 +42,8 @@ Ylläpito löytyy osoitteesta **/admin** (vaatii admin-roolin). Gurujen ohje: [k
 6. **CSV** vie listan esim. maksujen seurantaan.
 
 ### 1.4 Käyttäjät ja gurut
-- **Käyttäjät:** luo ja muokkaa tunnuksia, vaihda salasanoja, liitä tunnus guruun, anna admin-rooli.
+- **Käyttäjät:** luo ja muokkaa tunnuksia, vaihda salasanoja, liitä tunnus guruun, anna rooli (Guru / Ylläpitäjä / Pääylläpitäjä). Vain pääylläpitäjä voi nimetä tai muokata pääylläpitäjää; omaa rooliasi et voi vahingossa poistaa.
+- Gurut voivat palauttaa unohtuneen salasanan itse sähköpostilla (*Kirjaudu → Unohtuiko salasana?*). Käsin asetus on varakeino.
 - **Gurut & kentälliset:** nimet ja draft-numerot.
 
 ### 1.5 Valmentajat
@@ -51,7 +58,7 @@ Ylläpito löytyy osoitteesta **/admin** (vaatii admin-roolin). Gurujen ohje: [k
 3. 🎲 **Arvo järjestys** (käärmedraft valinnainen).
 4. Draft-iltana **▶ Aloita** ja avaa `/draft` isolle näytölle.
 5. Vuorossa olevalle: valitse pelaaja. Etäosallistujalle ⚙ **valinta ennakkolistalta**. Virheen voi perua ↶.
-6. Lopuksi **✓ Vie kentällisiin**. Draftin tila muuttuu `done` ja gurut näkevät joukkueensa.
+6. Lopuksi **✓ Vie kentällisiin**. Järjestelmä ottaa ensin automaattisesti varmistuksen. Draftin tila muuttuu `done` ja gurut näkevät joukkueensa.
 
 Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylityksen.
 
@@ -62,10 +69,10 @@ Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylity
 1. Gurut tallentavat toiveensa vaihtopäivän aikana (klo 21 asti).
 2. Päivän päätyttyä: **Vaihdot → kyseinen päivä → Toiveet**.
 3. **Esikatselu** näyttää jokaisen toiveen tuloksen ja syyn (✓ onnistuu / varavaihtoehto käytetty / ✗ täynnä / kiintiö täynnä). Vuorojärjestys (normaali/käänteinen) näkyy otsikossa.
-4. Tarkista esikatselu. Paina **Hyväksy ja toteuta**. Vaihdot kirjataan ja päivä merkitään käsitellyksi (✓ Käsitelty).
-5. Ilmoita tulokset WhatsApp-ryhmään (esikatselun voi kopioida).
+4. Tarkista esikatselu. Paina **Hyväksy ja toteuta**. Järjestelmä ottaa ensin automaattisesti varmistuksen, kirjaa vaihdot ja merkitsee päivän käsitellyksi (✓ Käsitelty).
+5. Ilmoita tulokset WhatsApp-ryhmään (esikatselun voi kopioida). Gurut näkevät vaihtojen vaikutuksen myöhemmin myös *Gurukierros → Vaihtojen kuningas* -näkymästä.
 
-**Yksittäinen vaihto käsin:** Gurut → ⇄ Vaihda (esim. valmentajan potkut).
+**Yksittäinen vaihto käsin:** Gurut → ⇄ Vaihda.
 **Virheellinen vaihto:** Vaihdot → vaihtoloki → ↶ Peru.
 
 ---
@@ -73,14 +80,18 @@ Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylity
 ## 4. Valmentajan potkut
 
 1. **Valmentajat → Potkut** valmentajan kohdalla → kaikki gurut, joilla hän on, saavat −10 p automaattisesti.
-2. Lisää joukkueen uusi valmentaja.
-3. Jos guru haluaa vaihtaa, tee vaihto käsin (Gurut → ⇄ Vaihda). Se ei kuluta normaalia vaihtokiintiötä vain, jos HG-komitea niin päättää; säädä tarvittaessa korjauksella.
+2. Lisää joukkueen uusi valmentaja (**Valmentajat → Lisää valmentaja**).
+3. Gurujen *Oma joukkue* -sivulle ilmestyy valintalaatikko, josta he valitsevat uuden valmentajan **heti itse**. Valinta ei vaadi vaihtopäivää eikä kuluta vaihtokiintiötä, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Ilmoita potkuista WhatsApp-ryhmään.
+4. Jos guru ei vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä hänen kentällisessään.
+
+Pelaajille ei ole vastaavaa poikkeusta: Liigasta lähtenyt pelaaja vaihdetaan normaalisti seuraavana vaihtopäivänä.
 
 ---
 
 ## 5. Kauden aikana
 
-- **Tilastot päivittyvät automaattisesti** klo 17.00–23.00 puolen tunnin välein ja sen jälkeen 6 tunnin välein (klo 05 ja 11). **Yleiskatsaus → Päivitysloki** näyttää onnistumiset. **Päivitä tilastot** -nappi pakottaa päivityksen.
+- **Tilastot päivittyvät automaattisesti** klo 17.00–23.00 puolen tunnin välein ja sen jälkeen klo 05 ja 11; muulloin täydennetään ottelukohtaista lokia. **Yleiskatsaus → Päivitysloki** näyttää onnistumiset. **Päivitä tilastot** -nappi pakottaa päivityksen.
+- **Sähköpostit lähtevät itsestään:** viikkokatsaus guruille maanantaisin klo 9, ylläpitoraportti pääylläpitäjille joka aamu klo 7. Raportista näet heti, epäonnistuiko yön varmistus tai tilastopäivitys.
 - **Pistekorjaukset:** Gurut → guru → Korjaus (+/− pisteet ja selite). Näkyy gurulle.
 - **Kentällisen korjaus:** Gurut → paikan muokkaus (esim. väärä pelaaja tai päivämäärä).
 
@@ -104,7 +115,7 @@ Vaikutukset tarkemmin:
 | Leaderboardin historia (sijoitusmuutokset) | Vanhat päiväkohtaiset sijat jäävät ennalleen, mikä voi tuottaa yhden kerran isoja ▲▼-hyppyjä |
 
 **Suositus:** älä muuta kertoimia kauden alettua. Jos sääntömuutos on pakko tehdä (HG-komitean päätös):
-1. Ota varmuuskopio (`npx wrangler d1 export hogiguru --remote --output backup.sql`).
+1. Ota varmistus (*Tekninen ylläpito → Varmistukset → Tee varmistus nyt*).
 2. Muuta kertoimet.
 3. Tarkista vaihdossa tulleiden pelaajien pisteet *Gurut*-näkymästä ja korjaa vääristymät tarvittaessa pistekorjauksilla.
 4. Tiedota gurut.
@@ -116,22 +127,44 @@ Kentällisen koon, valintarajojen ja vaihtojen määrän muutos koskee vain tule
 ## 7. Kauden lopussa
 
 1. Varmista viimeinen tilastopäivitys runkosarjan päätyttyä.
-2. Laske veikkausosion pisteet ja lisää ne pistekorjauksina (automaattinen laskenta tiekartalla).
-3. **Hall of Fame:** lisää kauden mitalistit.
-4. Ota varmuuskopio.
-5. Uusi kausi: Pisteytys & kausi → uusi kausi, ja aloita kohdasta 1.
+2. **Kokonaistulokset:** veikkausosion pisteet lasketaan automaattisesti. Tarkista esikatselu ja korjaa tarvittaessa oikeat vastaukset (esim. tasapelit pörsseissä).
+3. Gaalassa **🎬 Gaalaesitys** ja lopuksi **📣 Julkaise tulokset kaikille** (ks. *Gaalaesitys* alla).
+4. **Tallenna Hall of Fameen** Kokonaistulokset-sivulta.
+5. Ota varmistus (*Tee varmistus nyt*).
+6. Uusi kausi: Pisteytys & kausi → uusi kausi, ja aloita kohdasta 1.
 
 ---
 
-## 8. Ongelmatilanteet
+## 8. Tekninen ylläpito (pääylläpitäjä)
+
+**Ylläpito → Tekninen ylläpito**, neljä välilehteä:
+
+| Välilehti | Sisältö |
+|---|---|
+| **Järjestelmän tila** | Viimeisin varmistus (keltainen, jos yli 26 h vanha), sähköpostin tila, viestit ja muutokset 7 pv, käyttäjät rooleittain, tilastopäivitysten loki |
+| **Varmistukset** | Kaikki R2-varmistukset, lataus (.sql), *Tee varmistus nyt* |
+| **Sähköposti** | Testiviesti itselle, viikkokatsaus itselle / kaikille, ylläpitoraportti, lähetysloki virheineen |
+| **Muutoshistoria** | Kuka teki mitä ja milloin (300 viimeisintä), suodatus |
+
+**Varmistukset:** yöllinen klo 03 (30 pv, kuun 1. pysyvästi), automaattinen ennen vaihtopäivän käsittelyä ja draftin vientiä (90 pv) sekä käsin otetut. Palautusohje: README → *Varmistukset, sähköposti ja muutoshistoria*.
+
+**Viikkokatsaus kaikille** -nappi lähettää vain niille, jotka eivät ole jo saaneet kyseisen viikon katsausta, joten tuplalähetyksiä ei synny.
+
+---
+
+## 9. Ongelmatilanteet
 
 | Ongelma | Ratkaisu |
 |---|---|
 | Tilastot eivät päivity | Katso päivitysloki. liiga.fi:n rajapinta on epävirallinen; muutos korjataan tiedostoon `worker/liiga.ts` |
 | Pelaajaa ei löydy haussa | Päivitä tilastot (uudet pelaajat tulevat liiga.fi:stä) |
-| Guru ei pääse sisään | Käyttäjät → aseta uusi salasana; tarkista liitos guruun |
+| Guru ei pääse sisään | Ohjaa *Unohtuiko salasana?* -toimintoon. Varakeino: Käyttäjät → aseta uusi salasana; tarkista liitos guruun |
+| Palautusviesti ei tule perille | Tekninen ylläpito → Sähköposti → lähetysloki (virheen syy). Pyydä katsomaan roskaposti |
+| Sähköpostit eivät lähde | Järjestelmän tila → Sähköposti. Tarkista `RESEND_API_KEY` Cloudflaressa ja Resendissä domainin `konderi.fi` tila (*Verified*) |
 | Väärä vaihto toteutui | Vaihtoloki → ↶ Peru, tee oikea vaihto käsin |
-| Kanta pitää palauttaa | D1 Time Travel (30 pv) tai varmuuskopio |
+| Joku muutti jotain väärin | Tekninen ylläpito → Muutoshistoria näyttää kuka, mitä ja milloin |
+| Kanta pitää palauttaa | Tekninen ylläpito → Varmistukset (lataa .sql) tai D1 Time Travel (30 pv); ks. README |
+| Sivuston osoite vaihtuu | [domainin-vaihto.md](domainin-vaihto.md) |
 
 ## Gaalaesitys
 
