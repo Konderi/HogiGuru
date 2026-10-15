@@ -15,6 +15,7 @@ import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } fr
 import { listBackups, makeBackup, pruneBackups } from './backup';
 import { esc, layout, sendMail, SITE } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
+import { aliveTeams, fetchBracket } from './playoff';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
@@ -786,6 +787,18 @@ const admin = new Hono<App>();
 admin.use('*', requireAdmin);
 // Muutoshistoria: kaikki ylläpidon muuttavat pyynnöt
 admin.use('*', audit);
+
+// Play-Off (vaihe 1: vain ylläpidolle). ?season=YYYY, oletus nykyinen; jos tyhjä → edellinen kausi esikatseluun.
+admin.get('/playoff/bracket', async (c) => {
+  const wu = (p: Promise<unknown>) => c.executionCtx.waitUntil(p);
+  const q = Number(c.req.query('season'));
+  const cur = c.get('season').liiga_season;
+  try {
+    let b = await fetchBracket(q || cur, wu);
+    if (!q && !b.rounds.length) b = await fetchBracket(cur - 1, wu);
+    return c.json({ ...b, alive: [...aliveTeams(b)], current: cur });
+  } catch (e) { return c.json({ error: (e as Error).message }, 502); }
+});
 
 admin.get('/overview', async (c) => {
   const db = c.env.DB; const season = c.get('season');

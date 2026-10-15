@@ -30,7 +30,7 @@ export default function Layout() {
       ...(fav ? [{ to: `/joukkue/${encodeURIComponent(fav.id)}`, label: fav.name, logo: fav.logo }] : []),
       ...(me?.draftNav !== false ? [{ to: '/draft', label: 'Draft' }] : []),
     ] : []),
-    ...(isAdminRole(user?.role) ? [{ to: '/admin', label: 'Ylläpito' }] : []),
+    ...(isAdminRole(user?.role) ? [{ to: '/playoff', label: 'Play-Off' }, { to: '/admin', label: 'Ylläpito' }] : []),
   ];
 
   return (

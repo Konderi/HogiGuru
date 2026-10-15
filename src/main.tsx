@@ -30,6 +30,7 @@ import AdminHof from './admin/HallOfFame';
 import AdminRegistrations from './admin/Registrations';
 import Register from './pages/Register';
 import Results from './pages/Results';
+import Playoff from './pages/Playoff';
 import AdminResults from './admin/Results';
 import AdminMaintenance from './admin/Maintenance';
 import './index.css';
@@ -58,6 +59,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="joukkue/:id" element={<Team />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />
             <Route path="kokonaistulokset" element={<Results />} />
+            <Route path="playoff" element={<Protected admin><Playoff /></Protected>} />
             <Route path="kirjaudu" element={<Login />} />
             <Route path="unohtunut" element={<ForgotPassword />} />
             <Route path="salasana" element={<ResetPassword />} />
