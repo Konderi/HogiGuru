@@ -53,7 +53,22 @@ export default function DraftPractice() {
     setGurus(real.gurus.map((g) => ({ ...g, draft_number: null })));
   }, [real, gurus]);
 
-  const st = useMemo(() => (real && gurus ? { ...buildState(real, gurus, picks, status), lottery } : null), [real, gurus, picks, status, lottery]);
+  // Arvonnan aikana numerot paljastuvat vasta, kun arvonta ehtii gurun kohdalle (kuten palvelimella)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!lottery || lottery.paused) return;
+    const t = setInterval(() => setTick(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [lottery]);
+  const st = useMemo(() => {
+    if (!real || !gurus) return null;
+    if (!lottery) return { ...buildState(real, gurus, picks, status), lottery };
+    const now = lottery.paused ? lottery.now : Date.now();
+    const shown = new Set(lottery.order.filter((_, i) => now >= lottery.at + i * lottery.step + lottery.reveal).map((o) => o.id));
+    const masked = gurus.map((g) => (shown.has(g.id) ? g : { ...g, draft_number: null }))
+      .sort((a, b) => (a.draft_number ?? 999) - (b.draft_number ?? 999) || a.name.localeCompare(b.name, 'fi'));
+    return { ...buildState(real, masked, picks, status), gurus: masked, lottery };
+  }, [real, gurus, picks, status, lottery, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arvonta seinänäkymään: 10 s lähtölaskenta, sitten guru kerrallaan
   const startLottery = () => {
