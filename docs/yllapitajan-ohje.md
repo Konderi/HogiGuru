@@ -64,6 +64,10 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 
 Järjestelmä estää täynnä olevat pelaajat, tuplavalinnat ja paikkojen ylityksen.
 
+**Harjoittelu ennen tilaisuutta** (mitään ei tallenneta):
+- 🧪 **Harjoitusarvonta** pyörittää numeroarvonnan seinänäkymässä.
+- 🧪 **Harjoitusdraft** (`/admin/draft/harjoitus`) on hallintanäkymä, jossa valinnat tehdään oikeilla guruilla, draft-listalla ja lomakkeilla. Poissaolevien valinnat tehdään lomakkeelta automaattisesti 3 sekunnin kuluttua. Avaa **📺 seinänäkymä samassa selaimessa**: se seuraa hallintaikkunaa reaaliajassa, ja seinällä ei näy hallintaa.
+
 ---
 
 ## 3. Vaihtopäivä

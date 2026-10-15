@@ -1184,6 +1184,12 @@ admin.post('/draft/lottery', async (c) => {
     await c.env.DB.prepare('UPDATE seasons SET draft_lottery_at = draft_lottery_at + ?, draft_lottery_paused = NULL WHERE id = ?').bind(now - s.draft_lottery_paused, s.id).run();
   return c.json({ ok: true });
 });
+// Harjoitusdraftia varten: kaikkien gurujen draft-lomakkeet (vain luku)
+admin.get('/draft/prefs-all', async (c) => {
+  const r = await c.env.DB.prepare('SELECT p.guru_id, p.position_order, p.rankings FROM draft_prefs p JOIN gurus g ON g.id = p.guru_id WHERE g.season_id = ?')
+    .bind(c.get('season').id).all<{ guru_id: number; position_order: string; rankings: string }>();
+  return c.json(Object.fromEntries(r.results.map((x) => [x.guru_id, { positionOrder: JSON.parse(x.position_order || '[]'), rankings: JSON.parse(x.rankings || '{}') }])));
+});
 admin.post('/draft/attendance', async (c) => {
   const b = await c.req.json<{ id?: number; present: boolean; all?: boolean }>();
   const season = c.get('season');

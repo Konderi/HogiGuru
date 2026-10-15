@@ -4,6 +4,7 @@ import { api, POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
 import { isAdminRole, useApi, useAuth } from '../auth';
 import { Logo, PosBadge, Spinner } from '../ui';
 import { DraftGrid, type DraftState } from './DraftBoard';
+import { DEMO_CHANNEL } from '../draftLogic';
 
 /** Varausmäärä, josta pelaaja nostetaan "kuumaksi" heijastettavassa näkymässä. */
 const HOT = 3;
@@ -27,7 +28,17 @@ export default function DraftScreen() {
   const { data: real, reload } = useApi<DraftState>('/draft');
   const demo = new URLSearchParams(location.search).has('harjoitus');
   const demoRes = useDemo(demo ? real : null);
-  const st = demo ? demoRes.st : real;
+  // Harjoitusdraft: hallintaikkuna lähettää tilan tähän ikkunaan
+  const [practice, setPractice] = useState<{ st: DraftState; paused: boolean; autoAt: number | null } | null>(null);
+  useEffect(() => {
+    if (!demo) return;
+    const c = new BroadcastChannel(DEMO_CHANNEL);
+    c.onmessage = (e) => { if (e.data?.type === 'state') setPractice(e.data); if (e.data?.type === 'bye') setPractice(null); };
+    c.postMessage({ type: 'hello' });
+    return () => c.close();
+  }, [demo]);
+  const usePractice = !!practice && practice.st.status !== 'setup';
+  const st = usePractice ? practice!.st : demo ? demoRes.st : real;
   const { me } = useAuth();
   const offset = useRef(0);
   useEffect(() => { if (st?.lottery && !st.lottery.paused && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
@@ -78,7 +89,7 @@ export default function DraftScreen() {
 
       {st.lottery ? <Lottery st={st} offset={offset.current} onToggle={toggle} />
         : st.status === 'setup' ? <Lobby st={st} onStart={start} />
-        : <Live st={st} />}
+        : <Live st={st} note={usePractice ? (practice!.paused ? '⏸ Tauko' : practice!.autoAt ? '📋 Valitaan lomakkeelta…' : null) : null} />}
 
       {flash && (
         <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-rink-950/70 backdrop-blur-sm">
@@ -214,7 +225,7 @@ function Lobby({ st, onStart }: { st: DraftState; onStart?: () => void }) {
 }
 
 /* ---------- Käynnissä / valmis ---------- */
-function Live({ st }: { st: DraftState }) {
+function Live({ st, note }: { st: DraftState; note?: string | null }) {
   const mine = st.onClock ? st.picks.filter((p) => p.guru_id === st.onClock!.id) : [];
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
   const upcoming = Array.from({ length: 4 }, (_, i) => st.pickNo + 1 + i).filter((n) => n <= st.total)
@@ -233,6 +244,7 @@ function Live({ st }: { st: DraftState }) {
               <p className="text-sm uppercase tracking-[0.3em] text-ice-300">Vuorossa · kierros {st.round} · valinta {st.pickNo}/{st.total}</p>
               <p className="font-display text-[clamp(2.5rem,5vw,5rem)] leading-tight">{st.onClock.name}</p>
               <p className="text-slate-300">{st.onClock.remote_draft ? '📋 Ei paikalla – valinta tehdään draft-lomakkeelta' : '🏒 Paikalla – valitsee nyt'}</p>
+              {note && <p className="mt-1 animate-pulse text-lg font-semibold text-amber-300">{note}</p>}
             </div>
             <div className="flex gap-3">
               {POSITIONS.map((p) => (

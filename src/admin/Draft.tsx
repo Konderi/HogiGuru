@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { matchName, POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
 import { useApi } from '../auth';
 import { DraftGrid, type DraftState } from '../pages/DraftBoard';
@@ -33,6 +34,7 @@ export default function Draft() {
         <div className="flex flex-wrap gap-2">
           <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Avaa heijastettava näkymä</a>
           <a className="btn btn-ghost" href="/draft/naytto?harjoitus" target="_blank" rel="noopener" title="Arvonta-animaatio oikeilla guruilla – ei tallenna mitään">🧪 Harjoitusarvonta</a>
+          <Link className="btn btn-ghost" to="/admin/draft/harjoitus" title="Harjoittele draft-valinnat – ei tallenna mitään">🧪 Harjoitusdraft</Link>
           {st.lottery && (
             <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => api('/admin/draft/lottery', { body: { action: st.lottery?.paused ? 'resume' : 'pause' } }))}>
               {st.lottery.paused ? '▶ Jatka arvontaa' : '⏸ Tauko arvontaan'}

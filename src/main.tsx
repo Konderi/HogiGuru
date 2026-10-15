@@ -24,6 +24,7 @@ import AdminGurus from './admin/Gurus';
 import AdminScoring from './admin/Scoring';
 import AdminSwaps from './admin/Swaps';
 import AdminDraft from './admin/Draft';
+import AdminDraftPractice from './admin/DraftPractice';
 import AdminCoaches from './admin/Coaches';
 import AdminHof from './admin/HallOfFame';
 import AdminRegistrations from './admin/Registrations';
@@ -70,6 +71,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="pisteytys" element={<AdminScoring />} />
               <Route path="vaihdot" element={<AdminSwaps />} />
               <Route path="draft" element={<AdminDraft />} />
+              <Route path="draft/harjoitus" element={<AdminDraftPractice />} />
               <Route path="valmentajat" element={<AdminCoaches />} />
               <Route path="hall-of-fame" element={<AdminHof />} />
               <Route path="ilmoittautuminen" element={<AdminRegistrations />} />
