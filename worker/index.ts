@@ -13,7 +13,7 @@ import { entityName } from './data';
 import { computeResults } from './predictions';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
 import { listBackups, makeBackup, pruneBackups } from './backup';
-import { esc, layout, sendMail } from './mail';
+import { esc, layout, sendMail, SITE } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
@@ -29,7 +29,37 @@ const SESSION_DAYS = 30;
 
 const app = new Hono<App>().basePath('/api');
 
-app.onError((err, c) => c.json({ error: err.message }, 400));
+// Omat virheilmoitukset (suomeksi) näytetään sellaisenaan; tekniset virheet (SQL, ajonaikaiset) piilotetaan.
+app.onError((err, c) => {
+  const internal = /D1_|SQLITE|TypeError|ReferenceError|SyntaxError|Cannot read|undefined/i.test(err.message) || err.name !== 'Error';
+  if (internal) console.error('API', c.req.method, c.req.path, err);
+  return c.json({ error: internal ? 'Palvelinvirhe – yritä hetken päästä uudelleen' : err.message }, internal ? 500 : 400);
+});
+
+// --- Tietoturvaotsakkeet ja CSRF-suoja kaikille API-vastauksille
+app.use('*', async (c, next) => {
+  const m = c.req.method;
+  // Muuttavat pyynnöt vain omasta originista (estää toisen sivuston, myös *.konderi.fi-alidomainien, väärennetyt pyynnöt)
+  if (m !== 'GET' && m !== 'HEAD' && !c.req.path.endsWith('/unsubscribe')) {
+    const origin = c.req.header('Origin');
+    if (origin && new URL(origin).host !== new URL(c.req.url).host) return c.json({ error: 'Kielletty' }, 403);
+  }
+  await next();
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('X-Frame-Options', 'DENY');
+  if (/^\/api\/(auth|me|admin|draft|setup)/.test(c.req.path)) c.header('Cache-Control', 'no-store');
+});
+
+/** Yksinkertainen liukuvan ikkunan rajoitin D1:ssä. Palauttaa true, jos raja on ylitetty. */
+async function rateLimited(db: D1Database, key: string, max: number, windowMs: number, record = true): Promise<boolean> {
+  const since = Date.now() - windowMs;
+  const n = (await db.prepare('SELECT COUNT(*) AS n FROM rate_limits WHERE key = ? AND at > ?').bind(key, since).first<{ n: number }>())?.n ?? 0;
+  if (n >= max) return true;
+  if (record) await db.prepare('INSERT INTO rate_limits (key, at) VALUES (?, ?)').bind(key, Date.now()).run();
+  return false;
+}
+const clientIp = (c: C) => c.req.header('CF-Connecting-IP') ?? 'unknown';
 
 // --- Istunto ja aktiivinen kausi jokaiseen pyyntöön
 app.use('*', async (c, next) => {
@@ -57,7 +87,7 @@ const num = (v: unknown) => (v === '' || v == null ? null : Number(v));
 async function audit(c: C, next: Next) {
   if (c.req.method === 'GET') return next();
   let body = '';
-  try { body = (await c.req.raw.clone().text()).slice(0, 2000).replace(/"(password|new_password|current_password)"\s*:\s*"[^"]*"/g, '"$1":"***"'); } catch { /* ei runkoa */ }
+  try { body = (await c.req.raw.clone().text()).slice(0, 2000).replace(/"(password|new_password|current_password|current|next|token)"\s*:\s*"[^"]*"/g, '"$1":"***"'); } catch { /* ei runkoa */ }
   await next();
   const u = c.get('user');
   c.executionCtx.waitUntil(c.env.DB.prepare('INSERT INTO audit_log (user_id, user_name, method, path, body, status) VALUES (?,?,?,?,?,?)')
@@ -300,6 +330,7 @@ app.post('/public/registration', async (c) => {
   if (!registrationInfo(season).open) throw new Error('Ilmoittautuminen ei ole auki');
   const b = await c.req.json<{ name: string; phone?: string; email: string; standings: string[]; top_scorers: Record<string, number>; categories: Record<string, number>; website?: string; position_order?: string[]; rankings?: Record<string, number[]>; basket_picks?: { position: string; entity_id: number }[] }>();
   if (b.website) return c.json({ ok: true }); // roskapostiansa
+  if (await rateLimited(c.env.DB, `register:ip:${clientIp(c)}`, 20, 3600_000)) throw new Error('Liian monta lähetystä – yritä myöhemmin uudelleen');
   const name = b.name?.trim(); const email = b.email?.trim().toLowerCase();
   if (!name || name.length > 80) throw new Error('Kirjoita nimesi');
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Tarkista sähköpostiosoite');
@@ -375,10 +406,28 @@ app.get('/auth/me', async (c) => {
   return c.json({ user, guru });
 });
 
+// Vertailuhash: tuntemattomalle käyttäjälle tehdään sama PBKDF2-laskenta, ettei vasteaika paljasta tunnuksia
+const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+const LOGIN_WINDOW = 15 * 60_000;
+
 app.post('/auth/login', async (c) => {
   const { email, password } = await c.req.json<{ email: string; password: string }>();
-  const u = await c.env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ? AND active = 1').bind(email?.trim()).first<{ id: number; password_hash: string }>();
-  if (!u || !(await verifyPassword(password ?? '', u.password_hash))) return c.json({ error: 'Väärä sähköposti tai salasana' }, 401);
+  const db = c.env.DB;
+  const mail = (email ?? '').trim().toLowerCase();
+  const kEmail = `login:email:${mail}`; const kIp = `login:ip:${clientIp(c)}`;
+  // Enintään 10 virheellistä yritystä / tunnus ja 30 / IP-osoite 15 minuutissa
+  if (await rateLimited(db, kEmail, 10, LOGIN_WINDOW, false) || await rateLimited(db, kIp, 30, LOGIN_WINDOW, false))
+    return c.json({ error: 'Liian monta epäonnistunutta yritystä. Odota 15 minuuttia tai palauta salasana.' }, 429);
+  const u = await db.prepare('SELECT id, password_hash FROM users WHERE lower(email) = ? AND active = 1').bind(mail).first<{ id: number; password_hash: string }>();
+  const ok = await verifyPassword(password ?? '', u?.password_hash ?? DUMMY_HASH);
+  if (!u || !ok) {
+    await db.batch([
+      db.prepare('INSERT INTO rate_limits (key, at) VALUES (?, ?)').bind(kEmail, Date.now()),
+      db.prepare('INSERT INTO rate_limits (key, at) VALUES (?, ?)').bind(kIp, Date.now()),
+    ]);
+    return c.json({ error: 'Väärä sähköposti tai salasana' }, 401);
+  }
+  await db.prepare('DELETE FROM rate_limits WHERE key = ?').bind(kEmail).run();
   await startSession(c, u.id);
   return c.json({ ok: true });
 });
@@ -407,6 +456,8 @@ const sha256 = async (s: string) =>
 app.post('/auth/forgot', async (c) => {
   const { email } = await c.req.json<{ email: string }>();
   const db = c.env.DB;
+  // Vastaus on aina sama; IP-kohtainen raja estää sähköpostipommituksen
+  if (await rateLimited(db, `forgot:ip:${clientIp(c)}`, 10, 3600_000)) return c.json({ ok: true });
   const u = await db.prepare('SELECT id, name, email FROM users WHERE lower(email) = lower(?) AND active = 1')
     .bind((email ?? '').trim()).first<{ id: number; name: string; email: string }>();
   // Vastaus on aina sama, ettei sähköpostiosoitteiden olemassaoloa voi kalastella
@@ -417,7 +468,7 @@ app.post('/auth/forgot', async (c) => {
       const token = newSessionId();
       await db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?,?,?)')
         .bind(u.id, await sha256(token), Date.now() + RESET_MINUTES * 60_000).run();
-      const url = `${new URL(c.req.url).origin}/salasana?t=${token}`;
+      const url = `${SITE}/salasana?t=${token}`;
       await sendMail(c.env, 'auth:reset', u.email, 'HogiGuru – salasanan vaihto', layout('Salasanan vaihto', `
         <p>Hei ${esc(u.name)},</p>
         <p>Pyysit salasanan vaihtoa HogiGuruun. Valitse uusi salasana alla olevasta painikkeesta:</p>
@@ -1108,6 +1159,10 @@ export default {
     const run = (mins >= 17 * 60 && mins <= 23 * 60) || (m < 15 && (h === 5 || h === 11));
     // Muulloin täydennetään vain ottelulokia (käsittelemättömät ottelut, max 12 / ajo)
     if (!run) { ctx.waitUntil(syncGamesOnly(env.DB).catch((err) => { console.error('syncGames', err); return 0; })); return; }
-    ctx.waitUntil(syncLiiga(env.DB).then(() => env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()).run()));
+    ctx.waitUntil(syncLiiga(env.DB).then(() => env.DB.batch([
+      env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()),
+      env.DB.prepare('DELETE FROM rate_limits WHERE at < ?').bind(Date.now() - 86400_000),
+      env.DB.prepare('DELETE FROM password_resets WHERE expires_at < ?').bind(Date.now() - 7 * 86400_000),
+    ])));
   },
 } satisfies ExportedHandler<Env>;

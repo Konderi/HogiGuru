@@ -6,7 +6,7 @@ Sivusto korvaa aiemman Excel-laskimen ja paperisen osallistumiskaavakkeen: tilas
 
 🌐 **Tuotanto:** https://guru.konderi.fi
 📦 **Repo:** https://github.com/Konderi/HogiGuru
-📘 **Ohjeet:** [Gurut](docs/kayttoohje.md) · [Ylläpitäjät](docs/yllapitajan-ohje.md) · [Domainin vaihto](docs/domainin-vaihto.md)
+📘 **Ohjeet:** [Gurut](docs/kayttoohje.md) · [Ylläpitäjät](docs/yllapitajan-ohje.md) · [Domainin vaihto](docs/domainin-vaihto.md) · [Tietoturva](docs/tietoturva.md)
 
 ---
 
@@ -156,7 +156,8 @@ HogiGuru-app/
 │   ├── 0006_game_stats.sql      ottelukohtaiset tilastot
 │   ├── 0007_audit_mail.sql      muutoshistoria, sähköpostiloki, sähköpostiasetukset
 │   ├── 0008_maintainer.sql      pääylläpitäjä-oikeus
-│   └── 0009_password_resets.sql salasanan palautuslinkit
+│   ├── 0009_password_resets.sql salasanan palautuslinkit
+│   └── 0010_rate_limits.sql     kirjautumisen ja lomakkeiden yritysrajoitus
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
@@ -182,6 +183,7 @@ HogiGuru-app/
 │   ├── kayttoohje.md            käyttöohje guruille
 │   ├── yllapitajan-ohje.md      ylläpitäjän ohje
 │   ├── domainin-vaihto.md       tarkistuslista oman domainin käyttöönottoon
+│   ├── tietoturva.md            tietoturvakartoitus ja suositukset
 │   └── excel-analyysi.md        alkuperäisen Excelin analyysi
 └── data/                        EI versionhallinnassa (Excelit, kaavake)
 ```
@@ -209,6 +211,7 @@ HogiGuru-app/
 | `sync_log` | Päivitysloki |
 | `audit_log` | Muutoshistoria (ylläpidon ja gurujen muuttavat pyynnöt) |
 | `mail_log` | Sähköpostien lähetysloki |
+| `rate_limits` | Kirjautumis-, palautus- ja ilmoittautumisyritysten laskurit (siivotaan vuorokauden jälkeen) |
 
 **Kentällisen paikka:** aktiivinen kun `end_date IS NULL`. Pisteet = `(end_points ?? nykyiset) − start_points`. Vaihto jäädyttää vanhan paikan ja avaa uuden, jonka alkupisteet ovat uuden pelaajan pisteet vaihtohetkellä (vastaa Excelin `…)-9.2`-vähennystä).
 
@@ -409,7 +412,7 @@ npm run deploy                             # → guru.konderi.fi
 ```
 Jatkossa: `git pull && npm run deploy`. Uudet kantamuutokset tiedostoina `migrations/000N_….sql` → `npm run db:migrate:remote` ennen julkaisua.
 
-**Nykyinen tuotanto:** Worker `hogiguru`, D1 `hogiguru` (EEUR, `29dc5201-…`), R2 `hogiguru-backups`, custom domain `guru.konderi.fi`, Resend-domain `konderi.fi`, migraatiot 0001–0009 ajettu. Paikallisesti voi julkaista myös `npx wrangler login` -kirjautumisella ilman API-avainta.
+**Nykyinen tuotanto:** Worker `hogiguru`, D1 `hogiguru` (EEUR, `29dc5201-…`), R2 `hogiguru-backups`, custom domain `guru.konderi.fi`, Resend-domain `konderi.fi`, migraatiot 0001–0010 ajettu. Paikallisesti voi julkaista myös `npx wrangler login` -kirjautumisella ilman API-avainta.
 
 **Käsin varmistus komentoriviltä:** `npx wrangler d1 export hogiguru --remote --output backup.sql` (automaattiset varmistukset: ks. [Varmistukset](#varmistukset-sähköposti-ja-muutoshistoria)).
 
@@ -455,7 +458,12 @@ Lyhyesti: ennen kautta säännöt → ilmoittautuminen → gurut ja tunnukset �
 
 ## Tietoturva
 
+Koko kartoitus ja avoimet suositukset: [docs/tietoturva.md](docs/tietoturva.md).
+
 - PBKDF2-SHA256 (100 000 kierrosta, suola), vakioaikainen vertailu
+- Yritysrajoitus: kirjautuminen 10 virhettä / tunnus ja 30 / IP / 15 min, palautuspyynnöt ja ilmoittautumiset / IP / tunti (`rate_limits`)
+- CSRF: muuttavat pyynnöt vain omasta originista; tietoturvaotsakkeet (CSP, HSTS, X-Frame-Options, nosniff) `public/_headers`-tiedostossa
+- Tekniset virheet eivät näy käyttäjälle; sivusto vain omassa domainissa (`workers_dev: false`)
 - Istuntoeväste `HttpOnly; Secure; SameSite=Lax`, 30 vrk; salasanan vaihto palautuslinkillä kirjaa ulos kaikilta laitteilta
 - Palautuslinkit kertakäyttöisiä, 60 min, kannassa vain tiiviste; pyyntöjen määrä rajattu eikä vastaus paljasta tunnusten olemassaoloa
 - Roolit: guru / ylläpitäjä / pääylläpitäjä; tekninen ylläpito vain pääylläpitäjälle, omaa roolia ei voi poistaa

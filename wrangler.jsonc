@@ -24,5 +24,8 @@
   // Herätys 30 min välein; worker ajaa päivityksen vain Suomen aikaa klo 17.00–23.00 (30 min välein) sekä klo 05.00 ja 11.00.
   "triggers": { "crons": ["*/30 * * * *"] },
   "routes": [{ "pattern": "guru.konderi.fi", "custom_domain": true }],
+  // Ei julkista *.workers.dev-osoitetta: sivusto vain omassa domainissa
+  "workers_dev": false,
+  "preview_urls": false,
   "observability": { "enabled": true }
 }
