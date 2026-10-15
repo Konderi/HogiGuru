@@ -12,8 +12,11 @@ import { deadlineOf, helsinkiNow, nextOpenSwapDay, previewSwapDay, priorityOrder
 import { entityName } from './data';
 import { computeResults } from './predictions';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
+import { listBackups, makeBackup, pruneBackups } from './backup';
+import { layout, sendMail } from './mail';
+import { sendAdminReport, sendWeeklyReport } from './reports';
 
-interface Env { DB: D1Database }
+interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'admin' | 'guru' }
 type App = { Bindings: Env; Variables: { user: User | null; season: Season } };
 type C = HonoCtx<App>;
@@ -45,9 +48,47 @@ const requireUser = async (c: C, next: Next) => (c.get('user') ? next() : c.json
 const requireAdmin = async (c: C, next: Next) => (c.get('user')?.role === 'admin' ? next() : c.json({ error: 'Vain ylläpitäjille' }, 403));
 
 const num = (v: unknown) => (v === '' || v == null ? null : Number(v));
+
+/** Kirjaa muuttavat pyynnöt audit_logiin (salasanat piilotetaan). */
+async function audit(c: C, next: Next) {
+  if (c.req.method === 'GET') return next();
+  let body = '';
+  try { body = (await c.req.raw.clone().text()).slice(0, 2000).replace(/"(password|new_password|current_password)"\s*:\s*"[^"]*"/g, '"$1":"***"'); } catch { /* ei runkoa */ }
+  await next();
+  const u = c.get('user');
+  c.executionCtx.waitUntil(c.env.DB.prepare('INSERT INTO audit_log (user_id, user_name, method, path, body, status) VALUES (?,?,?,?,?,?)')
+    .bind(u?.id ?? null, u?.name ?? null, c.req.method, new URL(c.req.url).pathname, body || null, c.res.status).run().catch(() => undefined));
+}
+/** Tapahtumavarmistus ennen riskialtista toimintoa. */
+const preBackup = (c: C, reason: string) => makeBackup(c.env.DB, c.env.BACKUPS, 'event', reason).catch((e) => console.error('pre-backup', e));
 const isPos = (p: unknown): p is Position => POSITIONS.includes(p as Position);
 
 // ================= JULKINEN =================
+
+// Gurujen muuttavat toiminnot muutoshistoriaan
+app.use('/me/*', audit);
+
+// Sähköpostien peruutus (linkki viestissä; One-Click POST tai selain GET)
+const unsubscribe = async (c: C) => {
+  const t = c.req.query('t') ?? '';
+  const r = t ? await c.env.DB.prepare("UPDATE users SET email_prefs = '{\"weekly\":false,\"swaps\":false,\"coach\":true}' WHERE unsub_token = ? RETURNING email").bind(t).first<{ email: string }>() : null;
+  return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;background:#060b18;color:#e2e8f0;padding:40px;text-align:center">
+    <h2>${r ? 'Tilaus peruttu' : 'Linkki ei kelpaa'}</h2><p>${r ? 'Et saa enää HogiGurun viikkokatsauksia etkä vaihtoviestejä. Voit ottaa ne takaisin Oma joukkue -sivulta.' : ''}</p>
+    <p><a style="color:#7dd3fc" href="/">guru.konderi.fi</a></p></body>`);
+};
+app.get('/unsubscribe', unsubscribe);
+app.post('/unsubscribe', unsubscribe);
+
+app.get('/me/email-prefs', requireUser, async (c) => {
+  const r = await c.env.DB.prepare('SELECT email_prefs FROM users WHERE id = ?').bind(c.get('user')!.id).first<{ email_prefs: string }>();
+  return c.json(JSON.parse(r?.email_prefs || '{}'));
+});
+app.put('/me/email-prefs', requireUser, async (c) => {
+  const b = await c.req.json<Record<string, boolean>>();
+  const prefs = { weekly: !!b.weekly, swaps: !!b.swaps, coach: !!b.coach };
+  await c.env.DB.prepare('UPDATE users SET email_prefs = ? WHERE id = ?').bind(JSON.stringify(prefs), c.get('user')!.id).run();
+  return c.json(prefs);
+});
 
 app.get('/public/overview', async (c) => {
   const db = c.env.DB; const season = c.get('season');
@@ -519,6 +560,8 @@ app.get('/public/swaps', async (c) => {
 // ================= YLLÄPITO =================
 const admin = new Hono<App>();
 admin.use('*', requireAdmin);
+// Muutoshistoria: kaikki ylläpidon muuttavat pyynnöt
+admin.use('*', audit);
 
 admin.get('/overview', async (c) => {
   const db = c.env.DB; const season = c.get('season');
@@ -792,7 +835,7 @@ admin.get('/swap-days/:id/preview', async (c) => {
   }
   return c.json(await previewSwapDay(c.env.DB, c.get('season'), day));
 });
-admin.post('/swap-days/:id/process', async (c) => c.json(await processSwapDay(c.env.DB, c.get('season'), await swapDayById(c))));
+admin.post('/swap-days/:id/process', async (c) => { await preBackup(c, 'pre-swapday'); return c.json(await processSwapDay(c.env.DB, c.get('season'), await swapDayById(c))); });
 admin.post('/swaps/:id/undo', async (c) => {
   const db = c.env.DB;
   const s = await db.prepare('SELECT id, replaced_slot_id FROM roster_slots WHERE id = ?').bind(Number(c.req.param('id'))).first<{ id: number; replaced_slot_id: number | null }>();
@@ -905,7 +948,7 @@ admin.post('/draft/undo', async (c) => {
   await c.env.DB.prepare('DELETE FROM draft_picks WHERE season_id = ?1 AND pick_no = (SELECT MAX(pick_no) FROM draft_picks WHERE season_id = ?1)').bind(c.get('season').id).run();
   return c.json({ ok: true });
 });
-admin.post('/draft/finalize', async (c) => { await finalizeDraft(c.env.DB, c.get('season')); return c.json({ ok: true }); });
+admin.post('/draft/finalize', async (c) => { await preBackup(c, 'pre-draft-finalize'); await finalizeDraft(c.env.DB, c.get('season')); return c.json({ ok: true }); });
 
 // Hall of Fame
 admin.post('/hall-of-fame', async (c) => {
@@ -919,6 +962,29 @@ admin.delete('/hall-of-fame/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// ================= VARMISTUKSET, SÄHKÖPOSTI, MUUTOSHISTORIA =================
+admin.get('/backups', async (c) => c.json(await listBackups(c.env.BACKUPS)));
+admin.post('/backups', async (c) => c.json(await makeBackup(c.env.DB, c.env.BACKUPS, 'manual')));
+admin.get('/backups/file', async (c) => {
+  const key = c.req.query('key') ?? '';
+  const o = await c.env.BACKUPS.get(key);
+  if (!o) return c.json({ error: 'Ei löydy' }, 404);
+  return new Response(o.body, { headers: { 'Content-Type': 'application/sql; charset=utf-8', 'Content-Disposition': `attachment; filename="hogiguru-${key.replace(/\//g, '_')}"` } });
+});
+admin.get('/audit', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT 300').all()).results));
+admin.get('/mail-log', async (c) => c.json((await c.env.DB.prepare('SELECT * FROM mail_log ORDER BY id DESC LIMIT 200').all()).results));
+admin.post('/mail/test', async (c) => {
+  const to = c.get('user')!.email;
+  const ok = await sendMail(c.env, 'admin:test', to, 'HogiGuru testiviesti', layout('Testiviesti', '<p>Sähköpostin lähetys toimii. ✅</p>'));
+  if (!ok) throw new Error((await c.env.DB.prepare("SELECT error FROM mail_log WHERE kind = 'admin:test' ORDER BY id DESC LIMIT 1").first<{ error: string }>())?.error ?? 'Lähetys epäonnistui');
+  return c.json({ ok, to });
+});
+admin.post('/mail/weekly', async (c) => {
+  const { all } = await c.req.json<{ all?: boolean }>().catch(() => ({ all: false }));
+  return c.json(await sendWeeklyReport(c.env, c.get('season'), all ? {} : { onlyTo: c.get('user')!.email }));
+});
+admin.post('/mail/admin-report', async (c) => c.json(await sendAdminReport(c.env, c.get('season'))));
+
 app.route('/admin', admin);
 app.notFound((c) => c.json({ error: 'Ei löydy' }, 404));
 
@@ -930,6 +996,19 @@ export default {
     const [h, m] = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Helsinki', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
       .format(new Date(e.scheduledTime)).split(':').map(Number);
     const mins = h * 60 + m;
+    const dow = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Helsinki', weekday: 'short' }).format(new Date(e.scheduledTime));
+    const slot = (hh: number) => h === hh && m < 15;
+    // Yöllinen varmistus R2:een + vanhojen siivous (klo 03)
+    if (slot(3)) ctx.waitUntil(makeBackup(env.DB, env.BACKUPS, 'daily').then(() => pruneBackups(env.BACKUPS)).catch((err) => console.error('backup', err)));
+    // Ylläpidon päiväraportti (klo 07) ja maanantain viikkokatsaus guruille (klo 09)
+    if (slot(7) || (slot(9) && dow === 'Mon')) {
+      ctx.waitUntil((async () => {
+        const season = await getActiveSeason(env.DB);
+        if (!season) return;
+        if (slot(7)) await sendAdminReport(env, season);
+        if (slot(9) && dow === 'Mon') await sendWeeklyReport(env, season);
+      })().catch((err) => console.error('mail', err)));
+    }
     const run = (mins >= 17 * 60 && mins <= 23 * 60) || (m < 15 && (h === 5 || h === 11));
     // Muulloin täydennetään vain ottelulokia (käsittelemättömät ottelut, max 12 / ajo)
     if (!run) { ctx.waitUntil(syncGamesOnly(env.DB).catch((err) => { console.error('syncGames', err); return 0; })); return; }
