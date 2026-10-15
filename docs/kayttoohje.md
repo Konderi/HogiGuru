@@ -55,6 +55,15 @@ Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
 ---
 
+## Gurukierros
+
+**Gurukierros**-sivulla on kaksi näkymää:
+
+- **Viikkokatsaus** (ma–su, nuolilla edellisiin viikkoihin): viikon parhaat ja heikoimmat gurut viikon HG-pisteillä, viikon tähdet (paras hyökkääjä, puolustaja, maalivahti ja valmentaja), viikon huippupelit, top 10 HG-pelaajat, gurujen suosikkipelaajien viikko sekä pelaajat, joita kukaan ei omista mutta jotka olisivat kannattaneet. Gurujen kentällisiä ei paljasteta.
+- **Vaihtojen kuningas**: jokaisen vaihdon nettovaikutus = tulleen pelaajan pisteet vaihdon jälkeen − pisteet, jotka lähtenyt pelaaja olisi kerännyt samana aikana. Parhaat ja kalleimmat vaihdot, omat vaihtosi sekä vaihtotehokkuus guruittain.
+
+---
+
 ## 5. Vaihdot – vaihtotoiveet
 
 Vaihtoja on kaudessa **4**. Vaihtopäivät ovat 11.10., 29.11., 10.1. ja 21.2. klo 9–21.

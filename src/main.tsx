@@ -6,6 +6,7 @@ import Layout from './Layout';
 import { Spinner } from './ui';
 import Home from './pages/Home';
 import Leaderboard from './pages/Leaderboard';
+import Gurukierros from './pages/Gurukierros';
 import Standings from './pages/Standings';
 import Stats from './pages/Stats';
 import HallOfFame from './pages/HallOfFame';
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="leaderboard" element={<Leaderboard />} />
+            <Route path="gurukierros" element={<Gurukierros />} />
             <Route path="sarjataulukko" element={<Standings />} />
             <Route path="tilastot" element={<Stats />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />
