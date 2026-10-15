@@ -117,7 +117,7 @@ export async function weeklyReview(db: D1Database, season: Season, monday: strin
   const popIds = popTop.map(([k]) => Number(k.split(':')[1]));
   const popNames = new Map(popIds.length ? (await db.prepare(`SELECT id, first_name || ' ' || last_name AS name FROM players WHERE id IN (${popIds.map(() => '?').join(',')})`)
     .bind(...popIds).all<{ id: number; name: string }>()).results.map((r) => [r.id, r.name]) : []);
-  const popular = popTop.map(([k, n]) => { const id = Number(k.split(':')[1]); const p = byPlayer.get(id); return { id, name: popNames.get(id) ?? null, owners: n, hg: p?.hg ?? 0, games: p?.games ?? 0 }; });
+  const popular = popTop.map(([k, n]) => { const id = Number(k.split(':')[1]); const p = byPlayer.get(id); return { id, name: popNames.get(id) ?? null, owners: n, hg: r2(p?.hg ?? 0), games: p?.games ?? 0 }; });
   const hidden = players.filter((p) => !pickCount.has(`${p.pos}:${p.id}`)).slice(0, 3); // kukaan ei omista
 
   return {
