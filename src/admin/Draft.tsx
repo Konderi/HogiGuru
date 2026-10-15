@@ -38,9 +38,11 @@ export default function Draft() {
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300" title="Näytetäänkö Draft-sivu käyttäjien yläpalkissa">
             <input type="checkbox" checked={navOn} disabled={busy} onChange={toggleNav} className="accent-ice-400" /> Näytä yläpalkissa
           </label>
-          <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Avaa heijastettava näkymä</a>
-          <a className="btn btn-ghost" href="/draft/naytto?harjoitus" target="_blank" rel="noopener" title="Arvonta-animaatio oikeilla guruilla – ei tallenna mitään">🧪 Harjoitusarvonta</a>
-          <Link className="btn btn-ghost" to="/admin/draft/harjoitus" title="Harjoittele draft-valinnat – ei tallenna mitään">🧪 Harjoitusdraft</Link>
+          {st.status !== 'done' && <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Seinänäkymä</a>}
+          <Link className="btn btn-primary relative" to="/admin/draft/harjoitus" title="Harjoittele koko draft-tilaisuus – ei tallenna mitään">
+            ▶ Aloita draft
+            <span className="absolute -right-2 -top-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rink-950">Harjoitus</span>
+          </Link>
           {st.lottery && (
             <button className="btn btn-ghost" disabled={busy} onClick={() => act(() => api('/admin/draft/lottery', { body: { action: st.lottery?.paused ? 'resume' : 'pause' } }))}>
               {st.lottery.paused ? '▶ Jatka arvontaa' : '⏸ Tauko arvontaan'}
