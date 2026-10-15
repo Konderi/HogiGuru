@@ -19,7 +19,7 @@
   // Varmistukset (yöllinen SQL-dump + tapahtumavarmistukset)
   "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "hogiguru-backups" }],
   // Sähköposti: RESEND_API_KEY asetetaan salaisuutena (wrangler secret put RESEND_API_KEY)
-  "vars": { "MAIL_FROM": "HogiGuru <no-reply@no-reply.konderi.fi>" },
+  "vars": { "MAIL_FROM": "HogiGuru <no-reply@konderi.fi>" },
   // Tilastopäivitys: tunnin välein (UTC)
   // Herätys 30 min välein; worker ajaa päivityksen vain Suomen aikaa klo 17.00–23.00 (30 min välein) sekä klo 05.00 ja 11.00.
   "triggers": { "crons": ["*/30 * * * *"] },

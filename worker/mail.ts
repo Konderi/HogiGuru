@@ -2,7 +2,7 @@
 export interface MailEnv { DB: D1Database; RESEND_API_KEY?: string; MAIL_FROM?: string }
 
 export const SITE = 'https://guru.konderi.fi';
-const DEFAULT_FROM = 'HogiGuru <no-reply@no-reply.konderi.fi>';
+const DEFAULT_FROM = 'HogiGuru <no-reply@konderi.fi>';
 
 export async function sendMail(env: MailEnv, kind: string, to: string, subject: string, html: string, unsubUrl?: string): Promise<boolean> {
   let ok = false; let error: string | null = null;
