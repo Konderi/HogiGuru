@@ -30,22 +30,24 @@ export default function DraftScreen() {
   const demoRes = useDemo(demo ? real : null);
   // Harjoitusdraft: hallintaikkuna lähettää tilan tähän ikkunaan
   const [practice, setPractice] = useState<{ st: DraftState; paused: boolean; autoAt: number | null } | null>(null);
+  const chRef = useRef<BroadcastChannel | null>(null);
   useEffect(() => {
     if (!demo) return;
-    const c = new BroadcastChannel(DEMO_CHANNEL);
+    const c = new BroadcastChannel(DEMO_CHANNEL); chRef.current = c;
     c.onmessage = (e) => { if (e.data?.type === 'state') setPractice(e.data); if (e.data?.type === 'bye') setPractice(null); };
     c.postMessage({ type: 'hello' });
     return () => c.close();
   }, [demo]);
-  const usePractice = !!practice && practice.st.status !== 'setup';
+  const usePractice = !!practice;
   const st = usePractice ? practice!.st : demo ? demoRes.st : real;
   const { me } = useAuth();
   const offset = useRef(0);
   useEffect(() => { if (st?.lottery && !st.lottery.paused && !demo) offset.current = st.lottery.now - Date.now(); }, [st, demo]);
-  const start = demo ? demoRes.start
+  const send = (action: string) => () => chRef.current?.postMessage({ type: 'cmd', action });
+  const start = usePractice ? send('lottery') : demo ? demoRes.start
     : isAdminRole(me?.user?.role) ? async () => { await api('/admin/draft/shuffle', { body: { animate: true } }).catch(() => {}); reload(); }
     : undefined;
-  const toggle = demo ? demoRes.toggle
+  const toggle = usePractice ? send('toggle') : demo ? demoRes.toggle
     : isAdminRole(me?.user?.role) ? async () => { await api('/admin/draft/lottery', { body: { action: st?.lottery?.paused ? 'resume' : 'pause' } }).catch(() => {}); reload(); }
     : undefined;
   useEffect(() => {

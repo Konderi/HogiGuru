@@ -35,28 +35,58 @@ export default function DraftPractice() {
   const allPrefs = useMemo(() => ({ ...(prefs ?? {}), ...fakePrefs }), [prefs, fakePrefs]);
   const [gurus, setGurus] = useState<Guru[] | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
-  const [status, setStatus] = useState<DraftState['status']>('setup');
+  // Vaiheet: valmistelu → arvonta → järjestys esillä → live → tarkistus → julkaistu
+  const [phase, setPhase] = useState<'setup' | 'lottery' | 'lobby' | 'live' | 'review' | 'published'>('setup');
+  const status: DraftState['status'] = phase === 'live' || phase === 'review' ? 'live' : phase === 'published' ? 'done' : 'setup';
+  const [lottery, setLottery] = useState<DraftState['lottery']>(null);
+  const [edit, setEdit] = useState<number | null>(null);
+  const [eq, setEq] = useState('');
   const [paused, setPaused] = useState(false);
   const [autoAt, setAutoAt] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pos, setPos] = useState<Position | 'all'>('all');
   const [q, setQ] = useState('');
 
-  // Alkutila oikeasta draftista (gurut, läsnäolo, numerot)
+  // Alkutila: oikeat gurut ilman numeroita (numerot arvotaan harjoituksessa)
   useEffect(() => {
     if (!real || gurus) return;
-    const ok = real.gurus.length && real.gurus.every((g) => g.draft_number != null);
-    setGurus(ok ? real.gurus.map((g) => ({ ...g })) : shuffle(real.gurus));
+    setGurus(real.gurus.map((g) => ({ ...g, draft_number: null })));
   }, [real, gurus]);
 
-  const st = useMemo(() => (real && gurus ? buildState(real, gurus, picks, status) : null), [real, gurus, picks, status]);
+  const st = useMemo(() => (real && gurus ? { ...buildState(real, gurus, picks, status), lottery } : null), [real, gurus, picks, status, lottery]);
 
-  // Lähetys seinänäkymälle
+  // Arvonta seinänäkymään: 10 s lähtölaskenta, sitten guru kerrallaan
+  const startLottery = () => {
+    if (!gurus?.length) return;
+    const numbered = shuffle(gurus);
+    const order = numbered.map((g) => ({ g, r: Math.random() })).sort((a, b) => a.r - b.r).map(({ g }) => ({ id: g.id, name: g.name, draft_number: g.draft_number }));
+    const now = Date.now();
+    setGurus(numbered);
+    setLottery({ at: now + 10_000, now, step: 10_000, reveal: 4_000, paused: false, order });
+    setPhase('lottery');
+  };
+  const toggleLottery = () => setLottery((L) => {
+    if (!L) return L;
+    const now = Date.now();
+    return L.paused ? { ...L, paused: false, at: L.at + (now - L.now), now } : { ...L, paused: true, now };
+  });
+  useEffect(() => {
+    if (!lottery || lottery.paused) return;
+    const t = setTimeout(() => { setLottery(null); setPhase('lobby'); }, lottery.at - Date.now() + lottery.order.length * lottery.step + 1500);
+    return () => clearTimeout(t);
+  }, [lottery]);
+
+  // Lähetys seinänäkymälle; seinän painikkeet lähettävät komennot takaisin
   const ch = useRef<BroadcastChannel | null>(null);
   const latest = useRef<DraftState | null>(null);
+  const cmd = useRef<Record<string, () => void>>({});
+  cmd.current = { lottery: startLottery, toggle: toggleLottery };
   useEffect(() => {
     const c = new BroadcastChannel(DEMO_CHANNEL); ch.current = c;
-    c.onmessage = (e) => { if (e.data?.type === 'hello' && latest.current) c.postMessage({ type: 'state', st: latest.current, paused, autoAt }); };
+    c.onmessage = (e) => {
+      if (e.data?.type === 'hello' && latest.current) c.postMessage({ type: 'state', st: latest.current, paused, autoAt });
+      if (e.data?.type === 'cmd') cmd.current[e.data.action]?.();
+    };
     return () => { c.postMessage({ type: 'bye' }); c.close(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -88,7 +118,7 @@ export default function DraftPractice() {
     return () => clearTimeout(t);
   }, [st?.pickNo, remoteTurn?.id, paused, allPrefs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { if (st && st.status === 'live' && st.picks.length >= st.total) setStatus('done'); }, [st]);
+  useEffect(() => { if (st && phase === 'live' && st.picks.length >= st.total) setPhase('review'); }, [st, phase]);
 
   if (!st || !gurus) return <Spinner />;
 
@@ -112,31 +142,60 @@ export default function DraftPractice() {
     }
     setFakePrefs(out);
   };
-  const reset = () => { setPicks([]); setStatus('setup'); setPaused(false); setErr(null); failedFor.current = null; };
+  const reset = () => { setPicks([]); setPhase('setup'); setLottery(null); setPaused(false); setErr(null); setEdit(null); failedFor.current = null; setGurus(gurus.map((g) => ({ ...g, draft_number: null }))); };
+  const pickGurus = (list: Guru[]) => { setGurus(list); setFakePrefs({}); };
+  const testGurus = () => pickGurus(TEST_NAMES.map((name, i) => ({ id: 900_001 + i, name, draft_number: null, remote_draft: i % 3 === 2 ? 1 : 0, user_id: null }) as Guru));
+  const numbered = gurus.length > 0 && gurus.every((g) => g.draft_number != null);
+
+  // Tarkistusvaihe: yksittäisen valinnan vaihto (samat säännöt kuin palvelimen replacePick)
+  const editPick = picks.find((p) => p.pick_no === edit);
+  const replace = (entityId: number) => {
+    if (!editPick) return;
+    const item = st.pool.find((p) => p.position === editPick.position && p.entity_id === entityId)!;
+    const others = picks.filter((p) => p.pick_no !== editPick.pick_no);
+    if (others.some((p) => p.guru_id === editPick.guru_id && p.position === item.position && p.entity_id === entityId)) { setErr('Gurulla on jo tämä valinta'); return; }
+    const used = others.filter((p) => p.position === item.position && p.entity_id === entityId).length;
+    if (used >= st.maxPicks[item.position]) { setErr(`Valittu jo ${used} kertaa (max ${st.maxPicks[item.position]})`); return; }
+    setErr(null);
+    setPicks(picks.map((p) => (p.pick_no === editPick.pick_no ? { ...p, entity_id: entityId, name: item.name, team: item.team, auto: 0 } : p)));
+    setEdit(null);
+  };
+  const cands = editPick ? st.pool.filter((p) => p.position === editPick.position && p.entity_id !== editPick.entity_id && matchName(`${p.name} ${p.team ?? ''}`, eq)) : [];
+  const steps = [['setup', '1 Läsnäolo'], ['lottery', '2 Arvonta'], ['lobby', '3 Järjestys'], ['live', '4 Draft'], ['review', '5 Tarkistus'], ['published', '6 Julkaistu']] as const;
+  const stepIdx = steps.findIndex(([k]) => k === phase);
 
   return (
     <>
       <PageHeader kicker="Harjoitus · ei tallennu" title="Harjoitusdraft">
         <div className="flex flex-wrap gap-2">
           <a className="btn btn-ghost" href="/draft/naytto?harjoitus" target="_blank" rel="noopener">📺 Avaa seinänäkymä</a>
-          {status === 'setup' && <button className="btn btn-primary" disabled={!gurus.length} onClick={() => setStatus('live')}>▶ Aloita harjoitusdraft</button>}
-          {status === 'live' && <button className="btn btn-ghost" onClick={() => setPaused(!paused)}>{paused ? '▶ Jatka' : '⏸ Tauko'}</button>}
-          {status !== 'setup' && <button className="btn btn-ghost" disabled={!picks.length} onClick={() => { setPicks((p) => p.slice(0, -1)); setStatus('live'); failedFor.current = null; }}>↶ Peru edellinen</button>}
-          {status !== 'setup' && <button className="btn btn-ghost" onClick={() => confirm('Aloitetaanko harjoitus alusta?') && reset()}>↺ Nollaa</button>}
+          {phase === 'setup' && <button className="btn btn-primary" disabled={!gurus.length} onClick={startLottery}>🎲 Aloita arvonta</button>}
+          {phase === 'lottery' && <button className="btn btn-ghost" onClick={toggleLottery}>{lottery?.paused ? '▶ Jatka arvontaa' : '⏸ Tauko arvontaan'}</button>}
+          {(phase === 'lobby' || (phase === 'setup' && numbered)) && <button className="btn btn-primary" onClick={() => setPhase('live')}>▶ Aloita draft</button>}
+          {phase === 'live' && <button className="btn btn-ghost" onClick={() => setPaused(!paused)}>{paused ? '▶ Jatka' : '⏸ Tauko'}</button>}
+          {(phase === 'live' || phase === 'review') && <button className="btn btn-ghost" disabled={!picks.length} onClick={() => { setPicks((p) => p.slice(0, -1)); setPhase('live'); setEdit(null); failedFor.current = null; }}>↶ Peru edellinen</button>}
+          {phase !== 'setup' && <button className="btn btn-ghost" onClick={() => confirm('Aloitetaanko harjoitus alusta?') && reset()}>↺ Nollaa</button>}
         </div>
       </PageHeader>
 
+      <ol className="mb-4 flex flex-wrap gap-1 text-xs">
+        {steps.map(([k, label], i) => (
+          <li key={k} className={`rounded-full px-3 py-1 ${i === stepIdx ? 'bg-ice-500 font-semibold text-rink-950' : i < stepIdx ? 'bg-ice-500/20 text-ice-200' : 'bg-white/5 text-slate-500'}`}>{label}</li>
+        ))}
+      </ol>
+
       <p className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-        Harjoitus käyttää oikeita guruja, draft-listaa ja lomakkeita, mutta mitään ei tallenneta. Avaa seinänäkymä <b>samassa selaimessa</b> ja jaa se seinälle/Teamsiin – se seuraa tätä ikkunaa reaaliajassa.
+        Harjoitus kulkee samat vaiheet kuin oikea draft, mutta mitään ei tallenneta. Avaa seinänäkymä <b>samassa selaimessa</b> ja jaa se seinälle/Teamsiin – se seuraa tätä ikkunaa reaaliajassa (arvonta, draft, valmis).
       </p>
 
-      {status === 'setup' && (
-        <Card title="Läsnäolo harjoituksessa" className="mb-6"
+      {phase === 'setup' && (
+        <Card title={`Vaihe 1 · Läsnäolo (${gurus.length} gurua)`} className="mb-6"
           action={<div className="flex flex-wrap gap-2">
+            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={testGurus} title="10 keksittyä gurua – nopea läpikäynti">👥 10 testigurua</button>
+            {real && <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => pickGurus(real.gurus.map((g) => ({ ...g, draft_number: null })))}>Oikeat gurut</button>}
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={genPrefs} title="Keksityt draft-lomakkeet kaikille guruille (vain harjoitukseen)">🎟 Generoi testikupongit</button>
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 1 })))}>Kaikki lomakkeelta</button>
             <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(gurus.map((g) => ({ ...g, remote_draft: 0 })))}>Kaikki paikalla</button>
-            <button className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setGurus(shuffle(gurus))}>🎲 Arvo numerot</button>
           </div>}>
           <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {[...gurus].sort((a, b) => (a.draft_number ?? 0) - (b.draft_number ?? 0)).map((g) => {
@@ -174,7 +233,66 @@ export default function DraftPractice() {
           </p>
         </section>
       )}
-      {status === 'done' && <section className="mb-6 rounded-3xl border border-emerald-400/30 bg-emerald-500/10 p-6 font-display text-3xl text-white">Harjoitusdraft valmis 🏆</section>}
+      {phase === 'lottery' && <section className="mb-6 rounded-3xl border border-ice-400/30 bg-ice-500/10 p-6 text-white"><p className="font-display text-3xl">🎲 Arvonta käynnissä seinänäkymässä</p><p className="mt-1 text-sm text-slate-300">Kestää noin {Math.round((gurus.length * 10 + 10) / 6) / 10} min. Järjestys tulee näkyviin, kun arvonta päättyy.</p></section>}
+      {phase === 'lobby' && <section className="mb-6 rounded-3xl border border-ice-400/30 bg-ice-500/10 p-6 text-white"><p className="font-display text-3xl">Järjestys arvottu</p><p className="mt-1 text-sm text-slate-300">Seinällä näkyy valintajärjestys. Käy se läpi ja paina ▶ Aloita draft.</p></section>}
+      {phase === 'review' && (
+        <Card title="Vaihe 5 · Tarkista ja hyväksy" className="mb-6"
+          action={<button className="btn btn-primary" onClick={() => confirm('Hyväksytäänkö valinnat ja julkaistaanko joukkueet? (harjoitus)') && (setPhase('published'), setEdit(null))}>✓ Hyväksy ja julkaise joukkueet</button>}>
+          <p className="px-5 pt-4 text-sm text-slate-300">Kaikki valinnat tehty. Klikkaa valintaa korjataksesi sen toiseen saman pelipaikan nimeen.</p>
+          <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
+            {st.gurus.map((g) => (
+              <div key={g.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <p className="mb-2 font-semibold text-white">{g.draft_number}. {g.name}</p>
+                <div className="flex flex-wrap gap-1">
+                  {picks.filter((p) => p.guru_id === g.id).sort((a, b) => POSITIONS.indexOf(a.position) - POSITIONS.indexOf(b.position)).map((p) => (
+                    <button key={p.pick_no} onClick={() => { setEdit(edit === p.pick_no ? null : p.pick_no); setEq(''); }}
+                      className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs ${edit === p.pick_no ? 'bg-amber-400/30 ring-1 ring-amber-300' : 'bg-white/5 hover:bg-white/10'}`}>
+                      <PosBadge pos={p.position} />{p.name}
+                    </button>
+                  ))}
+                </div>
+                {editPick?.guru_id === g.id && (
+                  <div className="mt-3 rounded-lg border border-amber-400/30 p-2">
+                    <p className="mb-1 text-xs text-amber-300">Vaihda {editPick.name} (valinta #{editPick.pick_no}) →</p>
+                    <input className="input" autoFocus placeholder="Hae…" value={eq} onChange={(e) => setEq(e.target.value)} />
+                    <ul className="mt-1">
+                      {cands.slice(0, 6).map((c) => {
+                        const dis = c.used >= st.maxPicks[c.position] || picks.some((x) => x.guru_id === g.id && x.position === c.position && x.entity_id === c.entity_id);
+                        return (
+                          <li key={c.entity_id} className="flex items-center gap-2 border-t border-white/5 py-1 text-sm">
+                            <span className={`flex-1 truncate ${dis ? 'text-slate-600' : 'text-white'}`}>{c.name} <span className="text-xs text-slate-500">{c.team}</span></span>
+                            <span className="font-mono text-xs text-slate-400">{c.used}/{st.maxPicks[c.position]}</span>
+                            <button className="btn btn-primary px-2 py-0.5 text-xs" disabled={dis} onClick={() => replace(c.entity_id)}>Vaihda</button>
+                          </li>
+                        );
+                      })}
+                      {!cands.length && <li className="py-1 text-xs text-slate-500">Ei osumia.</li>}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+      {phase === 'published' && (
+        <Card title="Vaihe 6 · Joukkueet julkaistu (harjoitus)" className="mb-6">
+          <p className="px-5 pt-4 text-sm text-slate-300">Oikeassa draftissa nämä kentälliset tulisivat nyt guruille näkyviin Oma joukkue -sivulle. Harjoituksessa mitään ei tallennettu.</p>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            {st.gurus.map((g) => (
+              <div key={g.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <p className="mb-2 font-semibold text-white">{g.name}</p>
+                {POSITIONS.map((ps) => (
+                  <div key={ps} className="mb-1">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500">{POS_PLURAL[ps]}</p>
+                    {picks.filter((p) => p.guru_id === g.id && p.position === ps).map((p) => <p key={p.pick_no} className="truncate text-sm">{p.name}</p>)}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       {err && <div className="mb-4"><ErrorBox error={err} /></div>}
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
@@ -211,6 +329,8 @@ export default function DraftPractice() {
     </>
   );
 }
+
+const TEST_NAMES = ['Testi-Aki', 'Testi-Bea', 'Testi-Cale', 'Testi-Dani', 'Testi-Eki', 'Testi-Fanni', 'Testi-Gege', 'Testi-Hessu', 'Testi-Iida', 'Testi-Jussi'];
 
 function shuffle(gurus: Guru[]): Guru[] {
   const order = gurus.map((g) => ({ g, r: Math.random() })).sort((a, b) => a.r - b.r);
