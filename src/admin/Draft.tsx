@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { matchName, POS_LABEL, POS_PLURAL, POSITIONS, type Position } from '../api';
-import { useApi } from '../auth';
+import { useApi, useAuth } from '../auth';
 import { DraftGrid, type DraftState } from '../pages/DraftBoard';
 import { Card, Empty, EntityPicker, PageHeader, PosBadge, Spinner } from '../ui';
 import { api, useAdmin } from './AdminLayout';
@@ -10,6 +10,7 @@ import { useCoachOptions } from './Gurus';
 export default function Draft() {
   const { data: st, reload } = useApi<DraftState>('/draft');
   const { run } = useAdmin();
+  const { me, refresh } = useAuth();
   const coaches = useCoachOptions();
   const [pos, setPos] = useState<Position>('F');
   const [q, setQ] = useState('');
@@ -27,11 +28,16 @@ export default function Draft() {
   const left = (p: Position) => st.roster[p] - mine.filter((x) => x.position === p).length;
   const pool = st.pool.filter((p) => p.position === pos && matchName(`${p.name} ${p.team ?? ''}`, q));
   const statusLabel = { setup: 'Valmistelu', live: 'Käynnissä', done: 'Viety kentällisiin' }[st.status];
+  const navOn = me?.draftNav !== false;
+  const toggleNav = () => act(async () => { await api('/admin/season', { method: 'PUT', body: { draft_nav: !navOn } }); await refresh(); }, navOn ? 'Draft piilotettu yläpalkista' : 'Draft näkyy yläpalkissa');
 
   return (
     <>
       <PageHeader kicker={`Draft · ${statusLabel}`} title="Draft-tilaisuus">
         <div className="flex flex-wrap gap-2">
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300" title="Näytetäänkö Draft-sivu käyttäjien yläpalkissa">
+            <input type="checkbox" checked={navOn} disabled={busy} onChange={toggleNav} className="accent-ice-400" /> Näytä yläpalkissa
+          </label>
           <a className="btn btn-ghost" href="/draft/naytto" target="_blank" rel="noopener">📺 Avaa heijastettava näkymä</a>
           <a className="btn btn-ghost" href="/draft/naytto?harjoitus" target="_blank" rel="noopener" title="Arvonta-animaatio oikeilla guruilla – ei tallenna mitään">🧪 Harjoitusarvonta</a>
           <Link className="btn btn-ghost" to="/admin/draft/harjoitus" title="Harjoittele draft-valinnat – ei tallenna mitään">🧪 Harjoitusdraft</Link>

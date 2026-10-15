@@ -9,6 +9,7 @@ export interface Me {
   user: { id: number; email: string; name: string; role: Role } | null;
   guru?: { id: number; name: string } | null;
   favTeam?: { id: string; name: string; short_name: string | null; logo: string | null } | null;
+  draftNav?: boolean;
   needsSetup?: boolean;
 }
 

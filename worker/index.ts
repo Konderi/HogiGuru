@@ -404,7 +404,7 @@ app.get('/auth/me', async (c) => {
   if (!user) return c.json({ user: null, needsSetup: !(await c.env.DB.prepare('SELECT 1 FROM users LIMIT 1').first()) });
   const guru = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE user_id = ? AND season_id = ?').bind(user.id, c.get('season').id).first();
   const favTeam = await c.env.DB.prepare('SELECT t.id, t.name, t.short_name, t.logo FROM users u JOIN teams t ON t.id = u.fav_team WHERE u.id = ?').bind(user.id).first();
-  return c.json({ user, guru, favTeam });
+  return c.json({ user, guru, favTeam, draftNav: c.get('season').draft_nav !== 0 });
 });
 
 app.put('/me/fav-team', requireUser, async (c) => {
@@ -806,7 +806,7 @@ admin.put('/season', async (c) => {
   await c.env.DB.prepare(
     `UPDATE seasons SET name = ?, liiga_season = ?, max_swaps = ?, max_picks_per_entity = ?, roster = ?, scoring = ?, draft_snake = ?,
        max_picks_by_pos = ?, registration_open = ?, registration_deadline = ?, entry_fee = ?, registration_info = ?,
-       results_published = ?, selection_mode = ?, baskets = ? WHERE id = ?`,
+       results_published = ?, selection_mode = ?, baskets = ?, draft_nav = ? WHERE id = ?`,
   ).bind(
     b.name ?? s.name, b.liiga_season ?? s.liiga_season, b.max_swaps === undefined ? s.max_swaps : num(b.max_swaps),
     b.max_picks_per_entity ?? s.max_picks_per_entity, JSON.stringify(b.roster ?? s.roster), JSON.stringify(b.scoring ?? s.scoring),
@@ -819,6 +819,7 @@ admin.put('/season', async (c) => {
     b.results_published === undefined ? s.results_published : b.results_published ? 1 : 0,
     b.selection_mode === 'baskets' || b.selection_mode === 'draft' ? b.selection_mode : s.selection_mode,
     JSON.stringify((b.baskets ?? s.baskets).map((x) => x.map(String)).filter((x) => x.length)),
+    b.draft_nav === undefined ? (s.draft_nav ?? 1) : b.draft_nav ? 1 : 0,
     s.id,
   ).run();
   return c.json({ ok: true });
