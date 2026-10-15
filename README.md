@@ -380,7 +380,8 @@ Varmistus on koko kannan SQL-dump (rakenne + data, istunnot pois lukien). Lisäk
 ## Ottelut
 
 - **`/ottelut`**: runkosarjan ja Play-Offsin otteluohjelma ja tulokset (liiga.fi, välimuisti 2 min). Suodatus joukkueittain, suosikkijoukkue korostettuna.
-- **`/ottelut/:id`**: ottelun pelaajatilastot joukkueittain (`game_stats` / `playoff_game_stats`) ja HG-pisteet kauden säännöillä. ⭐ merkitsee kirjautuneen gurun omat pelaajat.
+- **Ottelusivun lisätilastot** (liiga.fi, välimuisti 1 h päättyneille / 30 s käynnissä oleville): erätulokset, laukaukset erittäin, xG, kiekonhallinta, aloitukset, blokit, ylivoima, maali- ja jäähytapahtumat videolinkkeineen, tähdet, katsojat, tuomarit; pelaajittain laukaukset, peliaika, aloitukset, huippunopeus ja kovin laukaus.
+$1 joukkueittain (`game_stats` / `playoff_game_stats`) ja HG-pisteet kauden säännöillä. ⭐ merkitsee kirjautuneen gurun omat pelaajat.
 - Etusivulla kortti: edellisen pelipäivän tulokset ja seuraavat ottelut.
 - Koodi: `worker/games.ts`, `src/pages/Games.tsx`; API `GET /api/games?tournament=runkosarja|playoffs`, `GET /api/games/:id`.
 

@@ -17,7 +17,7 @@ import { esc, layout, sendMail, SITE } from './mail';
 import { sendAdminReport, sendWeeklyReport } from './reports';
 import { aliveTeams, fetchBracket } from './playoff';
 import { leaderboard as poLeaderboard, limitsOf, loadContext as poContext, playoffSeasonOf, PO_POS, PO_ROSTER, posOfRole, reservedCounts, rosterOf, swapWindow, today, type PoPos } from './playoffGame';
-import { fetchGames, gameDetail, type Tournament } from './games';
+import { fetchGames, gameDetail, gameExtra, type Tournament } from './games';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
@@ -154,9 +154,12 @@ app.get('/games/:id', async (c) => {
     ]);
     for (const r of [...a.results, ...b.results] as { id: number }[]) mine.add(r.id);
   }
-  const players = await gameDetail(db, id, season.scoring, mine);
+  const [players, extra] = await Promise.all([
+    gameDetail(db, id, season.scoring, mine),
+    game?.started ? gameExtra(season.liiga_season, id, game.ended, wu).catch(() => null) : Promise.resolve(null),
+  ]);
   if (!game && !players.length) return c.json({ error: 'Ottelua ei löytynyt' }, 404);
-  return c.json({ game, players });
+  return c.json({ game, players, extra });
 });
 
 app.get('/public/overview', async (c) => {

@@ -68,3 +68,73 @@ export async function gameDetail(db: D1Database, gameId: number, scoring: Scorin
   });
   return players.sort((x, y) => y.hg - x.hg || y.goals + y.assists - (x.goals + x.assists));
 }
+
+// ---------- Ottelun lisätilastot liiga.fi:stä ----------
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const GOAL_TYPES: Record<string, string> = { YV: 'YV', AV: 'AV', TM: 'TM', VT: 'VT', IM: 'IM', RL: 'RL', VL: 'VL', SR: 'SR' };
+
+export async function gameExtra(season: number, id: number, ended: boolean, waitUntil: (p: Promise<unknown>) => void) {
+  const ttl = ended ? 3600 : 30;
+  const [d, s] = await Promise.all([
+    cachedJson<any>(`https://liiga.fi/api/v2/games/${season}/${id}`, ttl, waitUntil),
+    cachedJson<any>(`https://liiga.fi/api/v2/games/stats/${season}/${id}`, ttl, waitUntil).catch(() => null),
+  ]);
+  const g = d?.game;
+  if (!g) return null;
+  const names = new Map<number, { name: string; jersey: number | null; team: string }>();
+  for (const p of [...(d.homeTeamPlayers ?? []), ...(d.awayTeamPlayers ?? [])]) names.set(p.id, { name: `${p.firstName} ${p.lastName}`, jersey: p.jersey ?? null, team: p.teamId });
+  const nm = (pid: number) => names.get(pid)?.name ?? '';
+
+  const events: any[] = [];
+  for (const side of ['home', 'away'] as const) {
+    const t = g[`${side}Team`];
+    for (const e of t.goalEvents ?? []) events.push({
+      type: 'goal', side, time: e.gameTime, period: e.period, scorer: nm(e.scorerPlayerId) || `${e.scorerPlayer?.firstName ?? ''} ${e.scorerPlayer?.lastName ?? ''}`.trim(),
+      assists: (e.assistantPlayers ?? []).map((a: any) => `${a.firstName} ${a.lastName}`), score: `${e.homeTeamScore}–${e.awayTeamScore}`,
+      types: (e.goalTypes ?? []).map((x: string) => GOAL_TYPES[x] ?? x), winning: !!e.winningGoal, video: e.videoClipUrl ?? null,
+    });
+    for (const e of t.penaltyEvents ?? []) events.push({ type: 'penalty', side, time: e.gameTime, period: e.period, player: nm(e.playerId), minutes: e.penaltyMinutes, reason: e.penaltyFaultName });
+  }
+  events.sort((a, b) => a.time - b.time);
+
+  // Joukkueiden tilastot (summa pelaajien erätilastoista)
+  const teamSum = (side: 'home' | 'away') => {
+    const per = (s?.[`${side}Team`] ?? []) as { periodPlayerStats: any[] }[];
+    const tot = { shots: 0, blocked: 0, fo: 0, foWon: 0, shotsByPeriod: [] as number[] };
+    const players = new Map<number, any>();
+    per.forEach((p, i) => {
+      let sh = 0;
+      for (const r of p.periodPlayerStats ?? []) {
+        const x = r.period ?? {};
+        sh += x.shots ?? 0; tot.blocked += x.blockedShots ?? 0; tot.fo += x.faceoffsTotal ?? 0; tot.foWon += x.faceoffsWon ?? 0;
+        const pl = players.get(r.playerId) ?? { id: r.playerId, name: nm(r.playerId), jersey: r.jerseyId, toi: 0, shots: 0, blocked: 0, fo: 0, foWon: 0, xg: 0, speed: null, hardest: null };
+        pl.toi += x.timeofice ?? 0; pl.shots += x.shots ?? 0; pl.blocked += x.blockedShots ?? 0; pl.fo += x.faceoffsTotal ?? 0; pl.foWon += x.faceoffsWon ?? 0; pl.xg += r.expectedGoalsPlayer ?? 0;
+        players.set(r.playerId, pl);
+      }
+      tot.shotsByPeriod[i] = sh; tot.shots += sh;
+    });
+    for (const r of s?.[`${side}TeamGamePlayerStats`] ?? []) {
+      const pl = players.get(r.playerId); if (!pl) continue;
+      pl.speed = r.topSpeed ? Math.round(r.topSpeed * 3.6 * 10) / 10 : null;
+      pl.hardest = r.hardestShot ? Math.round(r.hardestShot * 3.6 * 10) / 10 : null;
+    }
+    const t = g[`${side}Team`];
+    return {
+      ...tot, pp: `${t.powerplayGoals ?? 0}/${t.powerplayInstances ?? 0}`, sh: t.shortHandedInstances ?? 0, xg: t.expectedGoals ?? null,
+      pim: (t.penaltyEvents ?? []).reduce((a: number, e: any) => a + (e.penaltyMinutes ?? 0), 0),
+      players: [...players.values()].map((p) => ({ ...p, xg: Math.round(p.xg * 100) / 100 })),
+    };
+  };
+  const puck = (s?.puckStats ?? []) as any[];
+  const ctl = puck.reduce((a, p) => ({ h: a.h + (p.homeTeamControlDuration ?? 0), a: a.a + (p.awayTeamControlDuration ?? 0) }), { h: 0, a: 0 });
+  const stars = ((d.awards ?? []) as any[]).filter((a) => a.awardCategory === 1).sort((a, b) => b.awardPoint - a.awardPoint)
+    .map((a) => ({ stars: a.awardPoint, name: nm(a.playerId), team: a.teamId }));
+  return {
+    periods: (g.periods ?? []).map((p: any) => ({ index: p.index, home: p.homeTeamGoals, away: p.awayTeamGoals, category: p.category })),
+    spectators: g.spectators ?? null, rink: g.iceRink?.name ?? null, city: g.iceRink?.city ?? null,
+    referees: (g.referees ?? []).map((r: any) => ({ name: `${r.firstName} ${r.lastName}`, role: r.roleName })),
+    events, home: teamSum('home'), away: teamSum('away'),
+    possession: ctl.h + ctl.a ? Math.round((ctl.h / (ctl.h + ctl.a)) * 100) : null,
+    stars,
+  };
+}
