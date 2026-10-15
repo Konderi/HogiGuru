@@ -15,7 +15,7 @@ export default function Privacy() {
     <div className="mx-auto max-w-3xl">
       <PageHeader kicker="EU:n yleinen tietosuoja-asetus (GDPR) art. 13–14" title="Tietosuojaseloste" />
       <Card>
-        <div className="space-y-6">
+        <div className="space-y-7 px-5 py-6 sm:px-8 sm:py-8">
           <p className="text-xs text-slate-500">Päivitetty 15.10.2026</p>
 
           <S title="1. Rekisterinpitäjä">
