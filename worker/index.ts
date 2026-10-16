@@ -397,9 +397,13 @@ app.post('/public/registration', async (c) => {
     }
   } else {
     rankings = Object.fromEntries(POSITIONS.map((p) => [p, [...new Set((b.rankings?.[p] ?? []).map(Number).filter(Boolean))].slice(0, 60)]));
+    // Toivelistan minimit (rajattu kuitenkin tarjolla olevien määrään, esim. valmentajat)
+    const WISH_MIN: Record<Position, number> = { F: 20, D: 20, G: 5, C: 5 };
+    const nCoaches = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM coaches WHERE season_id = ? AND fired = 0').bind(season.id).first<{ n: number }>())?.n ?? 0;
     for (const p of POSITIONS) {
       if (p === 'C' && !hasCoaches) continue;
-      if (rankings[p].length < (season.roster[p] ?? 0)) throw new Error(`Lisää All-Stars-toivelistaan vähintään ${season.roster[p]} × ${POS_FI[p]}`);
+      const min = Math.max(season.roster[p] ?? 0, p === 'C' ? Math.min(WISH_MIN.C, nCoaches) : WISH_MIN[p]);
+      if (rankings[p].length < min) throw new Error(`Lisää All-Stars-toivelistaan vähintään ${min} × ${POS_FI[p]}`);
     }
     order = (b.position_order ?? []).filter(isPos);
     if (order.length !== need || POSITIONS.some((p) => order.filter((x) => x === p).length !== (season.roster[p] ?? 0)))

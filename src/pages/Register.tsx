@@ -116,6 +116,7 @@ export default function Register() {
   };
   const skaters = data.players.filter((p) => p.role !== 'MV');
   const p = data.season.scoring.prediction;
+  const pr = { standings: [6, 4, 1], topScorer: [7, 4, 2], category: [12, 6, 3], shutoutFactor: 0.5, ...p };
   const reg = data.registration;
   const roster = data.season.roster;
   const hasCoaches = data.coaches.length > 0;
@@ -124,6 +125,9 @@ export default function Register() {
     G: data.players.filter((x) => x.role === 'MV'), C: data.coaches,
   };
   const orderTotal = POSITIONS.reduce((s, x) => s + (roster[x] ?? 0), 0);
+  // Toivelistan minimit: 20 hyökkääjää, 20 puolustajaa, 5 maalivahtia, 5 valmentajaa (enintään tarjolla olevat)
+  const WISH_MIN: Record<Position, number> = { F: 20, D: 20, G: 5, C: 5 };
+  const wishMin = (x: Position) => Math.max(roster[x] ?? 0, Math.min(WISH_MIN[x], wishPool[x].length));
   const left = (x: Position) => (roster[x] ?? 0) - posOrder.filter((y) => y === x).length;
   const basketMode = data.season.selectionMode === 'baskets' && (data.season.baskets?.length ?? 0) > 0;
   const baskets = data.season.baskets ?? [];
@@ -133,7 +137,7 @@ export default function Register() {
   const missing = basketMode ? [
     ...baskets.map((_, i) => (bPicks[i]?.entity_id ? null : `kori ${i + 1}`)).filter((x): x is string => !!x),
   ] : [
-    ...POSITIONS.filter((x) => (x !== 'C' || hasCoaches) && wish[x].length < (roster[x] ?? 0)).map((x) => `toivelista: ${POS_LABEL[x].toLowerCase()}`),
+    ...POSITIONS.filter((x) => (x !== 'C' || hasCoaches) && wish[x].length < wishMin(x)).map((x) => `toivelista: ${POS_LABEL[x].toLowerCase()}`),
     ...(posOrder.length < orderTotal ? ['draftin valintajärjestys'] : []),
   ];
 
@@ -162,6 +166,17 @@ export default function Register() {
             <li><b className="text-white">Puolustaja:</b> maali {fmt(data.season.scoring.D.goals)} · syöttö {fmt(data.season.scoring.D.assists)} · jäähymin {fmt(data.season.scoring.D.pim)} · +/− {fmt(data.season.scoring.D.plusMinus)} · ottelu {fmt(data.season.scoring.D.games)}</li>
             <li><b className="text-white">Maalivahti:</b> nollapeli {fmt(data.season.scoring.G.shutouts)} · torjunta {fmt(data.season.scoring.G.saves)} · päästetty {fmt(data.season.scoring.G.goalsAgainst)}</li>
             <li><b className="text-white">Valmentaja:</b> joukkueen sarjapiste {fmt(data.season.scoring.C.teamPoints)} · potkut {fmt(data.season.scoring.coachFiredPenalty, 0)}</li>
+          </ul>
+        </div>
+        <div>
+          <p className="label">Veikkauspisteet</p>
+          <p className="mb-1 text-slate-400">Kokonaistulos = All-Stars-pisteet + veikkauspisteet:</p>
+          <ul className="space-y-1 text-slate-400">
+            <li><b className="text-white">Sarjataulukko:</b> jokaisesta joukkueesta oikea sija {pr.standings[0]} p{pr.standings[1] != null && <>, yhden sijan heitto {pr.standings[1]} p</>}{pr.standings[2] != null && <>, kahden sijan heitto {pr.standings[2]} p</>}.</li>
+            <li><b className="text-white">Joukkueiden paras pistemies:</b> oikea {pr.topScorer[0]} p{pr.topScorer[1] != null && <>, joukkueen 2. {pr.topScorer[1]} p</>}{pr.topScorer[2] != null && <>, 3. {pr.topScorer[2]} p</>}.</li>
+            <li><b className="text-white">Pörssit</b> (piste-, maali-, syöttö-, +/−-, puolustajien piste- ja jäähypörssi): voittaja {pr.category[0]} p, sijat 2–3 {pr.category[1]} p, sijat 4–5 {pr.category[2]} p.</li>
+            <li><b className="text-white">Eniten nollapelejä:</b> pörssipisteet × {fmt(pr.shutoutFactor)} ({fmt(pr.category[0] * pr.shutoutFactor)} / {fmt(pr.category[1] * pr.shutoutFactor)} / {fmt(pr.category[2] * pr.shutoutFactor)} p).</li>
+            <li>Tasatilanteessa kaikki samalla sijalla olevat saavat sijan pisteet.</li>
           </ul>
         </div>
         <div>
@@ -284,7 +299,7 @@ export default function Register() {
             <p className="px-5 pt-4 text-xs text-slate-400">Listaa pelaajat toivejärjestyksessä jokaiseen pelipaikkaan. Kun valitset nimen, alle aukeaa uusi kenttä. Draftissa valitaan listaltasi ylin vielä vapaana oleva. Listaa useampi kuin minimi, sillä suosikit voivat mennä muille.</p>
             <div className="grid gap-6 p-5 md:grid-cols-2">
               {(['F', 'D', 'G', 'C'] as Position[]).filter((x) => x !== 'C' || hasCoaches).map((x) => (
-                <WishList key={x} label={POS_LABEL[x]} items={wish[x]} setItems={(v) => setWish({ ...wish, [x]: v })} pool={wishPool[x]} min={roster[x] ?? 0} />
+                <WishList key={x} label={POS_LABEL[x]} items={wish[x]} setItems={(v) => setWish({ ...wish, [x]: v })} pool={wishPool[x]} min={wishMin(x)} />
               ))}
             </div>
           </Card>
