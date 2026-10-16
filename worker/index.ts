@@ -1432,10 +1432,17 @@ admin.delete('/adjustments/:id', async (c) => {
 
 // Valmentajat
 admin.post('/coaches', async (c) => {
-  const b = await c.req.json<{ name: string; team_id: string }>();
-  const same = await c.env.DB.prepare('SELECT 1 FROM coaches WHERE season_id = ? AND team_id = ? AND lower(name) = lower(?)').bind(c.get('season').id, b.team_id, b.name.trim()).first();
+  const b = await c.req.json<{ name: string; team_id: string; since?: string }>();
+  const db = c.env.DB; const sid = c.get('season').id;
+  const same = await db.prepare('SELECT 1 FROM coaches WHERE season_id = ? AND team_id = ? AND lower(name) = lower(?)').bind(sid, b.team_id, b.name.trim()).first();
   if (same) throw new Error('Valmentaja on jo lisätty tälle joukkueelle');
-  await c.env.DB.prepare('INSERT INTO coaches (season_id, name, team_id) VALUES (?,?,?)').bind(c.get('season').id, b.name.trim(), b.team_id).run();
+  // Erotetun seuraaja: toimikausi alkaa potkuja seuraavasta päivästä, ellei toisin annettu
+  let since = b.since || null;
+  if (!since) {
+    const prev = await db.prepare('SELECT MAX(until) AS d FROM coaches WHERE season_id = ? AND team_id = ? AND fired = 1').bind(sid, b.team_id).first<{ d: string | null }>();
+    if (prev?.d) since = new Date(Date.parse(prev.d) + 86400000).toISOString().slice(0, 10);
+  }
+  await db.prepare('INSERT INTO coaches (season_id, name, team_id, since) VALUES (?,?,?,?)').bind(sid, b.name.trim(), b.team_id, since).run();
   return c.json({ ok: true });
 });
 admin.put('/coaches/:id', async (c) => {
@@ -1451,6 +1458,8 @@ admin.delete('/coaches/:id', async (c) => {
 admin.post('/coaches/:id/fire', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   const id = Number(c.req.param('id'));
+  const fb = await c.req.json<{ date?: string }>().catch(() => ({} as { date?: string }));
+  const until = /^\d{4}-\d{2}-\d{2}$/.test(fb.date ?? '') ? fb.date! : helsinkiDate();
   const coach = await db.prepare('SELECT name, fired FROM coaches WHERE id = ?').bind(id).first<{ name: string; fired: number }>();
   if (!coach) throw new Error('Valmentajaa ei löydy');
   if (coach.fired) throw new Error('Valmentaja on jo merkitty erotetuksi');
@@ -1459,7 +1468,7 @@ admin.post('/coaches/:id/fire', async (c) => {
      WHERE g.season_id = ? AND s.position = 'C' AND s.entity_id = ? AND s.end_date IS NULL`,
   ).bind(season.id, id).all<{ guru_id: number }>();
   await db.batch([
-    db.prepare('UPDATE coaches SET fired = 1 WHERE id = ?').bind(id),
+    db.prepare('UPDATE coaches SET fired = 1, until = ? WHERE id = ?').bind(until, id),
     ...owners.results.map((o) => db.prepare('INSERT INTO adjustments (guru_id, points, reason) VALUES (?,?,?)')
       .bind(o.guru_id, season.scoring.coachFiredPenalty, `Potkut: ${coach.name}`)),
   ]);

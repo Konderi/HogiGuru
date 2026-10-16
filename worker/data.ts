@@ -38,11 +38,15 @@ export interface Context {
 }
 
 export async function loadContext(db: D1Database, season: Season): Promise<Context> {
-  const [stats, coaches, standings, players] = await db.batch([
+  const [stats, coaches, standings, players, windowed] = await db.batch([
     db.prepare('SELECT * FROM player_stats WHERE season = ?').bind(season.liiga_season),
     db.prepare('SELECT c.id, c.name, c.team_id, t.name AS team FROM coaches c LEFT JOIN teams t ON t.id = c.team_id WHERE c.season_id = ?').bind(season.id),
     db.prepare('SELECT team_id, points FROM standings WHERE season = ?').bind(season.liiga_season),
     db.prepare('SELECT id, first_name, last_name, team_name, picture FROM players'),
+    // Kesken kauden aloittaneet / erotetut valmentajat: joukkueen pisteet vain omalta toimikaudelta
+    db.prepare(`SELECT c.id, COALESCE(SUM(tg.points), 0) AS points FROM coaches c
+      LEFT JOIN team_games tg ON tg.team_id = c.team_id AND tg.season = ? AND tg.date >= COALESCE(c.since, '') AND tg.date <= COALESCE(c.until, '9999')
+      WHERE c.season_id = ? AND (c.since IS NOT NULL OR c.until IS NOT NULL) GROUP BY c.id`).bind(season.liiga_season, season.id),
   ]);
   const ctx: Context = { stats: new Map(), coachTeam: new Map(), teamPoints: new Map(), names: { player: new Map(), coach: new Map() } };
   for (const s of stats.results as unknown as (StatRow & { player_id: number })[]) ctx.stats.set(s.player_id, s);
@@ -51,6 +55,10 @@ export async function loadContext(db: D1Database, season: Season): Promise<Conte
     ctx.names.coach.set(c.id, { name: c.name, team: c.team });
   }
   for (const t of standings.results as { team_id: string; points: number }[]) ctx.teamPoints.set(t.team_id, t.points);
+  for (const w of windowed.results as { id: number; points: number }[]) {
+    ctx.coachTeam.set(w.id, `coach:${w.id}`);
+    ctx.teamPoints.set(`coach:${w.id}`, w.points);
+  }
   for (const p of players.results as { id: number; first_name: string; last_name: string; team_name: string | null; picture: string | null }[]) {
     ctx.names.player.set(p.id, { name: `${p.first_name} ${p.last_name}`, team: p.team_name, picture: p.picture });
   }

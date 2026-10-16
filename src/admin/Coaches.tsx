@@ -47,7 +47,9 @@ export default function Coaches() {
                     <td className="whitespace-nowrap text-right">
                       {!c.fired && <button className="btn btn-danger px-3 py-1 text-xs" onClick={async () => {
                         if (!confirm(`${c.name} sai potkut? Miinuspisteet annetaan ${c.reserved} gurulle.`)) return;
-                        await run(() => api(`/admin/coaches/${c.id}/fire`, { method: 'POST' }), 'Potkut kirjattu'); coaches.reload();
+                        const date = prompt('Potkujen päivämäärä (VVVV-KK-PP). Valmentajan pisteet lasketaan tähän päivään asti, seuraajan seuraavasta päivästä.', new Date().toLocaleDateString('sv-SE'));
+                        if (!date) return;
+                        await run(() => api(`/admin/coaches/${c.id}/fire`, { method: 'POST', body: { date } }), 'Potkut kirjattu'); coaches.reload();
                       }}>Potkut</button>}
                       <button className="ml-2 text-slate-500 hover:text-goal" onClick={async () => {
                         if (!confirm('Poistetaanko valmentaja?')) return;
