@@ -1313,8 +1313,12 @@ admin.delete('/slots/:id', async (c) => {
 
 // Vaihdot
 admin.post('/swaps', async (c) => {
-  const b = await c.req.json<{ slot_id: number; entity_id: number; date?: string; force?: boolean }>();
-  await swapSlot(c.env.DB, c.get('season'), b.slot_id, b.entity_id, b.date || helsinkiDate(), !!b.force);
+  const b = await c.req.json<{ slot_id: number; entity_id: number; force?: boolean }>();
+  // Käsivaihto vain vaihtopäivänä, aina kuluvalle päivälle
+  const d = helsinkiDate();
+  const day = await c.env.DB.prepare('SELECT 1 FROM swap_days WHERE season_id = ? AND date = ?').bind(c.get('season').id, d).first();
+  if (!day) return c.json({ error: 'Vaihtoja voi tehdä vain vaihtopäivänä' }, 400);
+  await swapSlot(c.env.DB, c.get('season'), b.slot_id, b.entity_id, d, !!b.force);
   return c.json({ ok: true });
 });
 admin.get('/swaps', async (c) => {
