@@ -1,5 +1,6 @@
-import { fmt } from '../api';
+import { fmt, type Position } from '../api';
 import { useApi } from '../auth';
+import GameLog from './GameLog';
 import { Avatar, ErrorBox, Modal, Spinner } from '../ui';
 
 interface Hist { season: number; team: string; games: number; goals: number; assists: number; points: number; pim: number; plusMinus: number; saves: number; savePct: number; gaa: number; shutouts: number; gkWins: number }
@@ -8,7 +9,7 @@ interface Info {
   nationality: string | null; birthplace: string | null; team: string | null; jersey: number | null; position: string | null; picture: string | null; history: Hist[];
 }
 /** Tilastot-sivulta välitettävät tämän kauden HG-tiedot */
-export interface CardSeed { id: number; name: string; team: string | null; picture: string | null; hg: number; reserved: number; max: number; goalie: boolean }
+export interface CardSeed { id: number; name: string; team: string | null; picture: string | null; hg: number; reserved: number; max: number; goalie: boolean; position?: Position }
 
 const POS: Record<string, string> = { H: 'Hyökkääjä', VL: 'Vasen laitahyökkääjä', OL: 'Oikea laitahyökkääjä', KH: 'Keskushyökkääjä', P: 'Puolustaja', MV: 'Maalivahti' };
 const age = (d: string) => Math.floor((Date.now() - new Date(d).getTime()) / 31557600000);
@@ -57,6 +58,9 @@ export default function PlayerCard({ seed, onClose }: { seed: CardSeed | null; o
               <div key={k}><dt className="text-[11px] uppercase tracking-wider text-slate-500">{k}</dt><dd className="text-white">{v}</dd></div>
             ))}
           </dl>
+
+          <h4 className="mt-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tämä kausi · ottelukohtaiset tilastot ja HG-pisteet</h4>
+          <GameLog slot={{ entity_id: seed.id, position: seed.position ?? (g ? 'G' : 'F') }} />
 
           <h4 className="mt-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Liiga-ura · runkosarja</h4>
           {!data.history.length ? <p className="text-sm text-slate-500">Ei Liiga-otteluita.</p> : (

@@ -124,7 +124,7 @@ export default function Stats() {
               <tbody>
                 {rows.slice(0, 200).map((p, i) => (
                   <tr key={p.id} className="cursor-pointer" title="Avaa pelaajakortti"
-                    onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max, goalie: pos === 'G' })}>
+                    onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max, goalie: pos === 'G', position: pos })}>
                     <td className="font-display text-slate-500">{i + 1}</td>
                     <td className="min-w-[11rem]">
                       <span className="flex items-center gap-3">
