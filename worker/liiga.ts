@@ -70,9 +70,11 @@ export async function syncLiiga(db: D1Database): Promise<string> {
     );
 
     // Pelaajamuutokset: verrataan edelliseen listaan ennen päivitystä
-    stmts.push(...(await detectPlayerChanges(db, [...skaters, ...goalies], now)));
+    // (active-liput asetetaan vasta upsertien jälkeen, jotta myös uudet pelaajat merkitään aktiivisiksi)
+    const changes = await detectPlayerChanges(db, [...skaters, ...goalies], now);
     for (const p of skaters) { stmts.push(upsertPlayer(p), upsertStats(p, false)); }
     for (const p of goalies) { stmts.push(upsertPlayer(p), upsertStats(p, true)); }
+    stmts.push(...changes);
     await chunked(db, stmts);
 
     // Päivän leaderboard-tilanne talteen (nousut/laskut, kehityskäyrät)
