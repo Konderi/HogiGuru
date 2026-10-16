@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { fmt, fmtDate, fmtDateTime, type LeaderRow } from '../api';
 import { useApi, useAuth } from '../auth';
@@ -13,6 +14,37 @@ interface Overview {
   lastSync: { finished_at: string; message: string } | null;
   standings: StandingRow[];
   registration: RegInfo;
+  playerChanges?: PlayerChange[];
+}
+
+interface PlayerChange { at: string; player_id: number; kind: 'new' | 'moved' | 'gone'; name: string; role: string | null; team_from: string | null; team_to: string | null }
+
+/** Viimeisen 7 päivän pelaajamuutokset (uudet, seuraa vaihtaneet, poistuneet). */
+function PlayerChanges({ list }: { list: PlayerChange[] }) {
+  const [all, setAll] = useState(false);
+  const icon = { new: '🆕', moved: '🔁', gone: '👋' } as const;
+  const text = (c: PlayerChange) => c.kind === 'new' ? `uusi · ${c.team_to ?? ''}` : c.kind === 'moved' ? `${c.team_from} → ${c.team_to}` : `poistunut · ${c.team_from ?? ''}`;
+  const shown = all ? list : list.slice(0, 3);
+  return (
+    <Card title="Pelaajamuutokset" className="flex-1">
+      <div className="p-5 text-sm">
+        {!list.length ? <p className="text-slate-400">Ei muutoksia viimeisen viikon aikana.</p> : (
+          <>
+            <ul className="space-y-2">
+              {shown.map((c) => (
+                <li key={`${c.player_id}-${c.at}`} className="flex items-start gap-2">
+                  <span>{icon[c.kind]}</span>
+                  <span className="min-w-0"><span className="font-semibold text-white">{c.name}</span>{c.role && <span className="ml-1 text-[10px] text-slate-500">{c.role}</span>}
+                    <span className={`block truncate text-xs ${c.kind === 'gone' ? 'text-red-300/80' : 'text-slate-400'}`}>{text(c)} · {fmtDate(c.at).replace(/^\S+ /, '')}</span></span>
+                </li>
+              ))}
+            </ul>
+            {list.length > 3 && <button className="mt-3 text-xs text-ice-300 hover:text-ice-200" onClick={() => setAll(!all)}>{all ? 'Näytä vähemmän' : `+ ${list.length - 3} muuta`}</button>}
+          </>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 export default function Home() {
@@ -89,8 +121,8 @@ export default function Home() {
           )}
         </Card>
 
-        <div className="space-y-6">
-          <Card title="Seuraava vaihtopäivä">
+        <div className="flex flex-col gap-6">
+          <Card title="Seuraava vaihtopäivä" className="flex-1">
             <div className="p-5">
               {data.nextSwap ? (
                 <>
@@ -101,12 +133,13 @@ export default function Home() {
               ) : <p className="text-sm text-slate-400">Vaihtopäiviä ei ole vielä julkaistu.</p>}
             </div>
           </Card>
-          <Card title="Tilastot päivitetty">
+          <Card title="Tilastot päivitetty" className="flex-1">
             <div className="p-5 text-sm">
               <p className="scoreboard text-xl">{fmtDateTime(data.lastSync?.finished_at)}</p>
               <p className="mt-1 text-slate-400">{data.lastSync?.message ?? 'Ei vielä päivityksiä'}</p>
             </div>
           </Card>
+          <PlayerChanges list={data.playerChanges ?? []} />
         </div>
       </div>
 

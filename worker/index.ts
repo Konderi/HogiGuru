@@ -166,17 +166,19 @@ app.get('/public/overview', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   const today = helsinkiDate();
   const nowHel = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Helsinki', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
-  const [leaderboard, nextSwap, lastSync, standings] = await Promise.all([
+  const [leaderboard, nextSwap, lastSync, standings, playerChanges] = await Promise.all([
     computeLeaderboard(db, season),
     db.prepare("SELECT date, note, start_time, end_time FROM swap_days WHERE season_id = ? AND date || ' ' || end_time >= ? ORDER BY date LIMIT 1").bind(season.id, nowHel).first(),
     db.prepare('SELECT finished_at, ok, message FROM sync_log WHERE ok = 1 ORDER BY id DESC LIMIT 1').first(),
     standingsQuery(db, season),
+    db.prepare("SELECT at, player_id, kind, name, role, team_from, team_to FROM player_changes WHERE at > ? ORDER BY at DESC LIMIT 30")
+      .bind(new Date(Date.now() - 7 * 86400_000).toISOString()).all().then((r) => r.results).catch(() => []),
   ]);
   return c.json({
     season: { name: season.name, draftStatus: season.draft_status, resultsPublished: !!season.results_published },
     registration: registrationInfo(season),
     leaderboard: leaderboard.map(({ user_id: _u, ...r }) => r),
-    nextSwap, lastSync, standings,
+    nextSwap, lastSync, standings, playerChanges,
   });
 });
 

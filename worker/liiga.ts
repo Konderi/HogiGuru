@@ -69,6 +69,8 @@ export async function syncLiiga(db: D1Database): Promise<string> {
       gk ? p.savePercentage ?? null : null, now,
     );
 
+    // Pelaajamuutokset: verrataan edelliseen listaan ennen päivitystä
+    stmts.push(...(await detectPlayerChanges(db, [...skaters, ...goalies], now)));
     for (const p of skaters) { stmts.push(upsertPlayer(p), upsertStats(p, false)); }
     for (const p of goalies) { stmts.push(upsertPlayer(p), upsertStats(p, true)); }
     await chunked(db, stmts);
@@ -92,6 +94,36 @@ export async function syncLiiga(db: D1Database): Promise<string> {
     await db.prepare('UPDATE sync_log SET finished_at=?, ok=0, message=? WHERE id=?').bind(new Date().toISOString(), msg, log!.id).run();
     throw e;
   }
+}
+
+/**
+ * Vertaa liiga.fi:n pelaajalistaa edelliseen (players.active = 1) ja palauttaa lauseet, jotka kirjaavat
+ * muutokset player_changes-tauluun ja päivittävät active-lipun. Ensimmäinen ajo merkitsee vain lähtötilanteen.
+ * Vajaa lista (< 100) ohitetaan, ettei synny virheellisiä "poistumisia".
+ */
+async function detectPlayerChanges(db: D1Database, list: ApiPlayer[], now: string): Promise<D1PreparedStatement[]> {
+  if (list.length < 100) return [];
+  const prev = new Map((await db.prepare('SELECT id, first_name, last_name, team_id, team_name, role FROM players WHERE active = 1')
+    .all<{ id: number; first_name: string; last_name: string; team_id: string; team_name: string; role: string }>()).results.map((r) => [r.id, r]));
+  const cur = new Map(list.map((p) => [Number(p.playerId), p]));
+  const out: D1PreparedStatement[] = [];
+  const log = (id: number, kind: string, name: string, role: string | null, from: string | null, to: string | null) =>
+    out.push(db.prepare('INSERT INTO player_changes (at, player_id, kind, name, role, team_from, team_to) VALUES (?,?,?,?,?,?,?)').bind(now, id, kind, name, role, from, to));
+  if (prev.size) {
+    for (const [id, p] of cur) {
+      const o = prev.get(id);
+      if (!o) log(id, 'new', `${p.firstName} ${p.lastName}`, p.role ?? null, null, p.teamName ?? null);
+      else if (String(o.team_id) !== String(p.teamId)) log(id, 'moved', `${p.firstName} ${p.lastName}`, p.role ?? null, o.team_name, p.teamName ?? null);
+    }
+    for (const [id, o] of prev) if (!cur.has(id)) log(id, 'gone', `${o.first_name} ${o.last_name}`, o.role, o.team_name, null);
+  }
+  out.push(db.prepare('UPDATE players SET active = 0 WHERE active = 1'));
+  const ids = [...cur.keys()];
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    out.push(db.prepare(`UPDATE players SET active = 1 WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part));
+  }
+  return out;
 }
 
 /** Pudotuspelien summatilastot (tyhjä ennen pudotuspelejä). Palauttaa rivimäärän. */
