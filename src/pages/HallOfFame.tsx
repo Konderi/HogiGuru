@@ -17,8 +17,9 @@ export default function HallOfFame() {
   const [openGuru, setOpenGuru] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [allChamps, setAllChamps] = useState(false);
+  const [allCherry, setAllCherry] = useState(false);
 
-  const { seasons, marathon, champions, venues, sizes } = useMemo(() => {
+  const { seasons, marathon, champions, venues, sizes, cherry, cherryCount } = useMemo(() => {
     const rows = data ?? [];
     const seasons = [...new Set(rows.map((r) => r.season_name))].sort().reverse();
     const venues = new Map<string, string>();
@@ -36,7 +37,15 @@ export default function HallOfFame() {
     const marathon = [...m.values()].sort((a, b) => b.points - a.points);
     marathon.forEach((x) => x.history.sort((a, b) => b.season_name.localeCompare(a.season_name)));
     const champions = marathon.filter((x) => x.titles).sort((a, b) => b.titles - a.titles || b.points - a.points);
-    return { seasons, marathon, champions, venues, sizes };
+    // Ed Cherry Trophy: kauden viimeinen (Play-Offs-kaudet eivät mukana, niissä vain Top 3)
+    const cherry = seasons.filter((s) => !s.includes('Play-Offs')).map((s) => {
+      const rs = rows.filter((r) => r.season_name === s && r.note !== 'Play-Offs');
+      const max = Math.max(...rs.map((r) => r.rank));
+      return { season: s, size: rs.length, winners: rs.filter((r) => r.rank === max) };
+    }).filter((x) => x.size > 3);
+    const cherryCount = new Map<string, number>();
+    for (const c of cherry) for (const w of c.winners) cherryCount.set(w.name, (cherryCount.get(w.name) ?? 0) + 1);
+    return { seasons, marathon, champions, venues, sizes, cherry, cherryCount };
   }, [data]);
 
   const rankOf = new Map(marathon.map((x, i) => [x.name, i + 1]));
@@ -72,6 +81,28 @@ export default function HallOfFame() {
               </button>
             )}
           </Card>
+
+          {/* Ed Cherry Trophy – sisäpiirin kunniamaininta kauden viimeiselle */}
+          {cherry.length > 0 && (
+            <Card title="🍒 Ed Cherry Trophy" action={<span className="text-xs text-slate-400">Kauden viimeinen guru</span>}>
+              <div className="grid gap-2 p-5 sm:grid-cols-2 xl:grid-cols-3">
+                {(allCherry ? cherry : cherry.slice(0, 6)).map((c) => (
+                  <div key={c.season} className="flex items-center gap-3 rounded-xl border border-rose-400/15 bg-rose-500/[0.06] px-4 py-2.5">
+                    <span className="w-24 font-mono text-xs text-slate-400">{c.season}</span>
+                    <span className="flex-1 text-sm text-white">
+                      {c.winners.map((w) => <span key={w.id} className="block">🍒 {w.name}{(cherryCount.get(w.name) ?? 0) > 1 && <span className="ml-1 text-xs text-rose-300">({cherryCount.get(w.name)}×)</span>}</span>)}
+                    </span>
+                    <span className="font-mono text-xs text-slate-500">{c.winners[0]?.rank}/{c.size}</span>
+                  </div>
+                ))}
+              </div>
+              {cherry.length > 6 && (
+                <button onClick={() => setAllCherry(!allCherry)} className="w-full border-t border-white/5 py-2.5 text-xs font-semibold text-ice-300 hover:bg-white/[0.03]">
+                  {allCherry ? 'Näytä vähemmän' : `Näytä kaikki ${cherry.length} kautta`}
+                </button>
+              )}
+            </Card>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
