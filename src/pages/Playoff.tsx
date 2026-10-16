@@ -207,7 +207,7 @@ function PoPicker({ pos, onPick, exclude }: { pos: PoPos; onPick: (h: Hit) => vo
   }, [q, pos]);
   return (
     <div>
-      <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hae nimellä…" />
+      <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hae nimellä…" />
       <ul className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-rink-950/80">
         {hits.filter((h) => !exclude.includes(h.id)).map((h) => {
           const full = h.reserved >= h.max;
@@ -215,8 +215,8 @@ function PoPicker({ pos, onPick, exclude }: { pos: PoPos; onPick: (h: Hit) => vo
             <li key={h.id}>
               <button disabled={full} className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ice-500/10 ${full ? 'opacity-40' : ''}`} onClick={() => onPick(h)}>
                 <Avatar src={h.picture} name={h.name} size="h-7 w-7" />
-                <span className="flex-1 text-sm text-white">{h.name}</span>
-                <span className="text-xs text-slate-400">{h.team}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-white">{h.name}</span>
+                <span className="max-w-[35%] shrink-0 truncate text-xs text-slate-400">{h.team}</span>
                 <ReservedBadge n={h.reserved} max={h.max} />
               </button>
             </li>
@@ -255,7 +255,7 @@ function DraftForm({ st, reload }: { st: State; reload: () => void }) {
             <div className="flex flex-wrap gap-2">
               {picks[p].map((h) => (
                 <span key={h.id} className="flex items-center gap-2 rounded-full bg-white/5 py-1 pl-1 pr-3 text-sm text-white ring-1 ring-white/10">
-                  <Avatar src={h.picture} name={h.name} size="h-6 w-6" />{h.name}<span className="text-xs text-slate-400">{h.team}</span>
+                  <Avatar src={h.picture} name={h.name} size="h-6 w-6" />{h.name}<span className="max-w-[35%] shrink-0 truncate text-xs text-slate-400">{h.team}</span>
                   <button className="text-slate-400 hover:text-red-300" onClick={() => setPicks({ ...picks, [p]: picks[p].filter((x) => x.id !== h.id) })}>✕</button>
                 </span>
               ))}

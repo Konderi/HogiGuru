@@ -52,7 +52,7 @@ export default function Stats() {
     <>
       <PageHeader kicker="HG-pisteet & varaustilanne" title="Tilastot">
         <div className="flex flex-wrap items-center gap-3">
-          <input className="input w-full sm:w-56" placeholder="Hae pelaajaa tai joukkuetta…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input w-full sm:w-56" placeholder="Hae pelaajaa tai joukkuetta…" value={q} onChange={(e) => setQ(e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} className="accent-ice-400" /> Vain vapaat
           </label>
@@ -106,10 +106,10 @@ export default function Stats() {
                   <tr key={p.id} className="cursor-pointer" title="Avaa pelaajakortti"
                     onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max, goalie: pos === 'G' })}>
                     <td className="font-display text-slate-500">{i + 1}</td>
-                    <td>
+                    <td className="min-w-[11rem]">
                       <span className="flex items-center gap-3">
                         <Avatar src={p.picture} name={p.name} />
-                        <span><span className="block font-semibold text-white underline-offset-2 hover:underline">{p.name}</span><span className="text-xs text-slate-400">{p.team}</span></span>
+                        <span className="min-w-0"><span className="block font-semibold text-white underline-offset-2 hover:underline">{p.name}</span><span className="text-xs text-slate-400">{p.team}</span></span>
                       </span>
                     </td>
                     <td className="num">{p.games}</td>

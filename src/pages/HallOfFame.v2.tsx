@@ -80,7 +80,7 @@ export default function HallOfFame() {
                   className={`rounded-xl px-4 py-2 text-sm font-semibold uppercase tracking-wider transition ${tab === k ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
               ))}
             </div>
-            {tab === 'marathon' && <input className="input max-w-xs" placeholder="Hae gurua…" value={q} onChange={(e) => setQ(e.target.value)} />}
+            {tab === 'marathon' && <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input max-w-xs" placeholder="Hae gurua…" value={q} onChange={(e) => setQ(e.target.value)} />}
           </div>
 
           {tab === 'marathon' ? (

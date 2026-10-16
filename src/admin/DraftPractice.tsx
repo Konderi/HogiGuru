@@ -269,7 +269,7 @@ export default function DraftPractice() {
                 {editPick?.guru_id === g.id && (
                   <div className="mt-3 rounded-lg border border-amber-400/30 p-2">
                     <p className="mb-1 text-xs text-amber-300">Vaihda {editPick.name} (valinta #{editPick.pick_no}) →</p>
-                    <input className="input" autoFocus placeholder="Hae…" value={eq} onChange={(e) => setEq(e.target.value)} />
+                    <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" autoFocus placeholder="Hae…" value={eq} onChange={(e) => setEq(e.target.value)} />
                     <ul className="mt-1">
                       {cands.slice(0, 6).map((c) => {
                         const dis = c.used >= st.maxPicks[c.position] || picks.some((x) => x.guru_id === g.id && x.position === c.position && x.entity_id === c.entity_id);
@@ -320,7 +320,7 @@ export default function DraftPractice() {
               </button>
             ))}
           </div>
-          <div className="p-3"><input className="input" placeholder="Hae pelaajaa…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="p-3"><input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" placeholder="Hae pelaajaa…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
           <ul>
             {shown.map((p) => {
               const full = p.used >= st.maxPicks[p.position];

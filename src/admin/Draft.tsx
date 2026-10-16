@@ -183,7 +183,7 @@ function Review({ st, busy, act }: { st: DraftState; busy: boolean; act: (fn: ()
             {pick?.guru_id === g.id && (
               <div className="mt-3 rounded-lg border border-amber-400/30 p-2">
                 <p className="mb-1 text-xs text-amber-300">Vaihda {pick.name} (valinta #{pick.pick_no}) →</p>
-                <input className="input" autoFocus placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} />
+                <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" autoFocus placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} />
                 <ul className="mt-1">
                   {cands.slice(0, 6).map((c) => {
                     const full = c.used >= st.maxPicks[c.position];

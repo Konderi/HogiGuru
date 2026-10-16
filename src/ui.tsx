@@ -126,15 +126,15 @@ export function EntityPicker({ pos, onPick, options, placeholder }: {
   }, [q, pos, options]);
   return (
     <div>
-      <input className="input" autoFocus={window.matchMedia('(pointer: fine)').matches} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder ?? 'Hae nimellä…'} />
+      <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" autoFocus={window.matchMedia('(pointer: fine)').matches} value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder ?? 'Hae nimellä…'} />
       {hits.length > 0 && (
         <ul className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-rink-950/80">
           {hits.map((h) => (
             <li key={h.id}>
               <button className={`flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ice-500/10 ${h.max != null && (h.reserved ?? 0) >= h.max ? 'opacity-50' : ''}`} onClick={() => { onPick(h); setQ(''); }}>
                 <Avatar src={h.picture} name={h.name} size="h-7 w-7" />
-                <span className="flex-1 text-sm text-white">{h.name}</span>
-                <span className="text-xs text-slate-400">{h.team}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-white">{h.name}</span>
+                <span className="max-w-[35%] shrink-0 truncate text-xs text-slate-400">{h.team}</span>
                 {h.max != null && <ReservedBadge n={h.reserved ?? 0} max={h.max} />}
               </button>
             </li>

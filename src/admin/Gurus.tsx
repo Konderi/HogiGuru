@@ -190,7 +190,7 @@ export default function Gurus() {
       </PageHeader>
       <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
         <Card>
-          <div className="p-3"><input className="input" placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="p-3"><input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" placeholder="Hae…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
           <ul className="max-h-[70vh] overflow-y-auto">
             {data.filter((g) => matchName(g.name, q)).map((g) => (
               <li key={g.id} className={`flex items-center gap-2 border-t border-white/5 px-4 py-2 ${sel === g.id ? 'bg-ice-500/10' : ''}`}>

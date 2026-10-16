@@ -47,7 +47,7 @@ function PlayerSelect({ players, value, onChange, placeholder = 'Kirjoita nimeä
   );
   return (
     <div className="relative">
-      <input className="input" placeholder={placeholder} value={q} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onChange={(e) => setQ(e.target.value)} />
+      <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input" placeholder={placeholder} value={q} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onChange={(e) => setQ(e.target.value)} />
       {open && hits.length > 0 && (
         <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-white/10 bg-rink-850 shadow-2xl">
           {hits.map((p) => (
