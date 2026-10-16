@@ -59,7 +59,7 @@ export async function sendAdminReport(env: MailEnv & { BACKUPS?: R2Bucket }, sea
     db.prepare('SELECT ok, COUNT(*) AS n, MAX(message) AS msg FROM sync_log WHERE started_at > ? GROUP BY ok').bind(since).all<{ ok: number; n: number; msg: string }>(),
     db.prepare("SELECT ok, COUNT(*) AS n FROM mail_log WHERE at > datetime('now','-1 day') AND kind NOT LIKE 'admin%' GROUP BY ok").all<{ ok: number; n: number }>(),
     db.prepare("SELECT COUNT(*) AS n FROM registrations WHERE season_id = ? AND created_at > datetime('now','-1 day')").bind(season.id).first<{ n: number }>().catch(() => null),
-    db.prepare("SELECT email FROM users WHERE role = 'admin' AND maintainer = 1 AND active = 1").all<{ email: string }>(),
+    db.prepare("SELECT email, maintainer, email_prefs FROM users WHERE role = 'admin' AND active = 1").all<{ email: string; maintainer: number; email_prefs: string }>(),
     db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE at > datetime('now','-1 day')").first<{ n: number }>(),
   ]);
   let backup = 'ei tietoa';
@@ -77,6 +77,18 @@ export async function sendAdminReport(env: MailEnv & { BACKUPS?: R2Bucket }, sea
     ['Uudet ilmoittautumiset', String(regs?.n ?? 0)],
     ['Muutoksia (audit-loki)', String(audit?.n ?? 0)],
   ]);
-  for (const a of admins.results) await sendMail(env, 'admin:daily', a.email, `HogiGuru ylläpito ${helsinkiDate()}${badSync ? ' ⚠️' : ''}`, layout('Ylläpidon päiväraportti', body));
-  return { admins: admins.results.length };
+  const to = admins.results.filter((a) => adminDailyOn(a));
+  for (const a of to) await sendMail(env, 'admin:daily', a.email, `HogiGuru ylläpito ${helsinkiDate()}${badSync ? ' ⚠️' : ''}`, layout('Ylläpidon päiväraportti', body));
+  return { admins: to.length };
+}
+
+/** Saako ylläpitäjä päiväraportin: oma valinta, oletuksena pääylläpitäjät kyllä, muut ei. */
+export const adminDailyOn = (u: { maintainer: number; email_prefs: string | null }) => {
+  const p = JSON.parse(u.email_prefs || '{}') as { admin_daily?: boolean };
+  return p.admin_daily ?? u.maintainer === 1;
+};
+
+export async function getSetting(db: D1Database, key: string, def = '1') {
+  const r = await db.prepare('SELECT value FROM app_settings WHERE key = ?').bind(key).first<{ value: string }>().catch(() => null);
+  return r?.value ?? def;
 }

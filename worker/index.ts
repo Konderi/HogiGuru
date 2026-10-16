@@ -14,7 +14,7 @@ import { computeResults } from './predictions';
 import { goaliePoints, POSITIONS, skaterPoints, type Position, type StatRow } from './scoring';
 import { listBackups, makeBackup, pruneBackups } from './backup';
 import { esc, layout, sendMail, SITE } from './mail';
-import { sendAdminReport, sendWeeklyReport } from './reports';
+import { adminDailyOn, getSetting, sendAdminReport, sendWeeklyReport } from './reports';
 import { aliveTeams, fetchBracket } from './playoff';
 import { leaderboard as poLeaderboard, limitsOf, loadContext as poContext, playoffSeasonOf, PO_POS, PO_ROSTER, posOfRole, reservedCounts, rosterOf, swapWindow, today, type PoPos } from './playoffGame';
 import { fetchGames, gameDetail, gameExtra, type Tournament } from './games';
@@ -1573,6 +1573,34 @@ maint.post('/mail/weekly', async (c) => {
   return c.json(await sendWeeklyReport(c.env, c.get('season'), all ? {} : { onlyTo: c.get('user')!.email }));
 });
 maint.post('/mail/admin-report', async (c) => c.json(await sendAdminReport(c.env, c.get('season'))));
+/** Automaattisten raporttien asetukset ja päiväraportin vastaanottajat. */
+maint.get('/mail/settings', async (c) => {
+  const db = c.env.DB;
+  const admins = (await db.prepare("SELECT id, name, email, maintainer, email_prefs FROM users WHERE role = 'admin' AND active = 1 ORDER BY name")
+    .all<{ id: number; name: string; email: string; maintainer: number; email_prefs: string }>()).results;
+  return c.json({
+    admin_daily: (await getSetting(db, 'mail_admin_daily')) === '1',
+    weekly: (await getSetting(db, 'mail_weekly')) === '1',
+    admins: admins.map((a) => ({ id: a.id, name: a.name, email: a.email, maintainer: !!a.maintainer, admin_daily: adminDailyOn(a) })),
+  });
+});
+maint.put('/mail/settings', async (c) => {
+  const b = await c.req.json<{ admin_daily?: boolean; weekly?: boolean }>();
+  const set = (k: string, v: boolean) => c.env.DB.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(k, v ? '1' : '0');
+  const stmts = [];
+  if (b.admin_daily !== undefined) stmts.push(set('mail_admin_daily', b.admin_daily));
+  if (b.weekly !== undefined) stmts.push(set('mail_weekly', b.weekly));
+  if (stmts.length) await c.env.DB.batch(stmts);
+  return c.json({ ok: true });
+});
+maint.put('/mail/settings/admin/:id', async (c) => {
+  const { admin_daily } = await c.req.json<{ admin_daily: boolean }>();
+  const u = await c.env.DB.prepare("SELECT email_prefs FROM users WHERE id = ? AND role = 'admin'").bind(Number(c.req.param('id'))).first<{ email_prefs: string }>();
+  if (!u) return c.json({ error: 'Ylläpitäjää ei löydy' }, 404);
+  const prefs = { ...JSON.parse(u.email_prefs || '{}'), admin_daily: !!admin_daily };
+  await c.env.DB.prepare('UPDATE users SET email_prefs = ? WHERE id = ?').bind(JSON.stringify(prefs), Number(c.req.param('id'))).run();
+  return c.json({ ok: true });
+});
 
 admin.route('/maint', maint);
 app.route('/admin', admin);
@@ -1595,8 +1623,8 @@ export default {
       ctx.waitUntil((async () => {
         const season = await getActiveSeason(env.DB);
         if (!season) return;
-        if (slot(7)) await sendAdminReport(env, season);
-        if (slot(9) && dow === 'Mon') await sendWeeklyReport(env, season);
+        if (slot(7) && (await getSetting(env.DB, 'mail_admin_daily')) === '1') await sendAdminReport(env, season);
+        if (slot(9) && dow === 'Mon' && (await getSetting(env.DB, 'mail_weekly')) === '1') await sendWeeklyReport(env, season);
       })().catch((err) => console.error('mail', err)));
     }
     const run = (mins >= 17 * 60 && mins <= 23 * 60) || (m < 15 && (h === 5 || h === 11));

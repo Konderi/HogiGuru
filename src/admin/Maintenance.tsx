@@ -108,6 +108,50 @@ function BackupsTab() {
   );
 }
 
+interface MailCfg { admin_daily: boolean; weekly: boolean; admins: { id: number; name: string; email: string; maintainer: boolean; admin_daily: boolean }[] }
+
+function Toggle({ on, onChange, label, hint }: { on: boolean; onChange: (v: boolean) => void; label: string; hint: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-ice-500' : 'bg-white/15'}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+      </button>
+      <span><span className="block text-sm font-semibold text-white">{label}</span><span className="text-xs text-slate-400">{hint}</span></span>
+    </label>
+  );
+}
+
+function MailSettings() {
+  const cfg = useApi<MailCfg>('/admin/maint/mail/settings');
+  const { run } = useAdmin();
+  const put = async (path: string, body: unknown) => { await run(() => api(path, { method: 'PUT', body }), 'Tallennettu'); cfg.reload(); };
+  if (!cfg.data) return <Spinner />;
+  const d = cfg.data;
+  return (
+    <Card title="Automaattiset raportit">
+      <div className="space-y-5 p-5">
+        <Toggle on={d.weekly} onChange={(v) => put('/admin/maint/mail/settings', { weekly: v })}
+          label="Viikkokatsaus guruille" hint="Maanantaisin klo 9. Gurut voivat lisäksi perua sen omista asetuksistaan." />
+        <Toggle on={d.admin_daily} onChange={(v) => put('/admin/maint/mail/settings', { admin_daily: v })}
+          label="Ylläpidon päiväraportti" hint="Joka aamu klo 7: tilastopäivitykset, varmistus, sähköpostit, ilmoittautumiset." />
+        <div className={d.admin_daily ? '' : 'pointer-events-none opacity-40'}>
+          <p className="label">Päiväraportin vastaanottajat</p>
+          <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
+            {d.admins.map((a) => (
+              <li key={a.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                <input type="checkbox" className="accent-ice-400" checked={a.admin_daily} onChange={(e) => put(`/admin/maint/mail/settings/admin/${a.id}`, { admin_daily: e.target.checked })} />
+                <span className="flex-1 text-white">{a.name} <span className="text-xs text-slate-500">{a.email}</span></span>
+                {a.maintainer && <span className="chip bg-ice-500/15 text-ice-300">Pääylläpitäjä</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function MailTab() {
   const log = useApi<Mail[]>('/admin/maint/mail-log');
   const { run } = useAdmin();
@@ -123,8 +167,9 @@ function MailTab() {
             if (confirm('Lähetetäänkö viikkokatsaus KAIKILLE guruille? (Jo saaneille ei lähetetä uudelleen.)')) act('/admin/maint/mail/weekly', 'Viikkokatsaus lähetetty kaikille', { all: true });
           }}>Viikkokatsaus kaikille</button>
         </div>
-        <p className="px-5 pb-4 text-xs text-slate-400">Automaattisesti: viikkokatsaus maanantaisin klo 9, ylläpitoraportti pääylläpitäjille joka aamu klo 7.</p>
+        <p className="px-5 pb-4 text-xs text-slate-400">"Ylläpitoraportti" lähetetään heti alla valituille vastaanottajille.</p>
       </Card>
+      <MailSettings />
       <Card title="Lähetysloki">
         {!log.data ? <Spinner /> : !log.data.length ? <Empty>Ei lähetyksiä.</Empty> : (
           <table className="table">
