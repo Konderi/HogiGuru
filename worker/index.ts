@@ -965,6 +965,50 @@ app.put('/me/swaps', requireUser, async (c) => {
   return c.json({ ok: true });
 });
 
+/**
+ * Gurun omat vaihdot (uusi malli, oletuksena pois päältä):
+ * draftin jälkeen freeze, kunnes jokainen joukkue on pelannut N ottelua (app_settings.self_swap_freeze, oletus 10),
+ * sen jälkeen guru voi vaihtaa milloin tahansa. Kiintiö = kauden max_swaps, varausrajat normaalit.
+ * Päälle kytkentä: app_settings.self_swaps = '1'. Ylläpitäjä näkee sivun esikatseluna.
+ */
+async function selfSwapState(db: D1Database, season: Season) {
+  const [enabled, freeze, played] = await Promise.all([
+    getSetting(db, 'self_swaps', '0'),
+    getSetting(db, 'self_swap_freeze', '10'),
+    db.prepare('SELECT MIN(games) AS n FROM standings WHERE season = ?').bind(season.liiga_season).first<{ n: number | null }>(),
+  ]);
+  const games = Number(freeze) || 0;
+  const minPlayed = played?.n ?? 0;
+  return { enabled: enabled === '1', freezeGames: games, minPlayed, open: season.draft_status === 'done' && minPlayed >= games };
+}
+
+app.get('/me/self-swap', requireUser, async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const st = await selfSwapState(db, season);
+  const g = await myGuru(c);
+  const used = g ? await db.prepare(`SELECT COUNT(*) AS n FROM roster_slots s WHERE s.guru_id = ? AND ${COUNTED_SWAP}`).bind(g.id).first<{ n: number }>() : null;
+  return c.json({
+    ...st, draftDone: season.draft_status === 'done', preview: !st.enabled && isAdmin(c.get('user')),
+    guru: g, swaps: { used: used?.n ?? 0, max: season.max_swaps },
+  });
+});
+
+app.post('/me/self-swap', requireUser, async (c) => {
+  const db = c.env.DB; const season = c.get('season');
+  const st = await selfSwapState(db, season);
+  if (!st.enabled) return c.json({ error: 'Omat vaihdot eivät ole vielä käytössä' }, 400);
+  if (season.draft_status !== 'done') return c.json({ error: 'Vaihdot avautuvat draftin jälkeen' }, 400);
+  if (!st.open) return c.json({ error: `Vaihdot avautuvat, kun jokainen joukkue on pelannut ${st.freezeGames} ottelua` }, 400);
+  const g = await myGuru(c);
+  if (!g) return c.json({ error: 'Et ole mukana tällä kaudella' }, 400);
+  const b = await c.req.json<{ slot_id: number; entity_id: number }>();
+  const own = await db.prepare('SELECT 1 FROM roster_slots WHERE id = ? AND guru_id = ? AND end_date IS NULL').bind(Number(b.slot_id), g.id).first();
+  if (!own) return c.json({ error: 'Virheellinen paikka' }, 400);
+  try { await swapSlot(db, season, Number(b.slot_id), Number(b.entity_id), helsinkiDate()); }
+  catch (e) { return c.json({ error: (e as Error).message }, 400); }
+  return c.json({ ok: true });
+});
+
 /** Käsitellyt vaihdot julkisesti. */
 app.get('/public/swaps', async (c) => {
   const db = c.env.DB; const season = c.get('season');
