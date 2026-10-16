@@ -22,6 +22,7 @@ export function SwapModal({ slot, onClose, onDone }: { slot: Slot | null; onClos
   const coaches = useCoachOptions();
   const [pick, setPick] = useState<SearchHit | null>(null);
   const [date, setDate] = useState(today());
+  const [force, setForce] = useState(false);
   if (!slot) return null;
   return (
     <Modal open onClose={() => { setPick(null); onClose(); }} title={`Vaihto: ${slot.name}`}>
@@ -36,11 +37,15 @@ export function SwapModal({ slot, onClose, onDone }: { slot: Slot | null; onClos
           </div>
         ) : <EntityPicker pos={slot.position} onPick={setPick} options={slot.position === 'C' ? coaches : undefined} />}
         <div><label className="label">Vaihtopäivä</label><input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <label className="flex items-start gap-2 text-sm text-slate-300">
+          <input type="checkbox" className="mt-1 accent-ice-400" checked={force} onChange={(e) => setForce(e.target.checked)} />
+          <span>Ohita rajat <span className="block text-xs text-slate-500">Sallii vaihdon, vaikka pelaajan valintaraja tai gurun vaihtomäärä olisi täynnä (esim. Excelissä jo sovittu vaihto).</span></span>
+        </label>
         <div className="flex justify-end gap-2">
           <button className="btn btn-ghost" onClick={onClose}>Peruuta</button>
           <button className="btn btn-primary" disabled={!pick} onClick={async () => {
-            const ok = await run(() => api('/admin/swaps', { body: { slot_id: slot.id, entity_id: pick!.id, date } }), 'Vaihto tehty');
-            if (ok) { setPick(null); onDone(); }
+            const ok = await run(() => api('/admin/swaps', { body: { slot_id: slot.id, entity_id: pick!.id, date, force } }), 'Vaihto tehty');
+            if (ok) { setPick(null); setForce(false); onDone(); }
           }}>Vahvista vaihto</button>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { fmt, fmtDate, type Position } from '../api';
+import { fmt, fmtDate, matchName, POSITIONS, type Position, type Slot } from '../api';
 import { useApi } from '../auth';
 import { Card, Empty, Modal, PageHeader, PosBadge, Spinner } from '../ui';
 import { api, useAdmin } from './AdminLayout';
+import { SwapModal } from './Gurus';
 
 interface Day { id: number; date: string; note: string | null; start_time: string; end_time: string; processed_at: string | null }
 interface Swap { id: number; date: string; guru: string; position: Position; in_name: string; out_name: string; in_points: number; out_points: number }
@@ -18,7 +19,7 @@ export default function Swaps() {
   return (
     <>
       <PageHeader kicker="Vaihtopäivät & loki" title="Vaihdot" />
-      <p className="mb-6 text-sm text-slate-400">Vaihto tehdään <b className="text-white">Gurut & kentälliset</b> -sivulla valitsemalla guru ja painamalla pelaajan kohdalla ⇄ Vaihda. Seuraava vaihtopäivä näkyy etusivulla kaikille.</p>
+      <ManualSwap onDone={() => swaps.reload()} />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card title="Vaihtopäivät">
           <form className="space-y-2 border-b border-white/5 p-4" onSubmit={async (e) => {
@@ -78,6 +79,54 @@ export default function Swaps() {
       </div>
       <SwapDayModal day={openDay} onClose={() => setOpenDay(null)} onDone={() => { days.reload(); swaps.reload(); }} />
     </>
+  );
+}
+
+/** Ylläpitäjän käsivaihto (esim. WhatsApp-pyynnöt tai estynyt guru). */
+function ManualSwap({ onDone }: { onDone: () => void }) {
+  const gurus = useApi<{ id: number; name: string }[]>('/admin/gurus');
+  const [gid, setGid] = useState<number | null>(null);
+  const [q, setQ] = useState('');
+  const team = useApi<{ slots: Slot[]; swaps: { used: number; max: number | null } }>(gid ? `/admin/gurus/${gid}/team` : null, [gid]);
+  const [swap, setSwap] = useState<Slot | null>(null);
+  const list = (gurus.data ?? []).filter((g) => matchName(g.name, q));
+  const active = (team.data?.slots ?? []).filter((s) => s.active);
+  return (
+    <Card title="Tee vaihto käsin" className="mb-6">
+      <div className="grid gap-4 p-4 lg:grid-cols-[280px_1fr]">
+        <div className="space-y-2">
+          <p className="text-xs text-slate-400">Esim. WhatsAppissa pyydetyt vaihdot tai guru, joka ei pääse tekemään vaihtoa itse. Valitse guru:</p>
+          <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} className="input" placeholder="Hae gurua…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <ul className="max-h-64 overflow-y-auto rounded-xl border border-white/10">
+            {list.map((g) => (
+              <li key={g.id}><button className={`w-full px-3 py-1.5 text-left text-sm ${gid === g.id ? 'bg-ice-500/15 text-ice-200' : 'text-slate-300 hover:bg-white/5'}`} onClick={() => setGid(g.id)}>{g.name}</button></li>
+            ))}
+          </ul>
+        </div>
+        <div className="min-w-0">
+          {!gid ? <Empty>Valitse guru vasemmalta.</Empty> : !team.data ? <Spinner /> : (
+            <>
+              <p className="mb-2 text-sm text-slate-400">Vaihtoja käytetty <b className="text-white">{team.data.swaps.used}{team.data.swaps.max != null && `/${team.data.swaps.max}`}</b></p>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <tbody>
+                    {POSITIONS.flatMap((p) => active.filter((s) => s.position === p)).map((s) => (
+                      <tr key={s.id}>
+                        <td><PosBadge pos={s.position} /></td>
+                        <td className="min-w-[9rem]"><span className="text-white">{s.name}</span> <span className="text-xs text-slate-500">{s.team}</span></td>
+                        <td className="num scoreboard">{fmt(s.value)}</td>
+                        <td className="text-right"><button className="btn btn-primary py-1" onClick={() => setSwap(s)}>⇄ Vaihda</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <SwapModal slot={swap} onClose={() => setSwap(null)} onDone={() => { setSwap(null); team.reload(); onDone(); }} />
+    </Card>
   );
 }
 

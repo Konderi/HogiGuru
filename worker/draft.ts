@@ -144,7 +144,7 @@ export const COUNTED_SWAP = `s.replaced_slot_id IS NOT NULL AND NOT EXISTS (
   WHERE o.id = s.replaced_slot_id AND o.position = 'C' AND c.fired = 1)`;
 
 /** Vaihto: suljetaan vanha paikka nykyisillä pisteillä ja avataan uusi. */
-export async function swapSlot(db: D1Database, season: Season, slotId: number, entityId: number, date: string) {
+export async function swapSlot(db: D1Database, season: Season, slotId: number, entityId: number, date: string, force = false) {
   const slot = await db.prepare(
     'SELECT s.*, g.season_id FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE s.id = ?',
   ).bind(slotId).first<{ id: number; guru_id: number; position: Position; entity_id: number; end_date: string | null; season_id: number }>();
@@ -152,13 +152,13 @@ export async function swapSlot(db: D1Database, season: Season, slotId: number, e
   if (slot.end_date) throw new Error('Paikka on jo vaihdettu');
   const usage = await usageCounts(db, season.id);
   const used = usage.get(usageKey(slot.position, entityId)) ?? 0;
-  if (used >= maxFor(season, slot.position)) throw new Error(`Varattu jo ${used} kertaa (max ${maxFor(season, slot.position)})`);
+  if (!force && used >= maxFor(season, slot.position)) throw new Error(`Varattu jo ${used} kertaa (max ${maxFor(season, slot.position)})`);
   const dup = await db.prepare('SELECT 1 FROM roster_slots WHERE guru_id = ? AND position = ? AND entity_id = ? AND end_date IS NULL')
     .bind(slot.guru_id, slot.position, entityId).first();
   if (dup) throw new Error('Gurulla on jo tämä valinta');
   const freeCoach = slot.position === 'C'
     && !!(await db.prepare('SELECT 1 FROM coaches WHERE id = ? AND fired = 1').bind(slot.entity_id).first());
-  if (season.max_swaps != null && !freeCoach) {
+  if (season.max_swaps != null && !freeCoach && !force) {
     const n = await db.prepare(`SELECT COUNT(*) AS n FROM roster_slots s WHERE s.guru_id = ? AND ${COUNTED_SWAP}`).bind(slot.guru_id).first<{ n: number }>();
     if ((n?.n ?? 0) >= season.max_swaps) throw new Error(`Vaihdot käytetty (${season.max_swaps})`);
   }

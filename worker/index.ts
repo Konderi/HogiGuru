@@ -1313,8 +1313,8 @@ admin.delete('/slots/:id', async (c) => {
 
 // Vaihdot
 admin.post('/swaps', async (c) => {
-  const b = await c.req.json<{ slot_id: number; entity_id: number; date?: string }>();
-  await swapSlot(c.env.DB, c.get('season'), b.slot_id, b.entity_id, b.date || helsinkiDate());
+  const b = await c.req.json<{ slot_id: number; entity_id: number; date?: string; force?: boolean }>();
+  await swapSlot(c.env.DB, c.get('season'), b.slot_id, b.entity_id, b.date || helsinkiDate(), !!b.force);
   return c.json({ ok: true });
 });
 admin.get('/swaps', async (c) => {
