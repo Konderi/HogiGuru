@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { fmt, matchName } from '../api';
 import { useApi } from '../auth';
 import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import CherryTrophy from '../components/CherryTrophy';
 
 interface Hof { id: number; season_name: string; rank: number; name: string; points: number | null; note: string | null }
 interface Marathon { name: string; seasons: number; titles: number; medals: number; best: number; points: number; years: string[]; history: Hof[] }
@@ -84,13 +85,14 @@ export default function HallOfFame() {
 
           {/* Ed Cherry Trophy – sisäpiirin kunniamaininta kauden viimeiselle */}
           {cherry.length > 0 && (
-            <Card title="🍒 Ed Cherry Trophy" action={<span className="text-xs text-slate-400">Kauden viimeinen guru</span>}>
+            <Card title="Ed Cherry Trophy" action={<span className="text-xs text-slate-400">Kauden viimeinen guru</span>}>
               <div className="grid gap-2 p-5 sm:grid-cols-2 xl:grid-cols-3">
                 {(allCherry ? cherry : cherry.slice(0, 6)).map((c) => (
                   <div key={c.season} className="flex items-center gap-3 rounded-xl border border-rose-400/15 bg-rose-500/[0.06] px-4 py-2.5">
-                    <span className="w-24 font-mono text-xs text-slate-400">{c.season}</span>
+                    <CherryTrophy className="h-9 w-9 shrink-0" />
+                    <span className="w-20 font-mono text-xs text-slate-400">{c.season}</span>
                     <span className="flex-1 text-sm text-white">
-                      {c.winners.map((w) => <span key={w.id} className="block">🍒 {w.name}{(cherryCount.get(w.name) ?? 0) > 1 && <span className="ml-1 text-xs text-rose-300">({cherryCount.get(w.name)}×)</span>}</span>)}
+                      {c.winners.map((w) => <span key={w.id} className="block">{w.name}{(cherryCount.get(w.name) ?? 0) > 1 && <span className="ml-1 text-xs text-rose-300">({cherryCount.get(w.name)}×)</span>}</span>)}
                     </span>
                     <span className="font-mono text-xs text-slate-500">{c.winners[0]?.rank}/{c.size}</span>
                   </div>
