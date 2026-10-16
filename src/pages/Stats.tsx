@@ -42,6 +42,16 @@ export default function Stats() {
       });
   }, [players.data, q, onlyFree, max, sort]);
 
+  // Haku muista pelipaikoista: vihje, jos pelaaja löytyy toiselta välilehdeltä (esim. puolustaja)
+  const searching = q.trim().length >= 2;
+  const allF = useApi<{ players: PlayerStat[] }>(searching && pos !== 'F' ? '/stats?pos=F' : null, [searching && pos !== 'F']);
+  const allD = useApi<{ players: PlayerStat[] }>(searching && pos !== 'D' ? '/stats?pos=D' : null, [searching && pos !== 'D']);
+  const allG = useApi<{ players: PlayerStat[] }>(searching && pos !== 'G' ? '/stats?pos=G' : null, [searching && pos !== 'G']);
+  const elsewhere = !searching ? [] : ([['F', allF.data], ['D', allD.data], ['G', allG.data]] as const)
+    .filter(([p]) => p !== pos)
+    .map(([p, d]) => ({ pos: p as Position, n: (d?.players ?? []).filter((x) => matchName(`${x.name} ${x.team}`, q)).length }))
+    .filter((x) => x.n > 0);
+
   const Th = ({ k, children, title }: { k: SortKey; children: React.ReactNode; title?: string }) => (
     <th className={`num cursor-pointer select-none whitespace-nowrap hover:text-white ${sort.key === k ? 'text-ice-300' : ''}`} title={title ?? 'Järjestä'} onClick={() => sortBy(k)}>
       {children}{sort.key === k ? (sort.desc ? ' ▼' : ' ▲') : ''}
@@ -69,6 +79,16 @@ export default function Stats() {
       </div>
 
       <ErrorBox error={players.error ?? coaches.error} />
+      {elsewhere.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-ice-400/20 bg-ice-500/[0.06] px-4 py-2.5 text-sm text-slate-300">
+          Hakusanalla löytyy myös:
+          {elsewhere.map((e) => (
+            <button key={e.pos} className="rounded-full bg-ice-500/15 px-3 py-1 font-semibold text-ice-200 hover:bg-ice-500/25" onClick={() => setPos(e.pos)}>
+              {POS_PLURAL[e.pos]} ({e.n}) →
+            </button>
+          ))}
+        </div>
+      )}
       <Card>
         {pos === 'C' ? (
           coaches.loading && !coaches.data ? <Spinner /> : !coaches.data?.length ? <Empty>Valmentajia ei ole vielä lisätty.</Empty> : (
