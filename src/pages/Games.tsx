@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
 import { useApi, useAuth } from '../auth';
@@ -51,10 +51,10 @@ export default function Games() {
   const { me } = useAuth();
   const [tour, setTour] = useState<'runkosarja' | 'playoffs'>('runkosarja');
   const [team, setTeam] = useState<string>('');
-  const [showPast, setShowPast] = useState(false);
+  const [view, setView] = useState<'past' | 'upcoming'>('past');
+  const [showAll, setShowAll] = useState(false);
   const { data, error, loading } = useApi<{ games: Game[] }>(`/games?tournament=${tour}`, [tour]);
   const fav = me?.favTeam?.id ?? null;
-  const todayRef = useRef<HTMLDivElement>(null);
 
   const teams = useMemo(() => {
     const m = new Map<string, string>();
@@ -63,16 +63,17 @@ export default function Games() {
   }, [data]);
 
   const today = dayKey(new Date().toISOString());
-  const groups = useMemo(() => {
-    const list = (data?.games ?? []).filter((g) => !team || teamKey(g.home.id) === team || teamKey(g.away.id) === team);
+  const group = (list: Game[]) => {
     const m = new Map<string, Game[]>();
     for (const g of list) { const k = dayKey(g.start); m.set(k, [...(m.get(k) ?? []), g]); }
     return [...m];
+  };
+  const { past, upcoming } = useMemo(() => {
+    const list = (data?.games ?? []).filter((g) => !team || teamKey(g.home.id) === team || teamKey(g.away.id) === team);
+    return { past: group(list.filter((g) => g.ended)).reverse(), upcoming: group(list.filter((g) => !g.ended)) };
   }, [data, team]);
-  const past = groups.filter(([k]) => k < today).reverse();
-  const upcoming = groups.filter(([k]) => k >= today);
-
-  useEffect(() => { if (data) todayRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [data]);
+  const shown = view === 'past' ? past : upcoming;
+  const limit = view === 'past' ? 10 : 14;
 
   const Day = ([k, gs]: [string, Game[]]) => (
     <div key={k}>
@@ -80,32 +81,41 @@ export default function Games() {
       <div className="space-y-0.5">{gs.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
     </div>
   );
+  const pill = (on: boolean) => `rounded-full px-4 py-1.5 text-sm font-medium ${on ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`;
 
   return (
     <div className="space-y-6">
       <PageHeader kicker="Liiga" title="Ottelut" />
-      <div className="flex flex-wrap items-center gap-2">
-        {(['runkosarja', 'playoffs'] as const).map((t) => (
-          <button key={t} onClick={() => setTour(t)} className={`rounded-full px-4 py-1.5 text-sm font-medium ${tour === t ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
-            {t === 'runkosarja' ? 'Runkosarja' : 'Play-Offs'}
-          </button>
-        ))}
-        <select className="input ml-auto w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
-          <option value="">Kaikki joukkueet</option>
-          {fav && <option value={teamKey(fav)}>★ Suosikkini</option>}
-          {teams.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
-        </select>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {(['runkosarja', 'playoffs'] as const).map((t) => (
+            <button key={t} onClick={() => { setTour(t); setShowAll(false); }} className={pill(tour === t)}>
+              {t === 'runkosarja' ? 'Runkosarja' : 'Play-Offs'}
+            </button>
+          ))}
+          <select className="input ml-auto w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
+            <option value="">Kaikki joukkueet</option>
+            {fav && <option value={teamKey(fav)}>★ Suosikkini</option>}
+            {teams.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
+          </select>
+        </div>
+        <div className="inline-flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
+          {([['past', 'Pelatut'], ['upcoming', 'Tulevat']] as const).map(([v, l]) => (
+            <button key={v} onClick={() => { setView(v); setShowAll(false); }}
+              className={`rounded-xl px-5 py-1.5 text-sm font-semibold transition ${view === v ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
+          ))}
+        </div>
       </div>
       <ErrorBox error={error} />
-      {loading && !data ? <Spinner /> : !groups.length ? <Card><Empty>Ei otteluita.</Empty></Card> : (
-        <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-          <Card title="Tulevat">
-            <div ref={todayRef} className="space-y-4 p-3">{upcoming.length ? upcoming.slice(0, showPast ? undefined : 14).map(Day) : <Empty>Ei tulevia otteluita.</Empty>}</div>
-          </Card>
-          <Card title="Pelatut" action={<button className="text-xs text-ice-300 hover:text-ice-200" onClick={() => setShowPast(!showPast)}>{showPast ? 'Näytä vähemmän' : 'Näytä kaikki'}</button>}>
-            <div className="space-y-4 p-3">{past.length ? past.slice(0, showPast ? undefined : 7).map(Day) : <Empty>Ei vielä pelattuja otteluita.</Empty>}</div>
-          </Card>
-        </div>
+      {loading && !data ? <Spinner /> : (
+        <Card>
+          <div className="space-y-4 p-3">
+            {shown.length ? shown.slice(0, showAll ? undefined : limit).map(Day) : <Empty>{view === 'past' ? 'Ei vielä pelattuja otteluita.' : 'Ei tulevia otteluita.'}</Empty>}
+            {shown.length > limit && (
+              <button className="btn btn-ghost w-full" onClick={() => setShowAll(!showAll)}>{showAll ? 'Näytä vähemmän' : `Näytä kaikki (${shown.length} pelipäivää)`}</button>
+            )}
+          </div>
+        </Card>
       )}
     </div>
   );
