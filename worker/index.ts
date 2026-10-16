@@ -1618,12 +1618,12 @@ export default {
     const slot = (hh: number) => h === hh && m < 15;
     // Yöllinen varmistus R2:een + vanhojen siivous (klo 03)
     if (slot(3)) ctx.waitUntil(makeBackup(env.DB, env.BACKUPS, 'daily').then(() => pruneBackups(env.BACKUPS)).catch((err) => console.error('backup', err)));
-    // Ylläpidon päiväraportti (klo 07) ja maanantain viikkokatsaus guruille (klo 09)
-    if (slot(7) || (slot(9) && dow === 'Mon')) {
+    // Ylläpidon viikkoraportti (ma klo 07) ja maanantain viikkokatsaus guruille (klo 09)
+    if ((slot(7) || slot(9)) && dow === 'Mon') {
       ctx.waitUntil((async () => {
         const season = await getActiveSeason(env.DB);
         if (!season) return;
-        if (slot(7) && (await getSetting(env.DB, 'mail_admin_daily')) === '1') await sendAdminReport(env, season);
+        if (slot(7) && dow === 'Mon' && (await getSetting(env.DB, 'mail_admin_daily')) === '1') await sendAdminReport(env, season);
         if (slot(9) && dow === 'Mon' && (await getSetting(env.DB, 'mail_weekly')) === '1') await sendWeeklyReport(env, season);
       })().catch((err) => console.error('mail', err)));
     }

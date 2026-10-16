@@ -51,16 +51,16 @@ export async function sendWeeklyReport(env: MailEnv, season: Season, opts: { onl
   return { week: monday, recipients: recipients.length, ok, fail, skipped };
 }
 
-/** Ylläpidon päiväraportti: synkat, varmistus, sähköpostit, ilmoittautumiset. */
+/** Ylläpidon viikkoraportti: synkat, varmistus, sähköpostit, ilmoittautumiset. */
 export async function sendAdminReport(env: MailEnv & { BACKUPS?: R2Bucket }, season: Season) {
   const db = env.DB;
-  const since = new Date(Date.now() - 86400_000).toISOString();
+  const since = new Date(Date.now() - 7 * 86400_000).toISOString();
   const [syncs, mails, regs, admins, audit] = await Promise.all([
     db.prepare('SELECT ok, COUNT(*) AS n, MAX(message) AS msg FROM sync_log WHERE started_at > ? GROUP BY ok').bind(since).all<{ ok: number; n: number; msg: string }>(),
-    db.prepare("SELECT ok, COUNT(*) AS n FROM mail_log WHERE at > datetime('now','-1 day') AND kind NOT LIKE 'admin%' GROUP BY ok").all<{ ok: number; n: number }>(),
-    db.prepare("SELECT COUNT(*) AS n FROM registrations WHERE season_id = ? AND created_at > datetime('now','-1 day')").bind(season.id).first<{ n: number }>().catch(() => null),
+    db.prepare("SELECT ok, COUNT(*) AS n FROM mail_log WHERE at > datetime('now','-7 days') AND kind NOT LIKE 'admin%' GROUP BY ok").all<{ ok: number; n: number }>(),
+    db.prepare("SELECT COUNT(*) AS n FROM registrations WHERE season_id = ? AND created_at > datetime('now','-7 days')").bind(season.id).first<{ n: number }>().catch(() => null),
     db.prepare("SELECT email, maintainer, email_prefs FROM users WHERE role = 'admin' AND active = 1").all<{ email: string; maintainer: number; email_prefs: string }>(),
-    db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE at > datetime('now','-1 day')").first<{ n: number }>(),
+    db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE at > datetime('now','-7 days')").first<{ n: number }>(),
   ]);
   let backup = 'ei tietoa';
   if (env.BACKUPS) {
@@ -71,18 +71,18 @@ export async function sendAdminReport(env: MailEnv & { BACKUPS?: R2Bucket }, sea
   const okSync = syncs.results.find((s) => s.ok === 1)?.n ?? 0;
   const badSync = syncs.results.find((s) => s.ok === 0);
   const body = table([
-    ['Tilastopäivitykset 24 h', `${okSync} ok${badSync ? `, <b style="color:#f87171">${badSync.n} virhettä</b> (${esc(badSync.msg)})` : ''}`],
+    ['Tilastopäivitykset 7 pv', `${okSync} ok${badSync ? `, <b style="color:#f87171">${badSync.n} virhettä</b> (${esc(badSync.msg)})` : ''}`],
     ['Varmistus', backup],
-    ['Sähköpostit 24 h', `${mails.results.find((m) => m.ok === 1)?.n ?? 0} ok, ${mails.results.find((m) => m.ok === 0)?.n ?? 0} virhettä`],
+    ['Sähköpostit 7 pv', `${mails.results.find((m) => m.ok === 1)?.n ?? 0} ok, ${mails.results.find((m) => m.ok === 0)?.n ?? 0} virhettä`],
     ['Uudet ilmoittautumiset', String(regs?.n ?? 0)],
     ['Muutoksia (audit-loki)', String(audit?.n ?? 0)],
   ]);
   const to = admins.results.filter((a) => adminDailyOn(a));
-  for (const a of to) await sendMail(env, 'admin:daily', a.email, `HogiGuru ylläpito ${helsinkiDate()}${badSync ? ' ⚠️' : ''}`, layout('Ylläpidon päiväraportti', body));
+  for (const a of to) await sendMail(env, 'admin:weekly', a.email, `HogiGuru ylläpito, viikkoraportti ${helsinkiDate()}${badSync ? ' ⚠️' : ''}`, layout('Ylläpidon viikkoraportti', body));
   return { admins: to.length };
 }
 
-/** Saako ylläpitäjä päiväraportin: oma valinta, oletuksena pääylläpitäjät kyllä, muut ei. */
+/** Saako ylläpitäjä viikkoraportin: oma valinta, oletuksena pääylläpitäjät kyllä, muut ei. */
 export const adminDailyOn = (u: { maintainer: number; email_prefs: string | null }) => {
   const p = JSON.parse(u.email_prefs || '{}') as { admin_daily?: boolean };
   return p.admin_daily ?? u.maintainer === 1;

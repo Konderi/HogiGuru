@@ -134,9 +134,9 @@ function MailSettings() {
         <Toggle on={d.weekly} onChange={(v) => put('/admin/maint/mail/settings', { weekly: v })}
           label="Viikkokatsaus guruille" hint="Maanantaisin klo 9. Gurut voivat lisäksi perua sen omista asetuksistaan." />
         <Toggle on={d.admin_daily} onChange={(v) => put('/admin/maint/mail/settings', { admin_daily: v })}
-          label="Ylläpidon päiväraportti" hint="Joka aamu klo 7: tilastopäivitykset, varmistus, sähköpostit, ilmoittautumiset." />
+          label="Ylläpidon viikkoraportti" hint="Maanantaisin klo 7, edellisen 7 päivän yhteenveto: tilastopäivitykset, varmistus, sähköpostit, ilmoittautumiset." />
         <div className={d.admin_daily ? '' : 'pointer-events-none opacity-40'}>
-          <p className="label">Päiväraportin vastaanottajat</p>
+          <p className="label">Viikkoraportin vastaanottajat</p>
           <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
             {d.admins.map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-4 py-2 text-sm">
