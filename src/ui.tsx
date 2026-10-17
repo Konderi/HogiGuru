@@ -96,7 +96,7 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/70 backdrop-blur-sm sm:items-start sm:p-4 sm:pt-[8vh]" onClick={onClose}>
-      <div className={`card w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'} max-h-[92dvh] overflow-y-auto rounded-b-none pb-[env(safe-area-inset-bottom)] animate-in sm:max-h-none sm:overflow-visible sm:rounded-b-2xl sm:pb-0`} onClick={(e) => e.stopPropagation()}>
+      <div className={`card w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'} max-h-[92dvh] overflow-y-auto rounded-b-none pb-[env(safe-area-inset-bottom)] animate-in sm:max-h-[86dvh] sm:rounded-b-2xl sm:pb-0`} onClick={(e) => e.stopPropagation()}>
         <header className="card-header sticky top-0 z-10 bg-rink-850"><h2 className="card-title min-w-0 flex-1 truncate">{title}</h2><button className="-m-2 p-2 text-xl leading-none text-slate-400 hover:text-white" onClick={onClose} aria-label="Sulje">✕</button></header>
         <div className="overflow-x-auto p-4 sm:p-5">{children}</div>
       </div>
