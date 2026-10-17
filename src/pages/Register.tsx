@@ -164,7 +164,7 @@ export default function Register() {
           <ul className="space-y-1 text-slate-400">
             <li><b className="text-white">Hyökkääjä:</b> maali {fmt(data.season.scoring.F.goals)} · syöttö {fmt(data.season.scoring.F.assists)} · jäähymin {fmt(data.season.scoring.F.pim)} · +/− {fmt(data.season.scoring.F.plusMinus)} · ottelu {fmt(data.season.scoring.F.games)}</li>
             <li><b className="text-white">Puolustaja:</b> maali {fmt(data.season.scoring.D.goals)} · syöttö {fmt(data.season.scoring.D.assists)} · jäähymin {fmt(data.season.scoring.D.pim)} · +/− {fmt(data.season.scoring.D.plusMinus)} · ottelu {fmt(data.season.scoring.D.games)}</li>
-            <li className="text-xs text-slate-400">Ottelu lasketaan, kun kenttäpelaajalla on ottelussa peliaikaa. Kokoonpanoon merkitty pelaaja, joka ei pelaa lainkaan, ei tuo ottelumiinusta.</li>
+            <li className="text-xs text-slate-400">Ottelu lasketaan, kun kenttäpelaaja on merkitty ottelun kokoonpanoon – myös silloin, jos hän ei saa peliaikaa.</li>
             <li><b className="text-white">Maalivahti:</b> nollapeli {fmt(data.season.scoring.G.shutouts)} · torjunta {fmt(data.season.scoring.G.saves)} · päästetty {fmt(data.season.scoring.G.goalsAgainst)}</li>
             <li><b className="text-white">Valmentaja:</b> joukkueen sarjapiste {fmt(data.season.scoring.C.teamPoints)} · potkut {fmt(data.season.scoring.coachFiredPenalty, 0)}</li>
           </ul>

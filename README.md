@@ -237,7 +237,7 @@ HogiGuru-app/
 | **Hyökkääjä** | 1,5 | 0,9 | 0,1 | 0,4 | −0,5 |
 | **Puolustaja** | 2,5 | 1,5 | 0,1 | 0,4 | −0,5 |
 
-Ottelu = kenttäpelaajalla on ottelussa peliaikaa (liiga.fi `playedGames`). Kokoonpanoon merkitty pelaaja, joka ei pelaa lainkaan, ei tuo ottelumiinusta.
+Ottelu = kenttäpelaaja on merkitty ottelun kokoonpanoon (liiga.fi `games`), myös ilman peliaikaa. Maalivahdeilla ei ole ottelukerrointa.
 
 | Rooli | Kaava |
 |---|---|

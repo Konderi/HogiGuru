@@ -64,7 +64,8 @@ export async function syncLiiga(db: D1Database): Promise<string> {
       `INSERT OR REPLACE INTO player_stats (season, player_id, games, goals, assists, pim, plus_minus, shutouts, saves, goals_against, wins, save_pct, updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     ).bind(
-      y, p.playerId, p.playedGames ?? 0, p.goals ?? 0, p.assists ?? 0, p.penaltyMinutes ?? 0, p.plusMinus ?? 0,
+      // Kenttäpelaajan ottelut = kokoonpanossa (liiga.fi games), myös ilman peliaikaa; maalivahdeilla pelatut
+      y, p.playerId, (gk ? p.playedGames : p.games ?? p.playedGames) ?? 0, p.goals ?? 0, p.assists ?? 0, p.penaltyMinutes ?? 0, p.plusMinus ?? 0,
       gk ? p.shutOut ?? 0 : 0, gk ? p.blockedOrSavedShots ?? 0 : 0, gk ? p.goalsAgainst ?? 0 : 0, gk ? p.gkWins ?? 0 : 0,
       gk ? p.savePercentage ?? null : null, now,
     );
@@ -197,13 +198,7 @@ export async function syncGames(db: D1Database, y: number, max = 12, tournament:
       const oppByJersey = new Map((oppPlayers ?? []).filter((p) => p.line != null).map((p) => [String(p.jersey), p.id as number]));
       const row = new Map<number, { goals: number; assists: number; pim: number; pm: number; saves: number; ga: number; so: number; win: number }>();
       const get = (id: number) => { let r = row.get(id); if (!r) { r = { goals: 0, assists: 0, pim: 0, pm: 0, saves: 0, ga: 0, so: 0, win: 0 }; row.set(id, r); } return r; };
-      // Kenttäpelaajan ottelu lasketaan vain, jos hänellä on peliaikaa (kokoonpanossa ilman peliaikaa → ei miinusta)
-      const skToi = new Map<number, number>();
-      for (const per of (st ? (st[s.key] as ApiPlayer[]) ?? [] : [])) {
-        for (const r of (per.periodPlayerStats ?? []) as ApiPlayer[]) skToi.set(r.playerId, (skToi.get(r.playerId) ?? 0) + (r.period?.timeofice ?? 0));
-      }
-      const hasToi = (id: number) => !skToi.size || (skToi.get(id) ?? 0) > 0;
-      for (const p of played) if (p.role !== 'GOALIE' && hasToi(p.id)) get(p.id);
+      for (const p of played) if (p.role !== 'GOALIE') get(p.id);
       for (const ev of t.goalEvents ?? []) {
         if (ev.scorerPlayerId && row.has(ev.scorerPlayerId)) get(ev.scorerPlayerId).goals++;
         for (const a of ev.assistantPlayerIds ?? []) if (row.has(a)) get(a).assists++;
