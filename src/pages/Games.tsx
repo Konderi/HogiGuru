@@ -290,7 +290,8 @@ function TeamStats({ t, players, x }: { t: GameTeam; players: PRow[]; x?: XTeam 
 interface Cmp { pointsAverage: number; pointsAverageRank: number; gf_gp: number; gf_gpRank: number; ga_gp: number; ga_gpRank: number; powerplayPercentage: number; powerplayPercentageRank: number; penaltykillPercentage: number; penaltykillPercentageRank: number; faceoffPercentage: number; faceoffPercentageRank: number; shotsPerGame: number; shotsPerGameRank: number }
 interface Watch { id: number; name: string; jersey: string | null; role: string | null; value: number; category: string }
 interface Preview { home: Cmp | null; away: Cmp | null; watchHome: Watch[]; watchAway: Watch[] }
-const CAT: Record<string, string> = { points: 'p', goals: 'm', assists: 's', plusMinus: '+/−', savePercentage: 'torj-%', gaa: 'pmk' };
+const CAT: Record<string, string> = { points: 'p', goals: 'm', assists: 's', plus_minus: '+/−', plusMinus: '+/−', minutes_per_game: 'peliaika', savePercentage: 'torj-%', gaa: 'pmk' };
+const watchVal = (w: Watch) => w.category === 'minutes_per_game' ? `${Math.floor(w.value / 60)}:${String(Math.round(w.value % 60)).padStart(2, '0')}` : w.category.includes('plus') && w.value > 0 ? `+${w.value}` : fmt(w.value);
 
 function PreviewView({ g, f, p }: { g: Game; f: Forecast | null; p: Preview | null }) {
   const rows: [string, keyof Cmp, keyof Cmp, (n: number) => string, boolean][] = [
@@ -356,7 +357,7 @@ function PreviewView({ g, f, p }: { g: Game; f: Forecast | null; p: Preview | nu
           {([[g.home, p.watchHome], [g.away, p.watchAway]] as const).map(([t, list]) => (
             <Card key={t.id} title={`Seuraa: ${t.name}`}>
               <ul className="divide-y divide-white/5 text-sm">
-                {list.map((w) => <li key={`${w.id}-${w.category}`} className="flex items-center gap-3 px-4 py-2"><span className="w-8 font-mono text-xs text-slate-500">#{w.jersey}</span><span className="flex-1 text-white">{w.name}</span><span className="font-mono text-ice-300">{fmt(w.value)} {CAT[w.category] ?? w.category}</span></li>)}
+                {list.map((w) => <li key={`${w.id}-${w.category}`} className="flex items-center gap-3 px-4 py-2"><span className="w-8 font-mono text-xs text-slate-500">#{w.jersey}</span><span className="flex-1 text-white">{w.name}</span><span className="font-mono text-ice-300">{watchVal(w)} {CAT[w.category] ?? w.category}</span></li>)}
               </ul>
             </Card>
           ))}

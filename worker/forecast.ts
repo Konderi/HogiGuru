@@ -24,6 +24,11 @@ export function forecasts(games: GameRow[]): Map<number, Forecast> {
   let hg = 0, ag = 0;
   for (const g of done) { const r = reg(g); hg += r.h; ag += r.a; }
   const hAvg = hg / done.length, aAvg = ag / done.length, avg = (hAvg + aAvg) / 2;
+  // Poisson aliarvioi tasapelejä jääkiekossa: kalibroidaan kauden toteutuneeseen jatkoaikaosuuteen
+  const drawRate = done.filter((g) => g.ot).length / done.length;
+  let dm = 0;
+  for (let i = 0; i <= 10; i++) dm += pois(hAvg, i) * pois(aAvg, i);
+  const drawBoost = Math.min(2, Math.max(1, drawRate / dm));
 
   type T = { gf: number; ga: number; n: number; recent: { gf: number; ga: number }[]; form: string[] };
   const t = new Map<string, T>();
@@ -57,7 +62,7 @@ export function forecasts(games: GameRow[]): Map<number, Forecast> {
       if (i > j) pH += p; else if (i === j) pD += p; else pA += p;
       if (p > best.p) best = { p, s: `${i}–${j}` };
     }
-    const s = pH + pD + pA; pH /= s; pD /= s; pA /= s;
+    const s = pH + pD * drawBoost + pA; pH /= s; pD = (pD * drawBoost) / s; pA /= s;
     const o = (p: number) => Math.round(Math.min(50, 1 / p) * 100) / 100;
     const r2 = (n: number) => Math.round(n * 100) / 100;
     out.set(g.id, {
