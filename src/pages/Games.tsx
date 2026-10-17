@@ -244,8 +244,8 @@ function EventLine({ e, g, fresh, onVideo }: { e: XEvent; g: Game; fresh: boolea
     }
   })();
   return (
-    <li className={`flex items-start gap-3 px-2 py-2 transition-colors duration-[3000ms] ${fresh ? (e.type === 'goal' ? 'animate-pulse bg-goal/15' : 'bg-ice-500/10') : ''} ${e.mine ? 'border-l-2 border-ice-400' : ''} ${e.side === 'away' ? 'flex-row-reverse text-right' : ''}`}>
-      <span className="w-14 shrink-0 font-mono text-xs text-slate-500">{e.type === 'shootout' ? 'VL' : clock(e.time)}<span className="block text-[10px]">{e.type !== 'shootout' && periodName(e.period)}</span></span>
+    <li className={`flex items-start gap-2 px-1.5 py-2.5 transition-colors duration-[3000ms] sm:gap-3 sm:px-2 sm:py-2 ${fresh ? (e.type === 'goal' ? 'animate-pulse bg-goal/15' : 'bg-ice-500/10') : ''} ${e.mine ? 'border-l-2 border-ice-400' : ''} ${e.side === 'away' ? 'flex-row-reverse text-right' : ''}`}>
+      <span className="w-11 shrink-0 font-mono text-xs text-slate-500 sm:w-14">{e.type === 'shootout' ? 'VL' : clock(e.time)}<span className="block text-[10px]">{e.type !== 'shootout' && periodName(e.period)}</span></span>
       {body}
     </li>
   );
@@ -258,7 +258,7 @@ function ExtraView({ g, x, fresh, newestFirst }: { g: Game; x: Extra; fresh: Set
   return (
     <>
       <VideoModal src={video?.src ?? null} title={video?.title ?? ''} onClose={() => setVideo(null)} />
-      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Joukkuevertailu">
           <div className="space-y-3 p-4">
             {x.periods.length > 0 && (
@@ -283,7 +283,7 @@ function ExtraView({ g, x, fresh, newestFirst }: { g: Game; x: Extra; fresh: Set
             <div className="flex justify-between text-sm"><span className="text-white">{x.home.pp}</span><span className="text-xs text-slate-400">Ylivoima (maalit/kerrat)</span><span className="text-white">{x.away.pp}</span></div>
           </div>
         </Card>
-        <Card title={newestFirst ? 'Tapahtumat (uusin ensin)' : 'Tapahtumat'}>
+        <Card title={newestFirst ? 'Tapahtumat (uusin ensin)' : 'Tapahtumat'} className={newestFirst ? 'order-first lg:order-none' : ''}>
           {!events.length ? <Empty>Ei vielä tapahtumia.</Empty> : (
             <ul className="divide-y divide-white/5 p-2 text-sm">
               {events.map((e) => <EventLine key={e.id} e={e} g={g} fresh={fresh.has(e.id)} onVideo={(ev) => setVideo({ src: ev.video!, title: `${ev.score} ${ev.scorer ?? ''}` })} />)}
@@ -550,7 +550,7 @@ function LiveToast({ e, g, onClose }: { e: XEvent; g: Game; onClose: () => void 
   const text = e.type === 'goal' ? `🚨 MAALI! ${t} ${e.score} · ${e.scorer}` : e.type === 'penalty' ? `⏱ Jäähy ${t}: ${e.player} ${e.minutes} min` : e.type === 'goalie' ? `🥅 Maalivahdin vaihto · ${t}` : e.type === 'timeout' ? `✋ Aikalisä · ${t}` : `🎯 ${e.player}: ${e.scored ? 'maali' : 'ei maalia'}`;
   return (
     <button type="button" onClick={onClose}
-      className={`fixed inset-x-3 bottom-4 z-50 mx-auto max-w-md rounded-2xl border px-4 py-3 text-left text-sm font-semibold text-white shadow-2xl backdrop-blur ${e.type === 'goal' ? 'border-goal/50 bg-goal/80' : 'border-white/10 bg-rink-800/95'}`}>
+      className={`fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-2xl border px-4 py-3 text-left text-sm font-semibold text-white shadow-2xl backdrop-blur ${e.type === 'goal' ? 'border-goal/50 bg-goal/80' : 'border-white/10 bg-rink-800/95'}`}>
       {text}{e.mine && ' ⭐'}
     </button>
   );
@@ -567,35 +567,44 @@ export function GameDetail() {
   const lc = liveClock(data.extra?.live);
   const of = (t?: GameTeam) => data.players.filter((p) => t && teamKey(p.team_id) === teamKey(t.id));
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {live.toast && g && <LiveToast e={live.toast} g={g} onClose={() => live.setToast(null)} />}
+      {isLive && g && (
+        <div className="sticky top-16 z-30 -mx-3 flex items-center justify-center gap-2 border-b border-goal/20 bg-rink-900/90 px-3 py-2 text-sm backdrop-blur sm:hidden">
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-goal" />
+          <span className="truncate text-white">{g.home.name}</span>
+          <span className="font-display text-xl tracking-wider text-white">{g.home.goals}–{g.away.goals}</span>
+          <span className="truncate text-white">{g.away.name}</span>
+          {lc && <span className="shrink-0 font-mono text-[11px] text-slate-400">{lc.replace(' · ', ' ')}</span>}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link to="/ottelut" className="text-sm text-ice-300 hover:text-ice-200">← Ottelut</Link>
+        <Link to="/ottelut" className="py-1 text-sm text-ice-300 hover:text-ice-200">← Ottelut</Link>
         {live.active && (
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <span>Päivittyy automaattisesti{live.updated ? ` · ${live.updated.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}</span>
+          <div className="flex items-center gap-2 text-xs text-slate-400 sm:gap-3">
+            <span>{live.updated ? `↻ ${live.updated.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}<span className="hidden sm:inline"> · päivittyy automaattisesti</span></span>
             <SoundToggle />
           </div>
         )}
       </div>
       {g ? (
-        <section className={`rounded-3xl border bg-gradient-to-br from-rink-800 to-rink-950 px-6 py-8 ${isLive ? 'border-goal/30' : 'border-white/8'}`}>
-          <p className="mb-4 text-center text-xs uppercase tracking-wider text-slate-400">
+        <section className={`rounded-3xl border bg-gradient-to-br from-rink-800 to-rink-950 px-3 py-5 sm:px-6 sm:py-8 ${isLive ? 'border-goal/30' : 'border-white/8'}`}>
+          <p className="mb-3 text-center text-[11px] uppercase tracking-wider text-slate-400 sm:mb-4 sm:text-xs">
             {new Date(g.start).toLocaleString('fi-FI', { ...tz, weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
             {g.phase ? ` · ${PHASE[g.phase]}` : g.tournament === 'playoffs' ? ' · Play-Offs' : ''}
           </p>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <Link to={`/joukkue/${encodeURIComponent(g.home.id)}`} className="flex flex-col items-center gap-2 text-center">
-              {g.home.logo && <img src={g.home.logo} alt="" className="h-16 w-16 object-contain" />}<span className="font-semibold text-white">{g.home.name}</span>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
+            <Link to={`/joukkue/${encodeURIComponent(g.home.id)}`} className="flex min-w-0 flex-col items-center gap-1.5 text-center sm:gap-2">
+              {g.home.logo && <img src={g.home.logo} alt="" className="h-11 w-11 object-contain sm:h-16 sm:w-16" />}<span className="w-full truncate text-sm font-semibold text-white sm:text-base">{g.home.name}</span>
             </Link>
             <div className="text-center">
-              {g.started ? <span className="font-display text-5xl tracking-wider text-white">{g.home.goals}–{g.away.goals}</span> : <span className="font-display text-3xl text-ice-300">{time(g.start)}</span>}
-              <p className="mt-1 text-xs text-slate-400">{g.ended ? `Päättynyt${g.ot === 'OT' ? ' (jatkoaika)' : g.ot === 'SO' ? ' (voittolaukaukset)' : ''}` : g.started
-                ? <span className="inline-flex items-center gap-1.5 font-semibold text-goal"><span className="h-2 w-2 animate-pulse rounded-full bg-goal" />LIVE{lc ? <span className="font-mono text-slate-300">· {lc}</span> : null}</span>
+              {g.started ? <span className="font-display text-4xl tracking-wider text-white sm:text-5xl">{g.home.goals}–{g.away.goals}</span> : <span className="font-display text-2xl text-ice-300 sm:text-3xl">{time(g.start)}</span>}
+              <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">{g.ended ? `Päättynyt${g.ot === 'OT' ? ' (jatkoaika)' : g.ot === 'SO' ? ' (voittolaukaukset)' : ''}` : g.started
+                ? <span className="inline-flex flex-col items-center gap-0.5 font-semibold text-goal sm:flex-row sm:gap-1.5"><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 animate-pulse rounded-full bg-goal" />LIVE</span>{lc ? <span className="whitespace-nowrap font-mono text-slate-300"><span className="hidden sm:inline">· </span>{lc}</span> : null}</span>
                 : 'Tulossa'}</p>
             </div>
-            <Link to={`/joukkue/${encodeURIComponent(g.away.id)}`} className="flex flex-col items-center gap-2 text-center">
-              {g.away.logo && <img src={g.away.logo} alt="" className="h-16 w-16 object-contain" />}<span className="font-semibold text-white">{g.away.name}</span>
+            <Link to={`/joukkue/${encodeURIComponent(g.away.id)}`} className="flex min-w-0 flex-col items-center gap-1.5 text-center sm:gap-2">
+              {g.away.logo && <img src={g.away.logo} alt="" className="h-11 w-11 object-contain sm:h-16 sm:w-16" />}<span className="w-full truncate text-sm font-semibold text-white sm:text-base">{g.away.name}</span>
             </Link>
           </div>
           {isLive && data.extra && <LiveSituation g={g} x={data.extra} />}
