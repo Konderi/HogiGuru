@@ -129,7 +129,7 @@ export default function HallOfFame() {
                       const open = openGuru === x.name;
                       return [
                         <tr key={x.name} onClick={() => setOpenGuru(open ? null : x.name)} className="cursor-pointer">
-                          <td className="font-display text-slate-400">{MEDAL[r - 1] ?? r}</td>
+                          <td className="font-display text-slate-400">{PLACE[r - 1] ?? r}</td>
                           <td className="font-semibold text-white"><span className={`mr-2 inline-block text-xs text-slate-500 transition ${open ? 'rotate-90' : ''}`}>▶</span>{x.name}</td>
                           <td className="num">{x.seasons}</td>
                           <td className="num">{x.titles || '–'}</td>

@@ -10,6 +10,7 @@ export interface Me {
   guru?: { id: number; name: string } | null;
   favTeam?: { id: string; name: string; short_name: string | null; logo: string | null } | null;
   draftNav?: boolean;
+  playoffNav?: boolean;
   needsSetup?: boolean;
 }
 

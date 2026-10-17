@@ -31,7 +31,11 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 👉 **Lukitse kertoimet ennen kauden alkua** (ks. kohta 6).
 
 ### 1.2 Vaihdot
-**Vaihdot → Gurujen vaihtosivu:** aseta freeze-raja (ottelua per joukkue, oletus 10). Pidä kytkin **pois päältä**, kunnes vaihdot halutaan avata (ks. kohta 3).
+**Vaihdot → Vaihtopäivät:** lisää päivät ja kellonajat (näkyvät etusivulla). Vaihtopäivän vaihdot sovitaan WhatsAppissa/Excelissä; kirjaa ne samana päivänä **Vaihdot → Käsin vaihto**.
+
+**Vaihdot → Gurujen vaihtosivu:** freeze-raja (ottelua per joukkue, oletus 10). Pidä kytkin **pois päältä**, kunnes gurujen omat vaihdot halutaan avata (ks. kohta 3).
+
+**Yleiskatsaus → Play-Offs-peli:** pidä pois päältä, kunnes Play-Offs julkaistaan; ylläpitäjät näkevät sivun silti.
 
 ### 1.3 Ilmoittautuminen
 1. **Ilmoittautuminen:** aseta määräaika, maksu ja lisätieto. Paina **▶ Avaa ilmoittautuminen**.

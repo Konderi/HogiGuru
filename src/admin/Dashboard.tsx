@@ -11,6 +11,28 @@ interface Overview {
   sync: { id: number; started_at: string; finished_at: string | null; ok: number | null; message: string | null }[];
 }
 
+function PlayoffToggle() {
+  const cfg = useApi<{ enabled: boolean }>('/admin/playoff-settings');
+  const { run } = useAdmin();
+  if (!cfg.data) return null;
+  const on = cfg.data.enabled;
+  const toggle = async () => { await run(() => api('/admin/playoff-settings', { method: 'PUT', body: { enabled: !on } }), 'Tallennettu'); cfg.reload(); };
+  return (
+    <Card title="Play-Offs-peli" className="mb-6">
+      <label className="flex cursor-pointer items-start gap-3 p-5">
+        <button type="button" role="switch" aria-checked={on} onClick={toggle}
+          className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-ice-500' : 'bg-white/15'}`}>
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+        </button>
+        <span>
+          <span className="block text-sm font-semibold text-white">{on ? 'Play-Offs näkyy guruille' : 'Play-Offs piilotettu guruilta'}</span>
+          <span className="text-xs text-slate-400">{on ? 'Kirjautuneet gurut näkevät Play-Offs-linkin yläpalkissa.' : 'Vain ylläpitäjät näkevät Play-Offs-sivun (kehitys ja testaus).'}</span>
+        </span>
+      </label>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { data, reload } = useApi<Overview>('/admin/overview');
   const { run } = useAdmin();
@@ -34,6 +56,8 @@ export default function Dashboard() {
           setBusy(false); reload();
         }}>{busy ? 'Haetaan…' : '⟳ Päivitä tilastot nyt'}</button>
       </PageHeader>
+
+      <PlayoffToggle />
 
       <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map((s) => (

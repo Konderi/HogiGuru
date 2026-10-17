@@ -30,8 +30,9 @@ export default function Layout() {
       { to: '/oma-joukkue', label: 'Oma joukkue' },
       ...(fav ? [{ to: `/joukkue/${encodeURIComponent(fav.id)}`, label: fav.name, logo: fav.logo }] : []),
       ...(me?.draftNav !== false ? [{ to: '/draft', label: 'Draft' }] : []),
+      ...(me?.playoffNav || isAdminRole(user.role) ? [{ to: '/playoff', label: 'Play-Offs' }] : []),
     ] : []),
-    ...(isAdminRole(user?.role) ? [{ to: '/playoff', label: 'Play-Offs' }, { to: '/admin', label: 'Ylläpito' }] : []),
+    ...(isAdminRole(user?.role) ? [{ to: '/admin', label: 'Ylläpito' }] : []),
   ];
 
   return (

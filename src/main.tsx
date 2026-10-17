@@ -63,7 +63,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="joukkue/:id" element={<Team />} />
             <Route path="hall-of-fame" element={<HallOfFame />} />
             <Route path="kokonaistulokset" element={<Results />} />
-            <Route path="playoff" element={<Protected admin><Playoff /></Protected>} />
+            <Route path="playoff" element={<Protected><Playoff /></Protected>} />
             <Route path="kirjaudu" element={<Login />} />
             <Route path="unohtunut" element={<ForgotPassword />} />
             <Route path="salasana" element={<ResetPassword />} />

@@ -482,7 +482,16 @@ app.get('/auth/me', async (c) => {
   if (!user) return c.json({ user: null, needsSetup: !(await c.env.DB.prepare('SELECT 1 FROM users LIMIT 1').first()) });
   const guru = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE user_id = ? AND season_id = ?').bind(user.id, c.get('season').id).first();
   const favTeam = await c.env.DB.prepare('SELECT t.id, t.name, t.short_name, t.logo FROM users u JOIN teams t ON t.id = u.fav_team WHERE u.id = ?').bind(user.id).first();
-  return c.json({ user, guru, favTeam, draftNav: c.get('season').draft_nav !== 0 });
+  const playoffNav = (await getSetting(c.env.DB, 'playoff_public', '0')) === '1';
+  return c.json({ user, guru, favTeam, draftNav: c.get('season').draft_nav !== 0, playoffNav });
+});
+
+// Play-Offs-peli: piilossa guruilta, kunnes ylläpito julkaisee (app_settings.playoff_public = '1')
+app.use('/playoff/*', async (c, next) => {
+  const user = c.get('user');
+  if (user && isAdmin(user)) return next();
+  if ((await getSetting(c.env.DB, 'playoff_public', '0')) !== '1') return c.json({ error: 'Play-Offs ei ole vielä käytössä' }, 403);
+  return next();
 });
 
 app.put('/me/fav-team', requireUser, async (c) => {
@@ -1187,6 +1196,14 @@ admin.put('/self-swap-settings', async (c) => {
   if (b.enabled !== undefined) st.push(put('self_swaps', b.enabled ? '1' : '0'));
   if (b.freeze !== undefined) st.push(put('self_swap_freeze', String(Math.max(0, Math.round(Number(b.freeze) || 0)))));
   if (st.length) await c.env.DB.batch(st);
+  return c.json({ ok: true });
+});
+
+// Play-Offs-sivun näkyvyys guruille
+admin.get('/playoff-settings', async (c) => c.json({ enabled: (await getSetting(c.env.DB, 'playoff_public', '0')) === '1' }));
+admin.put('/playoff-settings', async (c) => {
+  const b = await c.req.json<{ enabled: boolean }>();
+  await c.env.DB.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?,?)').bind('playoff_public', b.enabled ? '1' : '0').run();
   return c.json({ ok: true });
 });
 

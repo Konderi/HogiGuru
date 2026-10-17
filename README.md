@@ -44,7 +44,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Kentällinen | 1 valmentaja, 1 maalivahti, 2 puolustajaa, 3 hyökkääjää | ✅ |
 | Sama pelaaja voi olla valittuna enintään | valmentaja 5, maalivahti 5, puolustaja 5 ja hyökkääjä 4 kertaa | ✅ |
 | Vaihtoja kaudessa | 4 | ✅ |
-| Vaihtojen avautuminen | kun jokainen joukkue on pelannut 10 ottelua, sen jälkeen milloin tahansa | ✅ |
+| Vaihtopäivät | su 11.10., 29.11., 10.1., 21.2. klo 9–21 | ✅ |
 | Valmentajan potkut | −10 p jokaiselle gurulle, jolla valmentaja on | ✅ |
 | Osallistumismaksu | 30 € | ✅ |
 | Ilmoittautuminen | viimeistään ti 1.9.2026 klo 18.30 | ✅ |
@@ -53,7 +53,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 - Vaihdossa poistuvan pelaajan keräämät pisteet **jäävät gurulle**; uusi pelaaja kerää pisteitä vaihtohetkestä eteenpäin.
 - Valmentajan potkuista guru saa −10 p ja voi valita uuden valmentajan **heti itse** (Oma joukkue). Tämä ei kuluta vaihtokiintiötä. Jos ei vaihda, saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
 - Pelaajille ei ole poikkeuksia: Liigasta lähtenyt pelaaja vaihdetaan normaalina vaihtona.
-- Guru tekee vaihdot itse **Oma joukkue → Vaihdot** -sivulla; vaihto astuu voimaan heti.
+- Vaihdot sovitaan vaihtopäivinä WhatsAppissa/Excelissä, ja ylläpito kirjaa ne sivustolle samana päivänä. Gurujen oma vaihtosivu (Oma joukkue → Vaihdot) on valmiina, mutta piilossa, kunnes ylläpito avaa sen.
 - Gurun kentällinen näkyy vain hänelle itselleen ja ylläpidolle. Julkisesti näkyy vain, **kuinka monella** pelaaja on (esim. 3/5).
 - HG-komitea päättää mahdollisista sääntömuutoksista. Kaikilla on valitusoikeus.
 
@@ -99,7 +99,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Hall of Fame | Historiatulokset |
 | Tekninen ylläpito | *Vain pääylläpitäjä:* järjestelmän tila, varmistukset (R2), sähköpostit ja lähetysloki, muutoshistoria |
 
-Muuta: Leaderboardin ja etusivun Top 10:n rivistä aukeaa gurun joukkue (`GuruTeamModal`, `GET /api/gurus/:id/team`); sarjataulukossa 3 alinta punaisella (putoavat); Hall of Famessa kausivoittajilla 🏆; sairastupa päivittyy liiga.fi-kokoonpanojen `injured`-tiedosta.
+Muuta: Play-Offs-peli (`/playoff`) on kehitysvaiheessa ja näkyy vain ylläpitäjille, kunnes Yleiskatsauksen *Play-Offs-peli*-kytkin (`app_settings.playoff_public`, `PUT /api/admin/playoff-settings`) avaa sen guruille; API estää `/api/playoff/*` muilta. Leaderboardin ja etusivun Top 10:n rivistä aukeaa gurun joukkue (`GuruTeamModal`, `GET /api/gurus/:id/team`); sarjataulukossa 3 alinta punaisella (putoavat); Hall of Famessa kausivoittajilla ja maratontaulukon ykkösellä 🏆; sairastupa päivittyy liiga.fi-kokoonpanojen `injured`-tiedosta.
 
 Koko sivusto on optimoitu mobiilille: taulukot vierivät sivuttain kortin sisällä, ponnahdusikkunat avautuvat alapaneelina, kenttien 16 px fontti estää iOS-zoomauksen.
 

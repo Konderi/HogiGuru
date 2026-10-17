@@ -74,7 +74,9 @@ Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
 ## 6. Vaihdot
 
-Vaihtoja on kaudessa **4**. Teet ne itse, ja vaihto astuu voimaan heti.
+Vaihtoja on kaudessa **4**. Vaihtopäivät ovat 11.10., 29.11., 10.1. ja 21.2. klo 9–21 (seuraava näkyy etusivulla). Vaihdot sovitaan WhatsApp-ryhmässä, ja ylläpito kirjaa ne sivustolle samana päivänä.
+
+*Tuleva malli:* kun ylläpito avaa sen, teet vaihdot itse ja ne astuvat voimaan heti.
 
 - Draftin jälkeen vaihdot ovat jäissä, kunnes **jokainen joukkue on pelannut 10 ottelua**. Sen jälkeen voit vaihtaa milloin tahansa.
 - **Vaihdot**-välilehti ilmestyy *Oma joukkue* -sivulle, kun ylläpito avaa vaihdot.
