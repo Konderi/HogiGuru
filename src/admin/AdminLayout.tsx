@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Toast } from '../ui';
@@ -30,13 +30,22 @@ export default function AdminLayout() {
     try { const r = await fn(); if (ok) notify(ok); return r; } catch (e) { notify((e as Error).message, true); return undefined; }
   }, [notify]);
 
+  const all = [...links, ...(me?.user?.role === 'superadmin' ? [{ to: '/admin/yllapito', label: 'Tekninen ylläpito', icon: '⚙', end: false }] : [])];
+  const nav = useNavigate();
+  const loc = useLocation();
+  const current = [...all].sort((a, b) => b.to.length - a.to.length).find((l) => (l.end ? loc.pathname === l.to : loc.pathname.startsWith(l.to)));
+
   return (
     <NotifyCtx.Provider value={{ notify, run }}>
-      <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[220px_1fr] lg:gap-8">
         <aside>
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-goal">Ylläpito</p>
-          <nav className="flex gap-1 overflow-x-auto lg:flex-col">
-            {[...links, ...(me?.user?.role === 'superadmin' ? [{ to: '/admin/yllapito', label: 'Tekninen ylläpito', icon: '⚙', end: false }] : [])].map((l) => (
+          {/* Mobiili: valikko pudotuslistana */}
+          <select className="input lg:hidden" value={current?.to ?? '/admin'} onChange={(e) => nav(e.target.value)} aria-label="Ylläpidon osio">
+            {all.map((l) => <option key={l.to} value={l.to}>{l.icon} {l.label}</option>)}
+          </select>
+          <nav className="hidden flex-col gap-1 lg:flex">
+            {all.map((l) => (
               <NavLink key={l.to} to={l.to} end={l.end}
                 className={({ isActive }) => `flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${isActive ? 'bg-ice-500/15 text-ice-300' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
                 <span className="w-4 text-center opacity-70">{l.icon}</span>{l.label}
@@ -44,7 +53,7 @@ export default function AdminLayout() {
             ))}
           </nav>
         </aside>
-        <div className="min-w-0"><Outlet /></div>
+        <div className="admin-scope min-w-0"><Outlet /></div>
       </div>
       <Toast msg={msg} onDone={() => setMsg(null)} />
     </NotifyCtx.Provider>

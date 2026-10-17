@@ -79,6 +79,18 @@
   }
 }
 
+/* Ylläpito mobiilissa: leveät taulukot vierittyvät vaakasuunnassa, rivit rivittyvät, kortin otsikon toiminnot alle */
+@media (max-width: 1023px) {
+  .admin-scope .table { display: block; overflow-x: auto; }
+  .admin-scope .table td { white-space: nowrap; }
+  .admin-scope .card-header { flex-wrap: wrap; row-gap: .5rem; }
+}
+@media (max-width: 639px) {
+  .admin-scope .flex:not(.flex-col):not(.flex-nowrap):not(nav) { flex-wrap: wrap; }
+  .admin-scope .btn { min-height: 40px; }
+  .admin-scope .card > .p-5, .admin-scope .card > div > .p-5 { padding: 1rem; }
+}
+
 /* Kaukalon viivat taustakoristeeksi */
 .rink-lines {
   background:

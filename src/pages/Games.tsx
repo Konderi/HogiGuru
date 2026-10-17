@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
 import { useApi, useAuth } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import VideoModal from '../components/VideoModal';
 
 export interface GameTeam { id: string; name: string; logo: string | null; goals: number }
 export interface Forecast {
@@ -181,8 +182,10 @@ function Compare({ label, h, a, fmtV = String, pct }: { label: string; h: number
 
 function ExtraView({ g, x }: { g: Game; x: Extra }) {
   const foPct = (t: XTeam) => (t.fo ? Math.round((t.foWon / t.fo) * 100) : 0);
+  const [video, setVideo] = useState<{ src: string; title: string } | null>(null);
   return (
     <>
+      <VideoModal src={video?.src ?? null} title={video?.title ?? ''} onClose={() => setVideo(null)} />
       <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Joukkuevertailu">
           <div className="space-y-3 p-4">
@@ -221,7 +224,7 @@ function ExtraView({ g, x }: { g: Game; x: Extra }) {
                       {e.types?.length ? <span className="ml-1 rounded bg-white/10 px-1 text-[10px] text-slate-300">{e.types.join(' ')}</span> : null}
                       {e.winning && <span className="ml-1 text-[10px] text-amber-300">VM</span>}
                       {e.assists?.length ? <span className="block text-xs text-slate-400">{e.assists.join(', ')}</span> : null}
-                      {e.video && <a href={e.video} target="_blank" rel="noreferrer" className="text-xs text-ice-300 hover:underline">▶ video</a>}
+                      {e.video && <button type="button" onClick={() => setVideo({ src: e.video!, title: `${e.score} ${e.scorer ?? ''}` })} className="inline-flex items-center gap-1 rounded-lg bg-ice-500/10 px-2 py-1 text-xs font-semibold text-ice-300 hover:bg-ice-500/20">▶ video</button>}
                     </span>
                   ) : (
                     <span className="flex-1 text-slate-400">⏱ {e.player} {e.minutes} min <span className="text-xs">({e.reason})</span></span>
