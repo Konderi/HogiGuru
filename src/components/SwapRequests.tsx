@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { api, fmtDate, POS_LABEL, type Slot } from '../api';
+import { api, fmtDate, type Slot } from '../api';
 import { useApi } from '../auth';
 import { Card, EntityPicker, Empty, PosBadge, ReservedBadge, Spinner, type SearchHit } from '../ui';
+import { PlayerBrowser } from './PlayerBrowser';
 
 interface Req { slot_id: number; candidates: number[] }
 interface Resp {
@@ -20,6 +21,7 @@ export function SwapRequests({ slots }: { slots: Slot[] }) {
   const [reqs, setReqs] = useState<Req[]>([]);
   const [names, setNames] = useState<Record<string, SearchHit>>({});
   const [adding, setAdding] = useState<number | null>(null);
+  const [browse, setBrowse] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [dirty, setDirty] = useState(false);
 
@@ -43,6 +45,10 @@ export function SwapRequests({ slots }: { slots: Slot[] }) {
   const key = (pos: string, id: number) => `${pos === 'C' ? 'C' : 'P'}${id}`;
   const update = (r: Req[]) => { setReqs(r); setDirty(true); };
   const move = (i: number, d: number) => { const j = i + d; if (j < 0 || j >= reqs.length) return; const r = [...reqs]; [r[i], r[j]] = [r[j], r[i]]; update(r); };
+  const addCand = (i: number, pos: string, out: number, h: SearchHit) => {
+    setNames((n) => ({ ...n, [key(pos, h.id)]: h }));
+    if (h.id !== out) update(reqs.map((x, j) => j === i && !x.candidates.includes(h.id) ? { ...x, candidates: [...x.candidates, h.id] } : x));
+  };
 
   const save = async () => {
     try { await api('/me/swaps', { method: 'PUT', body: { requests: reqs } }); setMsg({ t: 'Vaihtotoiveet tallennettu ✓' }); reload(); }
@@ -84,9 +90,14 @@ export function SwapRequests({ slots }: { slots: Slot[] }) {
                         ))}
                       </ol>
                       {adding === s.id ? (
-                        <EntityPicker pos={s.position} options={s.position === 'C' ? coaches.data ?? [] : undefined} placeholder={`Hae ${POS_LABEL[s.position].toLowerCase()}…`}
-                          onPick={(h) => { setNames((n) => ({ ...n, [key(s.position, h.id)]: h })); if (!r.candidates.includes(h.id) && h.id !== s.entity_id) update(reqs.map((x, j) => j === i ? { ...x, candidates: [...x.candidates, h.id] } : x)); setAdding(null); }} />
-                      ) : <button className="text-sm font-semibold text-ice-400 hover:text-ice-300" onClick={() => setAdding(s.id)}>+ Lisää {r.candidates.length ? 'varavaihtoehto' : 'tulija'}</button>}
+                        <div className="space-y-2">
+                          <button className="btn btn-primary w-full sm:w-auto" onClick={() => setBrowse(s.id)}>☰ Selaa pelaajalistaa</button>
+                          <EntityPicker pos={s.position} options={s.position === 'C' ? coaches.data ?? [] : undefined} placeholder={`…tai hae nimellä`}
+                            onPick={(h) => { addCand(i, s.position, s.entity_id, h); setAdding(null); }} />
+                        </div>
+                      ) : <button className="text-sm font-semibold text-ice-400 hover:text-ice-300" onClick={() => setBrowse(s.id)}>+ Lisää {r.candidates.length ? 'varavaihtoehto' : 'tulija'}</button>}
+                      <PlayerBrowser open={browse === s.id} pos={s.position} exclude={[s.entity_id, ...r.candidates]}
+                        onClose={() => setBrowse(null)} onPick={(h) => { addCand(i, s.position, s.entity_id, h); setBrowse(null); setAdding(null); }} />
                     </div>
                   </li>
                 );
@@ -98,7 +109,7 @@ export function SwapRequests({ slots }: { slots: Slot[] }) {
               <div className="flex flex-wrap gap-2">
                 {active.filter((s) => !reqs.some((r) => r.slot_id === s.id)).map((s) => (
                   <button key={s.id} className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-sm text-slate-300 hover:border-ice-400/50 hover:text-white"
-                    onClick={() => { update([...reqs, { slot_id: s.id, candidates: [] }]); setAdding(s.id); }}>
+                    onClick={() => { update([...reqs, { slot_id: s.id, candidates: [] }]); setAdding(s.id); setBrowse(s.id); }}>
                     <PosBadge pos={s.position} /> {s.name}
                   </button>
                 ))}
