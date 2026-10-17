@@ -156,11 +156,6 @@ export default function Games() {
             className={`rounded-xl px-5 py-1.5 text-sm font-semibold transition ${view === v ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
         ))}
       </div>
-      {live.length > 0 && (
-        <Card title={<span className="flex items-center gap-2 text-goal"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-goal" />Käynnissä nyt ({live.length})</span>} className="border-goal/30">
-          <div className="space-y-0.5 p-3">{live.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
-        </Card>
-      )}
       {loading && !data ? <Spinner /> : (
         <Card>
           <div className="space-y-4 p-3">
