@@ -87,10 +87,10 @@ export async function gameDetail(db: D1Database, gameId: number, scoring: Scorin
 const GOAL_TYPES: Record<string, string> = { YV: 'YV', AV: 'AV', TM: 'TM', VT: 'VT', IM: 'IM', RL: 'RL', VL: 'VL', SR: 'SR' };
 
 export async function gameExtra(season: number, id: number, ended: boolean, waitUntil: (p: Promise<unknown>) => void) {
-  const ttl = ended ? 3600 : 30;
+  const ttl = ended ? 3600 : 10;
   const [d, s] = await Promise.all([
     cachedJson<any>(`https://liiga.fi/api/v2/games/${season}/${id}`, ttl, waitUntil),
-    cachedJson<any>(`https://liiga.fi/api/v2/games/stats/${season}/${id}`, ttl, waitUntil).catch(() => null),
+    cachedJson<any>(`https://liiga.fi/api/v2/games/stats/${season}/${id}`, ended ? 3600 : 30, waitUntil).catch(() => null),
   ]);
   const g = d?.game;
   if (!g) return null;
@@ -102,12 +102,20 @@ export async function gameExtra(season: number, id: number, ended: boolean, wait
   for (const side of ['home', 'away'] as const) {
     const t = g[`${side}Team`];
     for (const e of t.goalEvents ?? []) events.push({
+      id: `g-${side}-${e.eventId ?? e.gameTime}`,
       type: 'goal', side, time: e.gameTime, period: e.period, scorer: nm(e.scorerPlayerId) || `${e.scorerPlayer?.firstName ?? ''} ${e.scorerPlayer?.lastName ?? ''}`.trim(),
+      scorerId: e.scorerPlayerId ?? null, assistIds: e.assistantPlayerIds ?? [],
       assists: (e.assistantPlayers ?? []).map((a: any) => `${a.firstName} ${a.lastName}`), score: `${e.homeTeamScore}–${e.awayTeamScore}`,
-      types: (e.goalTypes ?? []).map((x: string) => GOAL_TYPES[x] ?? x), winning: !!e.winningGoal, video: e.videoClipUrl ?? null,
+      types: (e.goalTypes ?? []).map((x: string) => GOAL_TYPES[x] ?? x), winning: !!e.winningGoal, video: e.videoClipUrl ?? null, thumb: e.videoThumbnailUrl ?? null,
     });
-    for (const e of t.penaltyEvents ?? []) events.push({ type: 'penalty', side, time: e.gameTime, period: e.period, player: nm(e.playerId), minutes: e.penaltyMinutes, reason: e.penaltyFaultName });
+    for (const e of t.penaltyEvents ?? []) events.push({ id: `p-${side}-${e.eventId ?? `${e.gameTime}-${e.playerId}`}`, type: 'penalty', side, time: e.gameTime, period: e.period, player: nm(e.playerId), minutes: e.penaltyMinutes, reason: e.penaltyFaultName });
+    for (const e of t.goalKeeperChanges ?? []) events.push({ id: `k-${side}-${e.eventId ?? e.time}`, type: 'goalie', side, time: e.time, period: e.period, player: nm(e.nextGoalie) || null, prev: nm(e.previousGoalie) || null });
+    if (typeof t.timeOut === 'number') events.push({ id: `t-${side}`, type: 'timeout', side, time: t.timeOut, period: Math.min(4, Math.floor(t.timeOut / 1200) + 1) });
   }
+  ((g.winningShotCompetitionEvents ?? []) as any[]).forEach((e, i) => events.push({
+    id: `s-${i}`, type: 'shootout', side: String(e.shootingTeamId) === String(g.homeTeam.teamId) ? 'home' : 'away',
+    time: 3900 + i, period: 5, player: nm(e.shootingPlayerId), scored: !!e.goalScored, winning: !!e.winningGoal,
+  }));
   events.sort((a, b) => a.time - b.time);
 
   // Joukkueiden tilastot (summa pelaajien erätilastoista)
@@ -149,5 +157,9 @@ export async function gameExtra(season: number, id: number, ended: boolean, wait
     events, home: teamSum('home'), away: teamSum('away'),
     possession: ctl.h + ctl.a ? Math.round((ctl.h / (ctl.h + ctl.a)) * 100) : null,
     stars,
+    live: {
+      started: !!g.started, ended: !!g.ended, gameTime: g.gameTime ?? 0, period: g.currentPeriod ?? null,
+      home: g.homeTeam?.goals ?? 0, away: g.awayTeam?.goals ?? 0, finishedType: g.finishedType ?? null,
+    },
   };
 }

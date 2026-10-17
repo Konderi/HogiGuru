@@ -163,11 +163,28 @@ app.get('/games/:id', async (c) => {
   }
   // Kaikkien gurujen nykyiset kentälliset: pelaaja → gurujen nimet
   const owners = await ownerNames(db, season.id, 'P');
-  const [players0, extra, preview] = await Promise.all([
+  // Live: otteluohjelma on välimuistissa 2 min, joten aloitusaikaa lähestyttäessä haetaan ottelun tiedot suoraan
+  const nearStart = !!game && !game.started && Date.parse(game.start) - Date.now() < 5 * 60_000;
+  const [players0, extra0, preview] = await Promise.all([
     gameDetail(db, id, season.scoring, mine),
-    game?.started ? gameExtra(season.liiga_season, id, game.ended, wu).catch(() => null) : Promise.resolve(null),
+    game?.started || nearStart ? gameExtra(season.liiga_season, id, !!game?.ended, wu).catch(() => null) : Promise.resolve(null),
     game && !game.started ? gamePreview(season.liiga_season, game, wu).catch(() => null) : Promise.resolve(null),
   ]);
+  let extra = extra0;
+  if (game && extra?.live) {
+    const l = extra.live;
+    if (!l.started) extra = null;
+    else game = { ...game, started: true, ended: l.ended, home: { ...game.home, goals: l.home }, away: { ...game.away, goals: l.away },
+      ot: l.finishedType?.includes('WINNING_SHOT') ? 'SO' : l.finishedType?.includes('EXTENDED') ? 'OT' : game.ot };
+  }
+  if (extra) {
+    const gs = (ids: number[]) => [...new Set(ids.flatMap((i) => owners.get(i) ?? []))].sort((x, y) => x.localeCompare(y, 'fi'));
+    extra = { ...extra, events: extra.events.map((e: { scorerId?: number | null; assistIds?: number[] }) => {
+      if (e.scorerId == null) return e;
+      const ids = [e.scorerId, ...(e.assistIds ?? [])];
+      return { ...e, gurus: gs(ids), mine: ids.some((i) => mine.has(i)) };
+    }) };
+  }
   const players = players0.map((p) => ({ ...p, gurus: (owners.get(p.player_id) ?? []).sort((x, y) => x.localeCompare(y, 'fi')) }));
   if (!game && !players.length) return c.json({ error: 'Ottelua ei löytynyt' }, 404);
   return c.json({ game, players, extra, forecast, preview });

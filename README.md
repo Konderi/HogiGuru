@@ -70,7 +70,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Gurukierros | `/gurukierros` | Viikkokatsaus (ma–su, oletuksena kuluva viikko): viikon parhaat gurut, tähdet, huippupelit, suosikkipelaajat, "olisi kannattanut". Vaihtojen kuningas: vaihtojen nettovaikutus. Kentällisiä ei paljasteta |
 | Sarjataulukko | `/sarjataulukko` | Liigan runkosarja |
 | Pelaajat | `/pelaajat` (`/tilastot` ohjautuu) | Kaikki / H / P / MV / valmentajat HG-pisteineen, paikkamerkki, lajittelu, varaustilanne (klikkaus näyttää gurut), "vain vapaat" ja "Sairastupa" -suodattimet, loukkaantumismerkki, pelaajakortti |
-| Ottelut | `/ottelut` | Otteluohjelma, ottelusivu kokoonpanoineen, HG-merkki (gurulista), maalivideot (hls.js, `videos.liiga.fi`) |
+| Ottelut | `/ottelut` | Otteluohjelma, ottelusivu kokoonpanoineen, HG-merkki (gurulista), maalivideot (hls.js, `videos.liiga.fi`). **Live-seuranta:** käynnissä oleva ottelu päivittyy 15 s välein (liiga.fi-välimuisti 10 s), kello ja erä, tapahtumat uusin ensin (maalit videoineen, jäähyt, maalivahdin vaihdot, aikalisät, voittolaukaukset), uudet tapahtumat korostetaan ja ilmoitetaan ponnahduksella ja äänimerkillä (`src/liveSound.ts`, Web Audio; oma pelaaja = eri ääni), välilehden otsikossa tilanne |
 | Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat; veikkausosa pimitetty, kunnes ylläpito julkaisee gaalassa |
 | Hall of Fame | `/hall-of-fame` | Maratontaulukko 2001–, mestarit, kausikohtaiset tulokset |
 | Joukkue | `/joukkue/:id` | Joukkuesivu: ottelut, vire, koti/vieras, pistepörssi, maalivahdit, valmentaja, HogiGuru-nurkka (liiga.fi-otteluohjelma 10 min välimuistissa) |
