@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GuruPopover } from '../components/GuruPopover';
 import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
@@ -88,11 +88,15 @@ export function GameRow({ g, fav }: { g: Game; fav?: string | null }) {
 
 export default function Games() {
   const { me } = useAuth();
-  const [tour, setTour] = useState<'runkosarja' | 'playoffs'>('runkosarja');
   const [team, setTeam] = useState<string>('');
   const [view, setView] = useState<'past' | 'upcoming'>('past');
   const [showAll, setShowAll] = useState(false);
-  const { data, error, loading, reload } = useApi<{ games: Game[] }>(`/games?tournament=${tour}`, [tour]);
+  // Runkosarja ja Play-Offs samassa näkymässä (eivät ole koskaan päällekkäin)
+  const rs = useApi<{ games: Game[] }>('/games?tournament=runkosarja');
+  const po = useApi<{ games: Game[] }>('/games?tournament=playoffs');
+  const data = useMemo(() => (rs.data || po.data ? { games: [...(rs.data?.games ?? []), ...(po.data?.games ?? [])].sort((a, b) => a.start.localeCompare(b.start)) } : null), [rs.data, po.data]);
+  const error = rs.error; const loading = rs.loading;
+  const reload = useCallback(() => { rs.reload(); po.reload(); }, [rs.reload, po.reload]);
   const fav = me?.favTeam?.id ?? null;
 
   const teams = useMemo(() => {
@@ -130,32 +134,28 @@ export default function Games() {
       <div className="space-y-0.5">{gs.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
     </div>
   );
-  const pill = (on: boolean) => `rounded-full px-4 py-1.5 text-sm font-medium ${on ? 'bg-ice-500/15 text-ice-200 ring-1 ring-ice-400/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`;
 
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Liiga" title="Ottelut" />
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {(['runkosarja', 'playoffs'] as const).map((t) => (
-            <button key={t} onClick={() => { setTour(t); setShowAll(false); }} className={pill(tour === t)}>
-              {t === 'runkosarja' ? 'Runkosarja' : 'Play-Offs'}
-            </button>
-          ))}
-          <select className="input ml-auto w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
-            <option value="">Kaikki joukkueet</option>
-            {fav && <option value={teamKey(fav)}>★ Suosikkini</option>}
-            {teams.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
-          </select>
-        </div>
-        <div className="inline-flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
-          {([['past', 'Pelatut'], ['upcoming', 'Tulevat']] as const).map(([v, l]) => (
-            <button key={v} onClick={() => { setView(v); setShowAll(false); }}
-              className={`rounded-xl px-5 py-1.5 text-sm font-semibold transition ${view === v ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
-          ))}
-        </div>
-      </div>
+      <PageHeader kicker="Liiga" title="Ottelut">
+        <select className="input w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
+          <option value="">Kaikki joukkueet</option>
+          {fav && <option value={teamKey(fav)}>★ Suosikkini</option>}
+          {teams.map(([id, n]) => <option key={id} value={id}>{n}</option>)}
+        </select>
+      </PageHeader>
       <ErrorBox error={error} />
+      {live.length > 0 && (
+        <Card title={<span className="flex items-center gap-2 text-goal"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-goal" />Käynnissä nyt ({live.length})</span>} className="border-goal/30">
+          <div className="space-y-0.5 p-3">{live.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
+        </Card>
+      )}
+      <div className="inline-flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1">
+        {([['past', 'Pelatut'], ['upcoming', 'Tulevat']] as const).map(([v, l]) => (
+          <button key={v} onClick={() => { setView(v); setShowAll(false); }}
+            className={`rounded-xl px-5 py-1.5 text-sm font-semibold transition ${view === v ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>{l}</button>
+        ))}
+      </div>
       {live.length > 0 && (
         <Card title={<span className="flex items-center gap-2 text-goal"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-goal" />Käynnissä nyt ({live.length})</span>} className="border-goal/30">
           <div className="space-y-0.5 p-3">{live.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
