@@ -44,16 +44,16 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Kentällinen | 1 valmentaja, 1 maalivahti, 2 puolustajaa, 3 hyökkääjää | ✅ |
 | Sama pelaaja voi olla valittuna enintään | valmentaja 5, maalivahti 5, puolustaja 5 ja hyökkääjä 4 kertaa | ✅ |
 | Vaihtoja kaudessa | 4 | ✅ |
-| Vaihtopäivät | su 11.10., 29.11., 10.1., 21.2. klo 9–21 | ✅ |
+| Vaihtojen avautuminen | kun jokainen joukkue on pelannut 10 ottelua, sen jälkeen milloin tahansa | ✅ |
 | Valmentajan potkut | −10 p jokaiselle gurulle, jolla valmentaja on | ✅ |
 | Osallistumismaksu | 30 € | ✅ |
 | Ilmoittautuminen | viimeistään ti 1.9.2026 klo 18.30 | ✅ |
 
 - Pisteet lasketaan **runkosarjan** tilastoista.
 - Vaihdossa poistuvan pelaajan keräämät pisteet **jäävät gurulle**; uusi pelaaja kerää pisteitä vaihtohetkestä eteenpäin.
-- Valmentajan potkuista guru saa −10 p ja voi valita uuden valmentajan **heti itse** (Oma joukkue). Tämä ei vaadi vaihtopäivää eikä kuluta vaihtokiintiötä. Jos ei vaihda, saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
-- Pelaajille ei ole poikkeuksia: Liigasta lähtenyt pelaaja vaihdetaan normaalisti seuraavana vaihtopäivänä.
-- Vaihdot tehdään vaihtopäivänä sivustolla vaihtotoiveina, ja ylläpito käsittelee ne päivän päätyttyä.
+- Valmentajan potkuista guru saa −10 p ja voi valita uuden valmentajan **heti itse** (Oma joukkue). Tämä ei kuluta vaihtokiintiötä. Jos ei vaihda, saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
+- Pelaajille ei ole poikkeuksia: Liigasta lähtenyt pelaaja vaihdetaan normaalina vaihtona.
+- Guru tekee vaihdot itse **Oma joukkue → Vaihdot** -sivulla; vaihto astuu voimaan heti.
 - Gurun kentällinen näkyy vain hänelle itselleen ja ylläpidolle. Julkisesti näkyy vain, **kuinka monella** pelaaja on (esim. 3/5).
 - HG-komitea päättää mahdollisista sääntömuutoksista. Kaikilla on valitusoikeus.
 
@@ -69,7 +69,8 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Leaderboard | `/leaderboard` | Kaikki gurut, sijoitusmuutokset ▲▼, ero kärkeen |
 | Gurukierros | `/gurukierros` | Viikkokatsaus (ma–su, oletuksena kuluva viikko): viikon parhaat gurut, tähdet, huippupelit, suosikkipelaajat, "olisi kannattanut". Vaihtojen kuningas: vaihtojen nettovaikutus. Kentällisiä ei paljasteta |
 | Sarjataulukko | `/sarjataulukko` | Liigan runkosarja |
-| Tilastot | `/tilastot` | Pelaajat ja valmentajat HG-pisteineen, lajittelu sarakkeista, varaustilanne, "vain vapaat" -suodatin, pelaajakortti klikkaamalla |
+| Pelaajat | `/pelaajat` (`/tilastot` ohjautuu) | Kaikki / H / P / MV / valmentajat HG-pisteineen, paikkamerkki, lajittelu, varaustilanne (klikkaus näyttää gurut), "vain vapaat" ja "Sairastupa" -suodattimet, loukkaantumismerkki, pelaajakortti |
+| Ottelut | `/ottelut` | Otteluohjelma, ottelusivu kokoonpanoineen, HG-merkki (gurulista), maalivideot (hls.js, `videos.liiga.fi`) |
 | Kokonaistulokset | `/kokonaistulokset` | All-Stars + veikkauskategoriat; veikkausosa pimitetty, kunnes ylläpito julkaisee gaalassa |
 | Hall of Fame | `/hall-of-fame` | Maratontaulukko 2001–, mestarit, kausikohtaiset tulokset |
 | Joukkue | `/joukkue/:id` | Joukkuesivu: ottelut, vire, koti/vieras, pistepörssi, maalivahdit, valmentaja, HogiGuru-nurkka (liiga.fi-otteluohjelma 10 min välimuistissa) |
@@ -80,7 +81,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 ### Gurun näkymät (kirjautunut)
 | Sivu | Polku | Sisältö |
 |---|---|---|
-| Oma joukkue | `/oma-joukkue` | Kentällinen (pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), ottelukohtaiset HG-pisteet klikkaamalla pelaajaa, pisteerittely, vaihdetut pelaajat, korjaukset, uuden valmentajan valinta potkujen jälkeen, vaihtotoiveet varaustilanteineen, draft-ennakkolista, suosikkijoukkue, sähköposti-ilmoitukset, salasanan vaihto |
+| Oma joukkue | `/oma-joukkue` | Kentällinen (pystypuolikaukalo SVG:nä – `src/components/HalfRink.tsx` – pelaajat paikoillaan + valmentaja penkillä), ottelukohtaiset HG-pisteet klikkaamalla pelaajaa, pisteerittely, vaihdetut pelaajat, korjaukset, uuden valmentajan valinta potkujen jälkeen, **Vaihdot**-välilehti (omat vaihdot pelaajaselaimella, kun ylläpito on avannut), draft-ennakkolista (ennen draftia), suosikkijoukkue, sähköposti-ilmoitukset, salasanan vaihto |
 | Draft | `/draft` | Live-draft-taulu (yläpalkissa, kun ylläpito ei ole piilottanut) |
 
 ### Ylläpito (`/admin`)
@@ -89,7 +90,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Yleiskatsaus | Tilastopäivitys napista, päivitysloki, avainluvut |
 | Ilmoittautuminen | Lomakkeen avaus/sulku, määräaika, maksu, lisätieto, valintatapa (draft/korit); ilmoittautuneet, veikkausten tarkastelu, hyväksyntä guruksi (+ tunnus, liitos aiempaan guruun), CSV-vienti |
 | Draft | Listat, läsnäolo, animoitu arvonta (tauko), live-valinnat, ennakkolistat, peruminen, tarkistus ja korjaus, hyväksyntä ja julkaisu kentällisiin, yläpalkin näkyvyys, harjoitusdraft (`/admin/draft/harjoitus`) |
-| Vaihdot | Vaihtopäivät kellonaikoineen, vaihtotoiveiden esikatselu ja käsittely, vaihtoloki, peruminen |
+| Vaihdot | **Gurujen vaihtosivu päälle/pois** + freeze-raja (otteluita), käsin vaihto, vaihtoloki, peruminen |
 | Gurut & kentälliset | Gurut, kentälliset, vaihdot, paikkojen muokkaus, pistekorjaukset |
 | Pisteytys & kausi | Kertoimet, kentällisen koko, valintarajat paikoittain, vaihtojen määrä, veikkausosion pisteet |
 | Valmentajat | Valmentajat, potkut |
@@ -97,6 +98,8 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Kokonaistulokset | Veikkausosan esikatselu, oikeiden vastausten korjaus, julkaisu, gaalaesitys, tallennus Hall of Fameen |
 | Hall of Fame | Historiatulokset |
 | Tekninen ylläpito | *Vain pääylläpitäjä:* järjestelmän tila, varmistukset (R2), sähköpostit ja lähetysloki, muutoshistoria |
+
+Muuta: Leaderboardin ja etusivun Top 10:n rivistä aukeaa gurun joukkue (`GuruTeamModal`, `GET /api/gurus/:id/team`); sarjataulukossa 3 alinta punaisella (putoavat); Hall of Famessa kausivoittajilla 🏆; sairastupa päivittyy liiga.fi-kokoonpanojen `injured`-tiedosta.
 
 Koko sivusto on optimoitu mobiilille: taulukot vierivät sivuttain kortin sisällä, ponnahdusikkunat avautuvat alapaneelina, kenttien 16 px fontti estää iOS-zoomauksen.
 
@@ -167,7 +170,9 @@ HogiGuru-app/
 │   ├── 0014_draft_nav.sql       Draft-linkin näkyvyys yläpalkissa
 │   ├── 0015_playoff.sql         pudotuspelitilastot, kauden tyyppi (playoff)
 │   ├── 0016_playoff_reg.sql     Play-Offs-ilmoittautuminen, mestariveikkaus
-│   └── 0017_playoff_rosters.sql Play-Offs-kokoonpanot, ottelutilastot, vaihtoikkuna
+│   ├── 0017_playoff_rosters.sql Play-Offs-kokoonpanot, ottelutilastot, vaihtoikkuna
+│   ├── 0018–0020                 valmentajien kaudet, app_settings ym.
+│   └── 0021_injuries.sql        players.injured, injured_date
 ├── worker/                      BACKEND
 │   ├── index.ts                 API-reitit, istunnot, roolit, cron
 │   ├── data.ts                  kausi, leaderboard, varaukset, valintarajat
@@ -183,7 +188,7 @@ HogiGuru-app/
 │   └── auth.ts                  salasanat, istunnot
 ├── src/                         FRONTEND
 │   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css, draftLogic.ts (harjoitusdraftin selainlogiikka)
-│   ├── components/              HalfRink, GameLog, PlayerCard, CoachReplace, DraftPrefs, SwapRequests, ResultsView, GalaReveal, GoldConfetti
+│   ├── components/              HalfRink, GameLog, PlayerCard, CoachReplace, DraftPrefs, SelfSwap, PlayerBrowser, GuruPopover, GuruTeamModal, ResultsView, GalaReveal, GoldConfetti
 │   ├── pages/                   Home, Register, Leaderboard, Gurukierros, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard, DraftScreen, Team, Privacy
 │   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, DraftPractice, Swaps, Gurus, Scoring, Coaches, Users, Results, HallOfFame, Maintenance
 ├── tools/
@@ -207,7 +212,8 @@ HogiGuru-app/
 | `users`, `sessions` | Tunnukset (`role` admin/guru + `maintainer`-lippu = pääylläpitäjä, `email_prefs`, `unsub_token`, `fav_team`) ja istunnot |
 | `password_resets` | Salasanan palautuslinkit (vain SHA-256-tiiviste, 60 min, kertakäyttöinen) |
 | `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, arvonta (`draft_lottery_at`, `draft_lottery_paused`), `draft_nav`, ilmoittautumisen asetukset, valintatapa, tulosten julkaisu |
-| `teams`, `players`, `player_stats`, `standings` | liiga.fi-data |
+| `teams`, `players`, `player_stats`, `standings` | liiga.fi-data (`players.injured` = sairastupa) |
+| `app_settings` | Avain–arvo-asetukset, mm. `self_swaps` (vaihtosivu guruille 1/0), `self_swap_freeze` |
 | `game_stats`, `team_games`, `games_synced` | Ottelukohtaiset tilastot pelilokia ja Gurukierrosta varten |
 | `coaches` | Valmentajat + potkut |
 | `gurus` | Kisaajat, linkki tunnukseen, draft-numero, `remote_draft` (ei paikalla), `lottery_order` |
@@ -307,18 +313,14 @@ Tarkistukset: pelaaja listalla, paikka ei täynnä, ei tuplavalintaa, paikkakoht
 
 ## Vaihdot
 
-Vaihdot tehdään sivustolla **vaihtotoiveina**. Kellon kanssa ei tarvitse kilpailla.
+Guru tekee vaihdot **itse** sivulla **Oma joukkue → Vaihdot** (`GET/POST /api/me/self-swap`).
 
-1. Guru avaa **Oma joukkue → Vaihtotoiveet** ja lisää toiveet seuraavaan vaihtopäivään: lähtevä pelaaja + tulija ja halutessaan varavaihtoehdot järjestyksessä. Useamman vaihdon keskinäisen järjestyksen voi asettaa. Toiveita voi muokata vaihtopäivän loppuun (klo 21.00) asti, eivätkä muut näe niitä.
-2. Vaihtopäivän päätyttyä ylläpito avaa **Ylläpito → Vaihdot → Toiveet**, näkee esikatselun ja painaa **Hyväksy ja toteuta**.
-3. Käsittely tehdään **kierroksittain**: ensin jokaisen gurun 1. toive vuorojärjestyksessä, sitten 2. toive jne.
-4. **Vuorojärjestys = draft-järjestys; joka toisena vaihtopäivänä käänteinen** (1. normaali, 2. käänteinen, 3. normaali, 4. käänteinen).
-5. Jos tulija on jo täynnä (tai gurulla jo), otetaan seuraava varavaihtoehto. Jos mikään ei käy, vaihto ei toteudu eikä vaihtokertaa kulu. Edellisen gurun vaihdossa vapautunut pelaaja on heti seuraavien valittavissa.
-6. Vaihtokiintiö (4) tarkistetaan; yksittäisen vaihdon voi perua vaihtolokista.
+1. Draftin jälkeen vaihdot ovat jäissä, kunnes **jokainen joukkue on pelannut N ottelua** (oletus 10, `self_swap_freeze`). Sen jälkeen vaihtaa voi milloin tahansa.
+2. Guru valitsee lähtevän pelaajan ja selaa saman paikan pelaajia (`PlayerBrowser`: HG, ottelut, pisteet, varaukset, loukkaantumiset, "vain vapaat"). Vahvistuksessa näkyy HG-pisteet; vaihto toteutuu heti (`swapSlot`).
+3. Vaihtokiintiö (4) ja paikkakohtaiset varausrajat tarkistetaan.
+4. **Näkyvyys:** Ylläpito → Vaihdot → *Gurujen vaihtosivu* -kytkin (`PUT /api/admin/self-swap-settings {enabled, freeze}`). Kun pois päältä, gurut eivät näe välilehteä ja POST estetään; ylläpitäjät näkevät sivun **esikatseluna** testausta varten.
 
-Ylläpito voi edelleen tehdä yksittäisiä vaihtoja käsin (**Gurut → ⇄ Vaihda**).
-
-Ennen vaihtopäivän käsittelyä otetaan automaattisesti tapahtumavarmistus R2:een.
+Ylläpito voi tehdä vaihtoja käsin (**Vaihdot → Käsin vaihto** tai **Gurut → ⇄ Vaihda**) ja perua niitä vaihtolokista. Vanha vaihtopäivä/vaihtotoive-malli (`swap_days`, `swap_requests`, `worker/swaps.ts`) on jäljellä tietokannassa, mutta gurun käyttöliittymä on poistettu.
 
 **Potkut:** Ylläpito → Valmentajat → Potkut (−10 p kaikille, joilla valmentaja on). Gurun Oma joukkue -sivulle ilmestyy valintalaatikko (`POST /api/me/coach`), josta hän valitsee uuden valmentajan heti. Tämä vaihto ei kuluta vaihtokiintiötä (`COUNTED_SWAP`-ehto `worker/draft.ts`:ssä).
 

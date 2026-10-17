@@ -8,6 +8,41 @@ import { SwapModal } from './Gurus';
 interface Day { id: number; date: string; note: string | null; start_time: string; end_time: string; processed_at: string | null }
 interface Swap { id: number; date: string; guru: string; position: Position; in_name: string; out_name: string; in_points: number; out_points: number }
 
+interface SelfCfg { enabled: boolean; freeze: number }
+
+/** Gurun vaihtosivun näkyvyys: piilossa guruilta, ylläpitäjät näkevät esikatseluna. */
+function SelfSwapSettings() {
+  const cfg = useApi<SelfCfg>('/admin/self-swap-settings');
+  const { run } = useAdmin();
+  const [freeze, setFreeze] = useState<string>('');
+  const put = async (body: Partial<SelfCfg>) => { await run(() => api('/admin/self-swap-settings', { method: 'PUT', body }), 'Tallennettu'); cfg.reload(); };
+  if (!cfg.data) return <Spinner />;
+  const on = cfg.data.enabled;
+  return (
+    <Card title="Gurun vaihtosivu" className="mb-6">
+      <div className="flex flex-wrap items-start gap-6 p-5">
+        <label className="flex flex-1 cursor-pointer items-start gap-3">
+          <button type="button" role="switch" aria-checked={on} onClick={() => put({ enabled: !on })}
+            className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-ice-500' : 'bg-white/15'}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+          </button>
+          <span>
+            <span className="block text-sm font-semibold text-white">{on ? 'Vaihdot käytössä guruilla' : 'Vaihtosivu piilotettu guruilta'}</span>
+            <span className="text-xs text-slate-400">{on
+              ? 'Gurut näkevät Oma joukkue → Vaihdot -välilehden ja voivat tehdä vaihtoja freezen päätyttyä.'
+              : 'Gurut eivät näe Vaihdot-välilehteä. Ylläpitäjät näkevät sen esikatseluna (vaihtoja ei tallenneta).'}</span>
+          </span>
+        </label>
+        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (freeze !== '') put({ freeze: Number(freeze) }); }}>
+          <div><p className="label">Freeze (ottelua / joukkue)</p>
+            <input type="number" min={0} className="input w-28" placeholder={String(cfg.data.freeze)} value={freeze} onChange={(e) => setFreeze(e.target.value)} /></div>
+          <button className="btn btn-ghost" disabled={freeze === ''}>Tallenna</button>
+        </form>
+      </div>
+    </Card>
+  );
+}
+
 export default function Swaps() {
   const days = useApi<Day[]>('/swap-days');
   const swaps = useApi<Swap[]>('/admin/swaps');
@@ -19,6 +54,7 @@ export default function Swaps() {
   return (
     <>
       <PageHeader kicker="Vaihtopäivät & loki" title="Vaihdot" />
+      <SelfSwapSettings />
       <ManualSwap onDone={() => swaps.reload()} />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <Card title="Vaihtopäivät">

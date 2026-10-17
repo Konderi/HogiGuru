@@ -1175,6 +1175,21 @@ admin.get('/overview', async (c) => {
 
 admin.post('/sync', async (c) => c.json({ message: await syncLiiga(c.env.DB) }));
 
+// Gurun vaihtosivu: näkyvyys guruille ja freeze-raja
+admin.get('/self-swap-settings', async (c) => c.json({
+  enabled: (await getSetting(c.env.DB, 'self_swaps', '0')) === '1',
+  freeze: Number(await getSetting(c.env.DB, 'self_swap_freeze', '10')) || 0,
+}));
+admin.put('/self-swap-settings', async (c) => {
+  const b = await c.req.json<{ enabled?: boolean; freeze?: number }>();
+  const put = (k: string, v: string) => c.env.DB.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?,?)').bind(k, v);
+  const st: D1PreparedStatement[] = [];
+  if (b.enabled !== undefined) st.push(put('self_swaps', b.enabled ? '1' : '0'));
+  if (b.freeze !== undefined) st.push(put('self_swap_freeze', String(Math.max(0, Math.round(Number(b.freeze) || 0)))));
+  if (st.length) await c.env.DB.batch(st);
+  return c.json({ ok: true });
+});
+
 // Kausi & pisteytys
 admin.put('/season', async (c) => {
   const b = await c.req.json<Partial<Season>>();

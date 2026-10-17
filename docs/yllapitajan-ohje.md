@@ -30,8 +30,8 @@ Ylläpito löytyy osoitteesta **/admin**. Gurujen ohje: [kayttoohje.md](kayttooh
 
 👉 **Lukitse kertoimet ennen kauden alkua** (ks. kohta 6).
 
-### 1.2 Vaihtopäivät
-**Vaihdot → Vaihtopäivät:** lisää päivät ja kellonajat (oletus 9–21).
+### 1.2 Vaihdot
+**Vaihdot → Gurujen vaihtosivu:** aseta freeze-raja (ottelua per joukkue, oletus 10). Pidä kytkin **pois päältä**, kunnes vaihdot halutaan avata (ks. kohta 3).
 
 ### 1.3 Ilmoittautuminen
 1. **Ilmoittautuminen:** aseta määräaika, maksu ja lisätieto. Paina **▶ Avaa ilmoittautuminen**.
@@ -83,15 +83,15 @@ Avaa **📺 seinänäkymä samassa selaimessa** (`/draft/naytto?harjoitus`): se 
 
 ---
 
-## 3. Vaihtopäivä
+## 3. Vaihdot
 
-1. Gurut tallentavat toiveensa vaihtopäivän aikana (klo 21 asti).
-2. Päivän päätyttyä: **Vaihdot → kyseinen päivä → Toiveet**.
-3. **Esikatselu** näyttää jokaisen toiveen tuloksen ja syyn (✓ onnistuu / varavaihtoehto käytetty / ✗ täynnä / kiintiö täynnä). Vuorojärjestys (normaali/käänteinen) näkyy otsikossa.
-4. Tarkista esikatselu. Paina **Hyväksy ja toteuta**. Järjestelmä ottaa ensin automaattisesti varmistuksen, kirjaa vaihdot ja merkitsee päivän käsitellyksi (✓ Käsitelty).
-5. Ilmoita tulokset WhatsApp-ryhmään (esikatselun voi kopioida). Gurut näkevät vaihtojen vaikutuksen myöhemmin myös *Gurukierros → Vaihtojen kuningas* -näkymästä.
+Gurut tekevät vaihdot itse *Oma joukkue → Vaihdot* -välilehdellä; vaihto toteutuu heti, ja kiintiö sekä varausrajat tarkistetaan automaattisesti.
 
-**Yksittäinen vaihto käsin:** Gurut → ⇄ Vaihda.
+- **Kytkin (Vaihdot → Gurujen vaihtosivu):** kun pois päältä, gurut eivät näe välilehteä eivätkä voi vaihtaa. Ylläpitäjät näkevät sivun silti **esikatseluna** ja voivat testata sitä. Kytke päälle, kun vaihdot avataan.
+- **Freeze:** vaikka kytkin on päällä, vaihdot aukeavat vasta, kun jokainen joukkue on pelannut asetetun määrän otteluita.
+- Gurut näkevät vaihtojen vaikutuksen *Gurukierros → Vaihtojen kuningas* -näkymästä.
+
+**Yksittäinen vaihto käsin:** Vaihdot → Käsin vaihto tai Gurut → ⇄ Vaihda.
 **Virheellinen vaihto:** Vaihdot → vaihtoloki → ↶ Peru.
 
 ---
@@ -100,10 +100,10 @@ Avaa **📺 seinänäkymä samassa selaimessa** (`/draft/naytto?harjoitus`): se 
 
 1. **Valmentajat → Potkut** valmentajan kohdalla → kaikki gurut, joilla hän on, saavat −10 p automaattisesti.
 2. Lisää joukkueen uusi valmentaja (**Valmentajat → Lisää valmentaja**).
-3. Gurujen *Oma joukkue* -sivulle ilmestyy valintalaatikko, josta he valitsevat uuden valmentajan **heti itse**. Valinta ei vaadi vaihtopäivää eikä kuluta vaihtokiintiötä, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Ilmoita potkuista WhatsApp-ryhmään.
+3. Gurujen *Oma joukkue* -sivulle ilmestyy valintalaatikko, josta he valitsevat uuden valmentajan **heti itse**. Valinta ei kuluta vaihtokiintiötä, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Ilmoita potkuista WhatsApp-ryhmään.
 4. Jos guru ei vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä hänen kentällisessään.
 
-Pelaajille ei ole vastaavaa poikkeusta: Liigasta lähtenyt pelaaja vaihdetaan normaalisti seuraavana vaihtopäivänä.
+Pelaajille ei ole vastaavaa poikkeusta: Liigasta lähtenyt pelaaja vaihdetaan normaalina vaihtona.
 
 ---
 

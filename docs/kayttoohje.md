@@ -72,45 +72,35 @@ Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
 ---
 
-## 6. Vaihdot – vaihtotoiveet
+## 6. Vaihdot
 
-Vaihtoja on kaudessa **4**. Vaihtopäivät ovat 11.10., 29.11., 10.1. ja 21.2. klo 9–21.
+Vaihtoja on kaudessa **4**. Teet ne itse, ja vaihto astuu voimaan heti.
 
-### Toiveiden tekeminen
-1. Avaa **Oma joukkue → Vaihtotoiveet**.
-2. Paina **+ Uusi vaihtotoive** ja valitse **lähtevä** pelaaja kentällisestäsi.
-3. Hae **tulija** nimellä. Lisää halutessasi **varavaihtoehtoja** (2., 3. …). Niitä käytetään, jos ensimmäinen on jo täynnä.
-4. Jos teet useita vaihtoja, järjestä ne nuolilla tärkeysjärjestykseen.
-5. Paina **Tallenna**.
+- Draftin jälkeen vaihdot ovat jäissä, kunnes **jokainen joukkue on pelannut 10 ottelua**. Sen jälkeen voit vaihtaa milloin tahansa.
+- **Vaihdot**-välilehti ilmestyy *Oma joukkue* -sivulle, kun ylläpito avaa vaihdot.
 
-Toiveita voi muokata vaihtopäivän loppuun (klo 21.00) asti. Muut eivät näe niitä.
+### Vaihdon tekeminen
+1. Avaa **Oma joukkue → Vaihdot** ja valitse **lähtevä** pelaaja.
+2. Valitse tulija hakemalla nimellä tai **selaamalla** saman paikan pelaajia (HG-pisteet, ottelut, varaukset, 🩹 loukkaantuneet, "vain vapaat", lajittelu).
+3. Tarkista vahvistusikkuna ja paina **Vahvista**.
 
 ### Varaustilanteen lukeminen
-Pelaajahaussa ja toivelistassa jokaisen pelaajan vieressä on merkki **varattu / max**:
+Jokaisen pelaajan vieressä on merkki **varattu / max** (klikkaamalla näet, keillä pelaaja on):
 
 | Väri | Merkitys |
 |---|---|
 | 🟢 vihreä | Tilaa on |
 | 🟡 keltainen | Yksi paikka jäljellä |
-| 🔴 punainen | Täynnä – ei voi valita, ellei joku vaihda häntä pois samana päivänä |
+| 🔴 punainen | Täynnä – ei voi valita, ennen kuin joku vaihtaa hänet pois |
 
-Kaikki pelaajat ja vapaat paikat näet sivulla **Tilastot**. Valitse sieltä **"vain vapaat"**.
+Kaikki pelaajat ja vapaat paikat näet myös sivulla **Pelaajat** (suodatin **"vain vapaat"**).
 
-⚠️ Tilanne voi muuttua ennen käsittelyä, koska muut gurut tekevät vaihtoja ennen sinua. **Lisää aina varavaihtoehtoja**, erityisesti keltaisille ja punaisille pelaajille.
-
-### Miten toiveet käsitellään
-- Käsittely tapahtuu vaihtopäivän päätyttyä **kierroksittain**: ensin kaikkien 1. toive, sitten 2. toive jne.
-- Vuorojärjestys on **draft-järjestys**. Joka toisena vaihtopäivänä (2. ja 4.) järjestys on **käänteinen**. Oma vuorosi näkyy Vaihtotoiveet-sivun sivupalkissa.
-- Jos tulija on täynnä, kokeillaan seuraavaa varavaihtoehtoa. Jos mikään ei käy, vaihto ei toteudu **eikä vaihtokertaa kulu**.
-- Toisen gurun vaihdossa vapautunut pelaaja on heti seuraavien valittavissa.
-- Uusi pelaaja kerää pisteitä vaihtohetkestä eteenpäin.
-
-Lopputuloksen näet **Vaihtotoiveet**-sivun historiasta ja kentällisestäsi.
+- Lähtevän pelaajan pisteet jäävät sinulle; uusi pelaaja kerää pisteitä vaihtohetkestä eteenpäin.
 
 ### Valmentajan potkut
-Jos valmentajasi saa potkut, saat −10 p. Voit valita uuden valmentajan heti itse: **Oma joukkue** -sivulle ilmestyy valintalaatikko, kun ylläpito on merkinnyt potkut. Valinta ei vaadi vaihtopäivää eikä kuluta vaihtojasi, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Jos et vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
+Jos valmentajasi saa potkut, saat −10 p. Voit valita uuden valmentajan heti itse: **Oma joukkue** -sivulle ilmestyy valintalaatikko, kun ylläpito on merkinnyt potkut. Valinta ei kuluta vaihtojasi, ja uusi valmentaja kerää pisteitä valintapäivästä alkaen. Jos et vaihda, joukkueen uusi valmentaja jatkaa pisteiden keräämistä.
 
-Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihdetaan normaalisti seuraavana vaihtopäivänä.
+Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihdetaan normaalina vaihtona.
 
 ---
 
@@ -118,8 +108,9 @@ Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihde
 
 | Sivu | Mitä näet |
 |---|---|
-| **Leaderboard** | Kaikkien gurujen pisteet, sijoitusmuutokset ▲▼ ja ero kärkeen |
-| **Tilastot** | Pelaajien ja valmentajien HG-pisteet, varaustilanne ja "vain vapaat" -suodatin. Järjestä klikkaamalla sarakkeen otsikkoa; klikkaa pelaajaa avataksesi pelaajakortin |
+| **Leaderboard** | Kaikkien gurujen pisteet, sijoitusmuutokset ▲▼ ja ero kärkeen. Klikkaa gurua nähdäksesi hänen joukkueensa |
+| **Pelaajat** | Kaikki pelaajat ja valmentajat HG-pisteineen, paikka (H/P/MV), varaustilanne (klikkaa → gurut), "vain vapaat" ja 🩹 **Sairastupa** -suodattimet. Järjestä sarakkeen otsikosta; klikkaa pelaajaa avataksesi pelaajakortin |
+| **Ottelut** | Otteluohjelma, kokoonpanot HG-merkein ja maalivideot |
 | **Sarjataulukko** | Liigan runkosarja |
 | **Kokonaistulokset** | All-Stars-pisteet kauden aikana; veikkausosan tulokset paljastetaan kauden päätösgaalassa |
 | **Hall of Fame** | Maratontaulukko vuodesta 2001, mestarit ja kausikohtaiset tulokset |

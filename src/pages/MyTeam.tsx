@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { api, fmt, fmtDate, POS_LABEL, type Position, type Slot } from '../api';
 import { useApi, useAuth } from '../auth';
 import { DraftPrefsEditor, type PoolItem } from '../components/DraftPrefs';
-import { SwapRequests } from '../components/SwapRequests';
 import { SelfSwap } from '../components/SelfSwap';
 import HalfRink from '../components/HalfRink';
 import GameLog from '../components/GameLog';
@@ -35,7 +34,7 @@ function PlayerTile({ s, onOpen }: { s?: Slot; onOpen?: (s: Slot) => void }) {
 export default function MyTeam() {
   const team = useApi<TeamResp>('/me/team');
   const draft = useApi<DraftResp>('/draft');
-  const [tab, setTab] = useState<'team' | 'prefs' | 'swaps' | 'self'>('team');
+  const [tab, setTab] = useState<'team' | 'prefs' | 'self'>('team');
   const [sel, setSel] = useState<Slot | null>(null);
   const self = useApi<{ enabled: boolean; preview: boolean }>('/me/self-swap');
 
@@ -51,6 +50,9 @@ export default function MyTeam() {
   };
   const history = slots.filter((s) => !s.active);
   const total = slots.reduce((a, s) => a + s.value, 0) + adjustments.reduce((a, x) => a + x.points, 0);
+  // Välilehdet: ennen draftia ennakkolista; draftin jälkeen Vaihdot, jos käytössä (ylläpitäjälle aina esikatseluna)
+  type Tab = 'team' | 'prefs' | 'self';
+  const tabs: Tab[] = ['team', ...(draft.data?.status === 'setup' ? ['prefs' as const] : self.data?.enabled || self.data?.preview ? ['self' as const] : [])];
 
   return (
     <>
@@ -62,17 +64,17 @@ export default function MyTeam() {
         </div>
       </PageHeader>
 
-      {draft.data && draft.data.status !== 'live' && (
+      {draft.data && draft.data.status !== 'live' && tabs.length > 1 && (
         <div className="mb-6 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
-          {(['team', ...(draft.data.status === 'setup' ? ['prefs'] : self.data?.enabled ? ['self'] : self.data?.preview ? ['swaps', 'self'] : ['swaps'])] as ('team' | 'prefs' | 'swaps' | 'self')[]).map((t) => (
+          {tabs.map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-xl px-2 py-2 text-xs font-semibold uppercase tracking-wide sm:flex-none sm:px-4 sm:text-sm sm:tracking-wider ${tab === t ? 'bg-ice-500 text-rink-950' : 'text-slate-400'}`}>
-              {t === 'team' ? 'Kentällinen' : t === 'prefs' ? 'Draft-ennakkolista' : t === 'self' ? `Vaihdot${self.data?.preview ? ' (esikatselu)' : ''}` : 'Vaihtotoiveet'}
+              {t === 'team' ? 'Kentällinen' : t === 'prefs' ? 'Draft-ennakkolista' : `Vaihdot${self.data?.preview ? ' (esikatselu)' : ''}`}
             </button>
           ))}
         </div>
       )}
 
-      {tab === 'self' ? <SelfSwap slots={slots} onDone={team.reload} /> : tab === 'swaps' ? <SwapRequests slots={slots} /> : tab === 'prefs' && draft.data ? (
+      {tab === 'self' && tabs.includes('self') ? <SelfSwap slots={slots} onDone={team.reload} /> : tab === 'prefs' && draft.data ? (
         <Card title="Draft-ennakkolista" ><div className="p-5"><DraftPrefsEditor endpoint="/me/draft-prefs" pool={draft.data.pool} roster={draft.data.roster} /></div></Card>
       ) : (
         <div className="space-y-6">
