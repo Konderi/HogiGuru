@@ -5,13 +5,13 @@ export type Tournament = 'runkosarja' | 'playoffs';
 
 interface LTeam { teamId: string; teamName: string; goals?: number; logos?: { darkBg?: string } }
 interface LGame {
-  id: number; start: string; ended: boolean; started: boolean; finishedType?: string;
+  id: number; start: string; ended: boolean; started: boolean; finishedType?: string; gameTime?: number; currentPeriod?: number;
   homeTeam: LTeam; awayTeam: LTeam; playOffPhase?: number; playOffPair?: number;
 }
 
 export interface GameRow {
   id: number; start: string; ended: boolean; started: boolean; ot: 'OT' | 'SO' | null;
-  tournament: Tournament; phase: number | null;
+  tournament: Tournament; phase: number | null; gameTime: number | null; period: number | null;
   home: { id: string; name: string; logo: string | null; goals: number };
   away: { id: string; name: string; logo: string | null; goals: number };
 }
@@ -31,13 +31,13 @@ async function cachedJson<T>(url: string, maxAge: number, waitUntil: (p: Promise
 const team = (t: LTeam) => ({ id: t.teamId, name: t.teamName, logo: t.logos?.darkBg ?? null, goals: t.goals ?? 0 });
 
 export async function fetchGames(season: number, tournament: Tournament, waitUntil: (p: Promise<unknown>) => void): Promise<GameRow[]> {
-  const data = await cachedJson<LGame[]>(`https://liiga.fi/api/v2/games?tournament=${tournament}&season=${season}`, 120, waitUntil);
+  const data = await cachedJson<LGame[]>(`https://liiga.fi/api/v2/games?tournament=${tournament}&season=${season}`, 30, waitUntil);
   return (Array.isArray(data) ? data : [])
     .filter((g) => g.homeTeam?.teamId && g.awayTeam?.teamId)
     .map((g): GameRow => ({
       id: g.id, start: g.start, ended: !!g.ended, started: !!g.started,
       ot: g.finishedType?.includes('WINNING_SHOT') ? 'SO' : g.finishedType?.includes('EXTENDED') ? 'OT' : null,
-      tournament, phase: g.playOffPhase || null, home: team(g.homeTeam), away: team(g.awayTeam),
+      tournament, phase: g.playOffPhase || null, gameTime: g.gameTime ?? null, period: g.currentPeriod ?? null, home: team(g.homeTeam), away: team(g.awayTeam),
     }))
     .sort((a, b) => a.start.localeCompare(b.start));
 }

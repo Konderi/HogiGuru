@@ -13,7 +13,7 @@ export interface Forecast {
   xgHome: number; xgAway: number; likely: string; formHome: string[]; formAway: string[];
 }
 export interface Game {
-  id: number; start: string; ended: boolean; started: boolean; ot: 'OT' | 'SO' | null;
+  id: number; start: string; ended: boolean; started: boolean; ot: 'OT' | 'SO' | null; gameTime?: number | null; period?: number | null;
   tournament: 'runkosarja' | 'playoffs'; phase: number | null; home: GameTeam; away: GameTeam;
   forecast?: Forecast | null;
 }
@@ -45,6 +45,15 @@ function Logo({ t }: { t: GameTeam }) {
   return t.logo ? <img src={t.logo} alt="" className="h-7 w-7 shrink-0 object-contain" /> : <span className="h-7 w-7 shrink-0" />;
 }
 
+/** Käynnissä olevan ottelun tila listassa: erätauko, kun peliaika on täsmälleen erän lopussa. */
+function liveLabel(g: Game) {
+  const t = g.gameTime ?? 0, p = g.period ?? 0;
+  if (p >= 1 && p <= 3 && t >= p * 1200) return p === 3 ? 'jatkoajalle' : 'erätauko';
+  if (p >= 5) return 'voittolaukaukset';
+  if (p === 4) return 'jatkoaika';
+  return p ? `${p}. erä` : 'käynnissä';
+}
+
 export function GameRow({ g, fav }: { g: Game; fav?: string | null }) {
   const live = g.started && !g.ended;
   const hl = fav && (teamKey(g.home.id) === teamKey(fav) || teamKey(g.away.id) === teamKey(fav));
@@ -67,7 +76,7 @@ export function GameRow({ g, fav }: { g: Game; fav?: string | null }) {
             <span className="mt-0.5 block font-mono text-[10px] text-slate-400">{fmt(g.forecast.odds.home)} · {fmt(g.forecast.odds.draw)} · {fmt(g.forecast.odds.away)}</span>
           </span>
         )}
-        {live && <span className="block text-[10px] font-semibold uppercase tracking-wider text-goal">käynnissä</span>}
+        {live && <span className={`block text-[10px] font-semibold uppercase tracking-wider ${liveLabel(g) === 'erätauko' ? 'text-amber-300' : 'text-goal'}`}>{liveLabel(g)}</span>}
         {g.phase && <span className="block text-[10px] text-slate-500">{PHASE[g.phase]}</span>}
       </span>
       <span className={`flex items-center gap-2 text-sm font-medium ${win(g.away.goals, g.home.goals)}`}>
@@ -435,7 +444,7 @@ const liveClock = (l?: Live) => {
   const p = l.period ?? Math.min(4, Math.floor(l.gameTime / 1200) + 1);
   if (p >= 5) return 'Voittolaukaukset';
   const inP = Math.max(0, l.gameTime - (p - 1) * 1200);
-  if (p <= 3 && inP >= 1200) return `${p}. erä päättynyt`;
+  if (p <= 3 && inP >= 1200) return p === 3 ? 'Varsinainen peliaika päättynyt' : `Erätauko (${p}. erä päättynyt)`;
   return `${p > 3 ? 'Jatkoaika' : `${p}. erä`} · ${clock(Math.min(inP, p > 3 ? 1200 : 1200))}`;
 };
 
