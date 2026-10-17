@@ -17,7 +17,8 @@ import { esc, layout, sendMail, SITE } from './mail';
 import { adminDailyOn, getSetting, sendAdminReport, sendWeeklyReport } from './reports';
 import { aliveTeams, fetchBracket } from './playoff';
 import { leaderboard as poLeaderboard, limitsOf, loadContext as poContext, playoffSeasonOf, PO_POS, PO_ROSTER, posOfRole, reservedCounts, rosterOf, swapWindow, today, type PoPos } from './playoffGame';
-import { fetchGames, gameDetail, gameExtra, type Tournament } from './games';
+import { fetchGames, gameDetail, gameExtra, gamePreview, type Tournament } from './games';
+import { forecasts } from './forecast';
 
 interface Env { DB: D1Database; BACKUPS: R2Bucket; RESEND_API_KEY?: string; MAIL_FROM?: string }
 interface User { id: number; email: string; name: string; role: 'superadmin' | 'admin' | 'guru' }
@@ -133,7 +134,9 @@ app.get('/games', async (c) => {
   const t: Tournament = c.req.query('tournament') === 'playoffs' ? 'playoffs' : 'runkosarja';
   const y = Number(c.req.query('season')) || season.liiga_season;
   try {
-    return c.json({ season: y, tournament: t, games: await fetchGames(y, t, (p) => c.executionCtx.waitUntil(p)) });
+    const games = await fetchGames(y, t, (p) => c.executionCtx.waitUntil(p));
+    const fc = t === 'runkosarja' ? forecasts(games) : new Map();
+    return c.json({ season: y, tournament: t, games: games.map((g) => ({ ...g, forecast: fc.get(g.id) ?? null })) });
   } catch (e) { return c.json({ error: (e as Error).message }, 502); }
 });
 
@@ -141,9 +144,13 @@ app.get('/games/:id', async (c) => {
   const db = c.env.DB; const season = c.get('season'); const user = c.get('user');
   const id = Number(c.req.param('id'));
   const wu = (p: Promise<unknown>) => c.executionCtx.waitUntil(p);
-  let game = null;
+  let game = null; let forecast = null;
   for (const t of ['runkosarja', 'playoffs'] as const) {
-    try { game = (await fetchGames(season.liiga_season, t, wu)).find((g) => g.id === id) ?? null; } catch { /* ohitetaan */ }
+    try {
+      const list = await fetchGames(season.liiga_season, t, wu);
+      game = list.find((g) => g.id === id) ?? null;
+      if (game && !game.started && t === 'runkosarja') forecast = forecasts(list).get(id) ?? null;
+    } catch { /* ohitetaan */ }
     if (game) break;
   }
   const mine = new Set<number>();
@@ -154,12 +161,13 @@ app.get('/games/:id', async (c) => {
     ]);
     for (const r of [...a.results, ...b.results] as { id: number }[]) mine.add(r.id);
   }
-  const [players, extra] = await Promise.all([
+  const [players, extra, preview] = await Promise.all([
     gameDetail(db, id, season.scoring, mine),
     game?.started ? gameExtra(season.liiga_season, id, game.ended, wu).catch(() => null) : Promise.resolve(null),
+    game && !game.started ? gamePreview(season.liiga_season, game, wu).catch(() => null) : Promise.resolve(null),
   ]);
   if (!game && !players.length) return c.json({ error: 'Ottelua ei löytynyt' }, 404);
-  return c.json({ game, players, extra });
+  return c.json({ game, players, extra, forecast, preview });
 });
 
 app.get('/public/overview', async (c) => {

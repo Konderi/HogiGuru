@@ -5,9 +5,30 @@ import { useApi, useAuth } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 
 export interface GameTeam { id: string; name: string; logo: string | null; goals: number }
+export interface Forecast {
+  pHome: number; pDraw: number; pAway: number; odds: { home: number; draw: number; away: number };
+  xgHome: number; xgAway: number; likely: string; formHome: string[]; formAway: string[];
+}
 export interface Game {
   id: number; start: string; ended: boolean; started: boolean; ot: 'OT' | 'SO' | null;
   tournament: 'runkosarja' | 'playoffs'; phase: number | null; home: GameTeam; away: GameTeam;
+  forecast?: Forecast | null;
+}
+
+const pct = (p: number) => `${Math.round(p * 100)} %`;
+/** Kapea 1–X–2-todennäköisyyspalkki */
+function ProbBar({ f, big }: { f: Forecast; big?: boolean }) {
+  return (
+    <div className={`flex overflow-hidden rounded-full ${big ? 'h-3' : 'h-1.5'}`}>
+      <span className="bg-ice-400" style={{ width: pct(f.pHome) }} />
+      <span className="bg-slate-500" style={{ width: pct(f.pDraw) }} />
+      <span className="bg-amber-400" style={{ width: pct(f.pAway) }} />
+    </div>
+  );
+}
+const FORM_CLS: Record<string, string> = { V: 'bg-emerald-500 text-rink-950', JV: 'bg-emerald-500/50 text-white', JH: 'bg-goal/50 text-white', H: 'bg-goal text-white' };
+function Form({ f }: { f: string[] }) {
+  return <span className="inline-flex gap-1">{f.map((x, i) => <span key={i} className={`grid h-5 min-w-5 place-items-center rounded px-1 text-[10px] font-bold ${FORM_CLS[x]}`}>{x}</span>)}</span>;
 }
 
 const PHASE: Record<number, string> = { 1: '1. kierros', 2: 'Puolivälierät', 3: 'Välierät', 4: 'Pronssi', 5: 'Finaali' };
@@ -37,6 +58,12 @@ export function GameRow({ g, fav }: { g: Game; fav?: string | null }) {
             {g.ot && <span className="ml-1 align-top text-[10px] text-slate-400">{g.ot === 'SO' ? 'VL' : 'JA'}</span>}
           </span>
         ) : <span className="font-display text-lg text-ice-300">{time(g.start)}</span>}
+        {!g.started && g.forecast && (
+          <span className="mt-1 block" title={`Ennuste: koti ${pct(g.forecast.pHome)} · tasapeli ${pct(g.forecast.pDraw)} · vieras ${pct(g.forecast.pAway)}`}>
+            <ProbBar f={g.forecast} />
+            <span className="mt-0.5 block font-mono text-[10px] text-slate-400">{fmt(g.forecast.odds.home)} · {fmt(g.forecast.odds.draw)} · {fmt(g.forecast.odds.away)}</span>
+          </span>
+        )}
         {live && <span className="block text-[10px] font-semibold uppercase tracking-wider text-goal">käynnissä</span>}
         {g.phase && <span className="block text-[10px] text-slate-500">{PHASE[g.phase]}</span>}
       </span>
@@ -260,9 +287,88 @@ function TeamStats({ t, players, x }: { t: GameTeam; players: PRow[]; x?: XTeam 
   );
 }
 
+interface Cmp { pointsAverage: number; pointsAverageRank: number; gf_gp: number; gf_gpRank: number; ga_gp: number; ga_gpRank: number; powerplayPercentage: number; powerplayPercentageRank: number; penaltykillPercentage: number; penaltykillPercentageRank: number; faceoffPercentage: number; faceoffPercentageRank: number; shotsPerGame: number; shotsPerGameRank: number }
+interface Watch { id: number; name: string; jersey: string | null; role: string | null; value: number; category: string }
+interface Preview { home: Cmp | null; away: Cmp | null; watchHome: Watch[]; watchAway: Watch[] }
+const CAT: Record<string, string> = { points: 'p', goals: 'm', assists: 's', plusMinus: '+/−', savePercentage: 'torj-%', gaa: 'pmk' };
+
+function PreviewView({ g, f, p }: { g: Game; f: Forecast | null; p: Preview | null }) {
+  const rows: [string, keyof Cmp, keyof Cmp, (n: number) => string, boolean][] = [
+    ['Pisteitä / ottelu', 'pointsAverage', 'pointsAverageRank', (n) => fmt(n, 2), true],
+    ['Tehdyt maalit / ottelu', 'gf_gp', 'gf_gpRank', (n) => fmt(n, 2), true],
+    ['Päästetyt maalit / ottelu', 'ga_gp', 'ga_gpRank', (n) => fmt(n, 2), false],
+    ['Ylivoima-%', 'powerplayPercentage', 'powerplayPercentageRank', (n) => fmt(n, 1), true],
+    ['Alivoima-%', 'penaltykillPercentage', 'penaltykillPercentageRank', (n) => fmt(n, 1), true],
+    ['Aloitus-%', 'faceoffPercentage', 'faceoffPercentageRank', (n) => fmt(n, 1), true],
+    ['Laukauksia / ottelu', 'shotsPerGame', 'shotsPerGameRank', (n) => fmt(n, 1), true],
+  ];
+  return (
+    <div className="space-y-6">
+      {f && (
+        <Card title="HG-ennuste">
+          <div className="space-y-4 p-5">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {([['1', g.home.name, f.pHome, f.odds.home, 'text-ice-300'], ['X', 'Tasapeli', f.pDraw, f.odds.draw, 'text-slate-300'], ['2', g.away.name, f.pAway, f.odds.away, 'text-amber-300']] as const).map(([k, l, pp, o, cls]) => (
+                <div key={k} className="rounded-xl bg-white/5 p-3">
+                  <p className="truncate text-[11px] uppercase tracking-wider text-slate-400">{k} · {l}</p>
+                  <p className={`scoreboard text-3xl ${cls}`}>{pct(pp)}</p>
+                  <p className="font-mono text-sm text-white">{fmt(o)}</p>
+                </div>
+              ))}
+            </div>
+            <ProbBar f={f} big />
+            <div className="grid gap-3 text-sm sm:grid-cols-3">
+              <div className="rounded-xl bg-white/5 p-3 text-center"><p className="label">Odotetut maalit</p><p className="font-mono text-white">{fmt(f.xgHome, 2)} – {fmt(f.xgAway, 2)}</p></div>
+              <div className="rounded-xl bg-white/5 p-3 text-center"><p className="label">Todennäköisin tulos</p><p className="font-display text-xl text-white">{f.likely}</p></div>
+              <div className="space-y-1 rounded-xl bg-white/5 p-3 text-xs">
+                <p className="label">Viimeiset 5</p>
+                <p className="flex items-center justify-between gap-2"><span className="truncate text-slate-300">{g.home.name}</span><Form f={f.formHome} /></p>
+                <p className="flex items-center justify-between gap-2"><span className="truncate text-slate-300">{g.away.name}</span><Form f={f.formAway} /></p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">Ennuste perustuu joukkueiden kauden maalitehoon ja -puolustukseen, viimeisten 5 ottelun vireeseen ja kotietuun (Poisson-malli, varsinainen peliaika). Kertoimet = 1 / todennäköisyys, ilman marginaalia. Leikkimielinen arvio.</p>
+          </div>
+        </Card>
+      )}
+      {p?.home && p.away && (
+        <Card title="Joukkuevertailu">
+          <table className="table">
+            <thead><tr><th className="num">{g.home.name}</th><th className="text-center">Tilasto</th><th>{g.away.name}</th></tr></thead>
+            <tbody>
+              {rows.map(([l, k, rk, f2, high]) => {
+                const h = p.home![k], a = p.away![k];
+                const better = h === a ? 0 : (h > a) === high ? 1 : -1;
+                return (
+                  <tr key={l}>
+                    <td className={`num ${better > 0 ? 'font-semibold text-white' : 'text-slate-400'}`}>{f2(h)} <span className="text-[10px] text-slate-500">({p.home![rk]}.)</span></td>
+                    <td className="text-center text-xs text-slate-400">{l}</td>
+                    <td className={better < 0 ? 'font-semibold text-white' : 'text-slate-400'}>{f2(a)} <span className="text-[10px] text-slate-500">({p.away![rk]}.)</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="px-5 py-2 text-[11px] text-slate-500">Suluissa sija liigassa. Lähde: liiga.fi</p>
+        </Card>
+      )}
+      {p && (p.watchHome.length > 0 || p.watchAway.length > 0) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {([[g.home, p.watchHome], [g.away, p.watchAway]] as const).map(([t, list]) => (
+            <Card key={t.id} title={`Seuraa: ${t.name}`}>
+              <ul className="divide-y divide-white/5 text-sm">
+                {list.map((w) => <li key={`${w.id}-${w.category}`} className="flex items-center gap-3 px-4 py-2"><span className="w-8 font-mono text-xs text-slate-500">#{w.jersey}</span><span className="flex-1 text-white">{w.name}</span><span className="font-mono text-ice-300">{fmt(w.value)} {CAT[w.category] ?? w.category}</span></li>)}
+              </ul>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function GameDetail() {
   const { id } = useParams();
-  const { data, error, loading } = useApi<{ game: Game | null; players: PRow[]; extra: Extra | null }>(`/games/${id}`, [id]);
+  const { data, error, loading } = useApi<{ game: Game | null; players: PRow[]; extra: Extra | null; forecast: Forecast | null; preview: Preview | null }>(`/games/${id}`, [id]);
   if (loading && !data) return <Spinner />;
   if (!data) return <ErrorBox error={error} />;
   const g = data.game;
@@ -290,7 +396,9 @@ export function GameDetail() {
           </div>
         </section>
       ) : <PageHeader title="Ottelu" />}
-      {g && !g.started ? <Card><Empty>Ottelu ei ole vielä alkanut.</Empty></Card> : g ? (
+      {g && !g.started ? (
+        data.forecast || data.preview ? <PreviewView g={g} f={data.forecast} p={data.preview} /> : <Card><Empty>Ottelu ei ole vielä alkanut.</Empty></Card>
+      ) : g ? (
         <>
           {data.extra && <ExtraView g={g} x={data.extra} />}
           {!g.ended ? <Card><Empty>Ottelu on käynnissä – pelaajien HG-pisteet päivittyvät ottelun jälkeen.</Empty></Card> : (

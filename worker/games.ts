@@ -42,6 +42,19 @@ export async function fetchGames(season: number, tournament: Tournament, waitUnt
     .sort((a, b) => a.start.localeCompare(b.start));
 }
 
+/** Ottelun ennakko liiga.fi:stä: joukkuevertailu ja seurattavat pelaajat. */
+export async function gamePreview(season: number, g: GameRow, waitUntil: (p: Promise<unknown>) => void) {
+  const date = g.start.slice(0, 10);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = await cachedJson<any>(`https://liiga.fi/api/v2/games/preview/${season}/${g.id}/?gameDate=${date}&homeTeam=${encodeURIComponent(g.home.id)}&awayTeam=${encodeURIComponent(g.away.id)}`, 1800, waitUntil);
+  const key = (id: string) => id.split(':')[0];
+  const cmp = (id: string) => d?.teamComparison?.[key(id)] ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const watch = (id: string) => ((d?.playersToWatch?.all?.[key(id)] ?? []) as any[]).slice(0, 5)
+    .map((p) => ({ id: p.playerId, name: String(p.playerName ?? '').split(' ').reverse().join(' '), jersey: p.playerJersey ?? null, role: p.role ?? null, value: p.value, category: p.category }));
+  return { home: cmp(g.home.id), away: cmp(g.away.id), watchHome: watch(g.home.id), watchAway: watch(g.away.id) };
+}
+
 interface StatRow {
   player_id: number; team_id: string; goals: number; assists: number; pim: number; plus_minus: number;
   saves: number; goals_against: number; shutout: number; win: number;
