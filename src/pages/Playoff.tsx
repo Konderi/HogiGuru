@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { api } from '../api';
 import { isAdminRole, useApi, useAuth } from '../auth';
-import { Avatar, Card, Empty, ErrorBox, Modal, PageHeader, ReservedBadge, Spinner } from '../ui';
+import { Avatar, Card, Empty, ErrorBox, Modal, PageHeader, ReservedBadge, Spinner, Trophy } from '../ui';
 
 interface SeriesTeam { id: string; name: string; logo: string | null; wins: number }
 interface Series {
@@ -141,7 +141,7 @@ function AdminCompetition() {
                   {data.entries.map((e) => (
                     <li key={e.id} className="flex items-center gap-3 py-1.5">
                       <span className="flex-1 text-slate-200">{e.name} <span className="text-xs text-slate-500">{e.email}</span></span>
-                      <span className="text-xs text-slate-400">🏆 {e.champion_name ?? '–'}</span>
+                      <span className="text-xs text-slate-400"><Trophy className="h-4 w-4" /> {e.champion_name ?? '–'}</span>
                       <button className="text-xs text-red-300 hover:text-red-200" onClick={() => confirm(`Poistetaanko ${e.name}?`) && run(() => api(`/admin/playoff/entry/${e.id}`, { method: 'DELETE' }))}>Poista</button>
                     </li>
                   ))}

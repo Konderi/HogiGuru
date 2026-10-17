@@ -2,6 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { api, matchName, POS_SHORT, type Position } from './api';
 
 /** HogiGuru-vaakuna (public/hogiguru_vaakuna_ikoni_*.png). Vanha SVG-logo: src/legacy/LegacyLogo.tsx */
+export function Trophy({ className = 'h-6 w-6', title = 'Mestari' }: { className?: string; title?: string }) {
+  return (
+    <img src="/hg_pokaali_ikoni_64.png" srcSet="/hg_pokaali_ikoni_32.png 0.5x, /hg_pokaali_ikoni_64.png 1x, /hg_pokaali_ikoni_128.png 2x, /hg_pokaali_ikoni_256.png 4x"
+      alt={title} title={title} className={`inline-block align-middle object-contain drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] ${className}`} />
+  );
+}
+
 export function Logo({ className = 'h-10 w-10' }: { className?: string }) {
   return (
     <img src="/hogiguru_vaakuna_ikoni_64.png" srcSet="/hogiguru_vaakuna_ikoni_64.png 1x, /hogiguru_vaakuna_ikoni_128.png 2x, /hogiguru_vaakuna_ikoni_256.png 4x"
@@ -41,6 +48,7 @@ export const ErrorBox = ({ error }: { error: string | null }) =>
 export const Empty = ({ children }: { children: ReactNode }) => <div className="px-5 py-10 text-center text-sm text-slate-400">{children}</div>;
 
 export function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="inline-flex h-8 w-8 items-center justify-center"><Trophy className="h-8 w-8" title="1." /></span>;
   const style = rank === 1 ? 'bg-gold text-rink-950 shadow-gold/40' : rank === 2 ? 'bg-silver text-rink-950' : rank === 3 ? 'bg-bronze text-white' : 'bg-white/5 text-slate-300';
   return <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-display text-sm shadow-lg ${style}`}>{rank}</span>;
 }

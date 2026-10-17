@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fmt, fmtDate, POS_LABEL } from '../api';
 import { useApi, useAuth } from '../auth';
-import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner, Trophy } from '../ui';
 
 type Pos = 'C' | 'G' | 'D' | 'F';
 interface P { id: number; name: string; team: string | null; picture?: string | null; pos: Pos; hg: number; games: number; goals: number; assists: number }
@@ -68,7 +68,7 @@ function Week() {
               <tbody>
                 {data.gurus.slice(0, 5).map((g, i) => (
                   <tr key={g.id} className={g.id === me?.guru?.id ? 'bg-ice-500/8' : ''}>
-                    <td className="w-8 text-slate-400">{i === 0 ? '🏆' : i + 1}</td>
+                    <td className="w-8 text-slate-400">{i === 0 ? <Trophy className="h-6 w-6" /> : i + 1}</td>
                     <td className="text-white">{g.name}</td>
                     <td className="num scoreboard">{sign(g.points)}</td>
                   </tr>

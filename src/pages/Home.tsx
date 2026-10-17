@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { fmt, fmtDate, fmtDateTime, type LeaderRow } from '../api';
 import { useApi, useAuth } from '../auth';
 import { GameRow, type Game } from './Games';
-import { Card, Countdown, Empty, ErrorBox, RankBadge, RankDelta, Spinner } from '../ui';
+import { Trophy, Card, Countdown, Empty, ErrorBox, RankBadge, RankDelta, Spinner } from '../ui';
 import { StandingsTable, type StandingRow } from './Standings';
 import { fmtDeadline, type RegInfo } from './Register';
 import { GuruTeamModal } from '../components/GuruTeamModal';
@@ -93,7 +93,7 @@ export default function Home() {
               const c = g.rank === 1 ? 'from-gold/30 border-gold/50' : g.rank === 2 ? 'from-silver/20 border-silver/40' : 'from-bronze/25 border-bronze/40';
               return (
                 <div key={g.id} className="flex w-1/3 max-w-36 flex-col items-center text-center">
-                  <span className="mb-2 text-3xl">{g.rank === 1 ? '🏆' : g.rank === 2 ? '🥈' : '🥉'}</span>
+                  <span className="mb-2 text-3xl">{g.rank === 1 ? <Trophy className="h-10 w-10" /> : g.rank === 2 ? '🥈' : '🥉'}</span>
                   <p className="text-sm font-semibold leading-tight text-white">{g.name}</p>
                   <p className="scoreboard mb-2 text-xl">{fmt(g.points)}</p>
                   <div className={`${h} w-full rounded-t-xl border border-b-0 bg-gradient-to-b to-transparent ${c} flex items-start justify-center pt-3 font-display text-3xl text-white/80`}>{g.rank}</div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { fmt, matchName } from '../api';
 import { useApi } from '../auth';
-import { Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
+import { Card, Empty, ErrorBox, PageHeader, Spinner, Trophy } from '../ui';
 import CherryTrophy from '../components/CherryTrophy';
 
 interface Hof { id: number; season_name: string; rank: number; name: string; points: number | null; note: string | null }
@@ -9,7 +9,7 @@ interface Marathon { name: string; seasons: number; titles: number; medals: numb
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 /** Kauden sijoitus: voittaja pokaalilla */
-const PLACE = ['🏆', '🥈', '🥉'];
+const PLACE: React.ReactNode[] = [<Trophy key="t" className="h-6 w-6" />, '🥈', '🥉'];
 const short = (s: string) => `${s.slice(2, 4)}–${s.slice(-2)}`;
 
 export default function HallOfFame() {
@@ -68,7 +68,7 @@ export default function HallOfFame() {
               {champsShown.map((c, i) => (
                 <div key={c.name} className={`rounded-2xl border px-4 py-3 ${i === 0 ? 'border-amber-400/40 bg-amber-400/10' : 'border-white/10 bg-white/[0.03]'}`}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{i === 0 ? '👑' : '🏆'}</span>
+                    <span className="text-xl">{i === 0 ? '👑' : <Trophy className="h-6 w-6" />}</span>
                     <span className="flex-1 font-semibold text-white">{c.name}</span>
                     <span className="scoreboard">{c.titles}×</span>
                   </div>
@@ -122,7 +122,7 @@ export default function HallOfFame() {
             <Card>
               <div className="overflow-x-auto">
                 <table className="table">
-                  <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Kaudet</th><th className="num" title="Mestaruudet">🏆</th><th className="num">Mitalit</th><th className="num">Paras</th><th className="num">Maratonpisteet</th></tr></thead>
+                  <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Kaudet</th><th className="num" title="Mestaruudet"><Trophy className="h-5 w-5" /></th><th className="num">Mitalit</th><th className="num">Paras</th><th className="num">Maratonpisteet</th></tr></thead>
                   <tbody>
                     {shown.map((x) => {
                       const r = rankOf.get(x.name)!;
