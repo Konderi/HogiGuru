@@ -83,7 +83,7 @@ export default function Games() {
   const [team, setTeam] = useState<string>('');
   const [view, setView] = useState<'past' | 'upcoming'>('past');
   const [showAll, setShowAll] = useState(false);
-  const { data, error, loading } = useApi<{ games: Game[] }>(`/games?tournament=${tour}`, [tour]);
+  const { data, error, loading, reload } = useApi<{ games: Game[] }>(`/games?tournament=${tour}`, [tour]);
   const fav = me?.favTeam?.id ?? null;
 
   const teams = useMemo(() => {
@@ -98,10 +98,20 @@ export default function Games() {
     for (const g of list) { const k = dayKey(g.start); m.set(k, [...(m.get(k) ?? []), g]); }
     return [...m];
   };
-  const { past, upcoming } = useMemo(() => {
+  const { past, upcoming, live } = useMemo(() => {
     const list = (data?.games ?? []).filter((g) => !team || teamKey(g.home.id) === team || teamKey(g.away.id) === team);
-    return { past: group(list.filter((g) => g.ended)).reverse(), upcoming: group(list.filter((g) => !g.ended)) };
+    return {
+      past: group(list.filter((g) => g.ended)).reverse(),
+      upcoming: group(list.filter((g) => !g.ended && !g.started)),
+      live: list.filter((g) => g.started && !g.ended),
+    };
   }, [data, team]);
+  // Käynnissä olevat ottelut: tulokset päivittyvät minuutin välein
+  useEffect(() => {
+    if (!live.length) return;
+    const t = window.setInterval(() => { if (!document.hidden) reload(); }, 60_000);
+    return () => window.clearInterval(t);
+  }, [live.length, reload]);
   const shown = view === 'past' ? past : upcoming;
   const limit = view === 'past' ? 10 : 14;
 
@@ -137,6 +147,11 @@ export default function Games() {
         </div>
       </div>
       <ErrorBox error={error} />
+      {live.length > 0 && (
+        <Card title={<span className="flex items-center gap-2 text-goal"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-goal" />Käynnissä nyt ({live.length})</span>} className="border-goal/30">
+          <div className="space-y-0.5 p-3">{live.map((g) => <GameRow key={g.id} g={g} fav={fav} />)}</div>
+        </Card>
+      )}
       {loading && !data ? <Spinner /> : (
         <Card>
           <div className="space-y-4 p-3">
@@ -423,6 +438,40 @@ const liveClock = (l?: Live) => {
 
 type LiveData = { game: Game | null; players: PRow[]; extra: Extra | null; forecast: Forecast | null; preview: Preview | null };
 
+/** Voimassa olevat jäähyt (2/5 min; ylivoimamaali päättää 2 min jäähyn) ja tyhjä maali tapahtumista laskettuna. */
+function liveSituation(x: Extra) {
+  const now = x.live?.gameTime ?? 0;
+  const active: { side: 'home' | 'away'; player: string; left: number; id: string }[] = [];
+  const pens = x.events.filter((e) => e.type === 'penalty' && (e.minutes === 2 || e.minutes === 5 || e.minutes === 4));
+  for (const p of pens) {
+    let end = p.time + (p.minutes ?? 0) * 60;
+    if (p.minutes === 2) {
+      const pp = x.events.find((e) => e.type === 'goal' && e.side !== p.side && e.time > p.time && e.time < end);
+      if (pp) end = pp.time;
+    }
+    if (end > now && p.time <= now) active.push({ side: p.side, player: p.player ?? '', left: end - now, id: p.id });
+  }
+  const emptyNet: ('home' | 'away')[] = [];
+  for (const side of ['home', 'away'] as const) {
+    const last = x.events.filter((e) => e.type === 'goalie' && e.side === side).at(-1);
+    if (last && !last.player) emptyNet.push(side);
+  }
+  return { active, emptyNet };
+}
+
+function LiveSituation({ g, x }: { g: Game; x: Extra }) {
+  const { active, emptyNet } = liveSituation(x);
+  const n = (s: 'home' | 'away') => 5 - Math.min(2, active.filter((a) => a.side === s).length);
+  if (!active.length && !emptyNet.length) return null;
+  return (
+    <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs">
+      {active.length > 0 && <span className="rounded-full bg-amber-400/15 px-3 py-1 font-semibold text-amber-200">{n('home')} vs {n('away')}</span>}
+      {active.map((a) => <span key={a.id} className="rounded-full bg-white/5 px-3 py-1 text-slate-300">⏱ {g[a.side].name}: {a.player} <span className="font-mono text-white">{clock(a.left)}</span></span>)}
+      {emptyNet.map((s) => <span key={s} className="animate-pulse rounded-full bg-goal/20 px-3 py-1 font-semibold text-goal">🥅 Tyhjä maali · {g[s].name}</span>)}
+    </div>
+  );
+}
+
 /** Ottelun live-seuranta: automaattinen päivitys, uudet tapahtumat korostettuna ja äänimerkillä. */
 function useLiveGame(data: LiveData | null, reload: () => void) {
   const g = data?.game;
@@ -549,6 +598,7 @@ export function GameDetail() {
               {g.away.logo && <img src={g.away.logo} alt="" className="h-16 w-16 object-contain" />}<span className="font-semibold text-white">{g.away.name}</span>
             </Link>
           </div>
+          {isLive && data.extra && <LiveSituation g={g} x={data.extra} />}
         </section>
       ) : <PageHeader title="Ottelu" />}
       {g && !g.started ? (
