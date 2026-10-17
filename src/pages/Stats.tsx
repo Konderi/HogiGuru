@@ -3,6 +3,7 @@ import { fmt, matchName, POS_PLURAL, type Position } from '../api';
 import { useApi } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 import PlayerCard, { type CardSeed } from '../components/PlayerCard';
+import { GuruPopover } from '../components/GuruPopover';
 
 interface PlayerStat {
   id: number; name: string; team: string; picture: string | null; pos: 'F' | 'D' | 'G'; injured: boolean; max: number; games: number; goals: number; assists: number; pim: number;
@@ -27,21 +28,10 @@ interface CoachStat { id: number; name: string; team: string; logo: string | nul
 type SortKey = 'name' | 'games' | 'goals' | 'assists' | 'points' | 'plusMinus' | 'pim' | 'wins' | 'saves' | 'goalsAgainst' | 'savePct' | 'shutouts' | 'reserved' | 'hg';
 
 function Reserved({ n, max, gurus }: { n: number; max: number; gurus?: string[] }) {
-  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
   const dots = Array.from({ length: max }, (_, i) => <span key={i} className={`h-2 w-2 rounded-full ${i < n ? (n >= max ? 'bg-goal' : 'bg-ice-400') : 'bg-white/10'}`} />);
   if (!gurus?.length) return <span className="inline-flex items-center gap-1" title={`Varattu ${n}/${max}`}>{dots}</span>;
   return (
-    <>
-      <button type="button" title={`Varattu ${n}/${max} – näytä gurut`} onBlur={() => setOpen(null)}
-        onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setOpen((o) => (o ? null : { x: Math.max(8, Math.min(r.right - 176, window.innerWidth - 184)), y: r.bottom + 4 })); }}
-        className="-m-1.5 inline-flex items-center gap-1 rounded-lg p-1.5 hover:bg-white/10">{dots}</button>
-      {open && (
-        <span style={{ left: open.x, top: open.y }} onClick={(e) => e.stopPropagation()} className="fixed z-50 w-44 rounded-xl border border-white/10 bg-rink-900 p-2 text-left text-xs shadow-xl">
-          <span className="mb-1 block text-[10px] uppercase tracking-wider text-slate-500">Kentällisessä</span>
-          {gurus.map((g) => <span key={g} className="block truncate py-0.5 font-sans text-white">{g}</span>)}
-        </span>
-      )}
-    </>
+    <GuruPopover gurus={gurus} title={`Varattu ${n}/${max} – näytä gurut`} className="-m-1.5 inline-flex items-center gap-1 rounded-lg p-1.5 hover:bg-white/10">{dots}</GuruPopover>
   );
 }
 

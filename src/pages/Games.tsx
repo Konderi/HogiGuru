@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { GuruPopover } from '../components/GuruPopover';
 import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
 import { useApi, useAuth } from '../auth';
@@ -157,22 +158,12 @@ interface PRow {
 
 /** HG-merkki: pelaaja on jonkun gurun kentällisessä – klikkaus näyttää kenen */
 function GuruBadge({ gurus, mine }: { gurus?: string[]; mine: boolean }) {
-  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
   if (!gurus?.length) return null;
   return (
-    <span className="inline-flex">
-      <button type="button" onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setOpen((o) => (o ? null : { x: Math.min(r.left, window.innerWidth - 180), y: r.bottom + 4 })); }} onBlur={() => setOpen(null)}
-        title={`Gurujen kentällisissä: ${gurus.length}`}
-        className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none ring-1 ${mine ? 'bg-amber-400/20 text-amber-200 ring-amber-300/40' : 'bg-ice-500/15 text-ice-200 ring-ice-400/30'} hover:brightness-125`}>
-        HG<span className="font-mono">{gurus.length}</span>
-      </button>
-      {open && (
-        <span style={{ left: open.x, top: open.y }} className="fixed z-50 min-w-[10rem] rounded-xl border border-white/10 bg-rink-900 p-2 text-xs shadow-xl">
-          <span className="mb-1 block text-[10px] uppercase tracking-wider text-slate-500">Kentällisessä</span>
-          {gurus.map((g) => <span key={g} className="block whitespace-nowrap py-0.5 text-white">{g}</span>)}
-        </span>
-      )}
-    </span>
+    <GuruPopover gurus={gurus} title={`Gurujen kentällisissä: ${gurus.length} – näytä kenellä`}
+      className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none ring-1 ${mine ? 'bg-amber-400/20 text-amber-200 ring-amber-300/40' : 'bg-ice-500/15 text-ice-200 ring-ice-400/30'} hover:brightness-125`}>
+      HG<span className="font-mono">{gurus.length}</span>
+    </GuruPopover>
   );
 }
 
