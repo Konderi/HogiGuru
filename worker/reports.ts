@@ -29,7 +29,7 @@ export async function sendWeeklyReport(env: MailEnv, season: Season, opts: { onl
     ], ['left', 'right']),
     h2('Viikon huippupelit'),
     table(w.bestGames.slice(0, 3).map((g) => [`${esc(g.name)} <span style="color:#64748b">(${POS[g.pos]}) vs ${esc(g.opponent)} · ${esc(g.line)}</span>`, fmt(g.hg)]), ['left', 'right']),
-    `<p style="margin-top:20px"><a href="${SITE}/gurukierros" style="display:inline-block;background:#38bdf8;color:#060b18;padding:10px 18px;border-radius:10px;font-weight:bold;text-decoration:none">Koko Kuntopuntari →</a></p>`,
+    `<p style="margin-top:20px"><a href="${SITE}/kuntopuntari" style="display:inline-block;background:#38bdf8;color:#060b18;padding:10px 18px;border-radius:10px;font-weight:bold;text-decoration:none">Koko Kuntopuntari →</a></p>`,
   ].join('');
 
   let ok = 0; let fail = 0; let skipped = 0;

@@ -95,7 +95,7 @@ Sama tehdään `www.hogiguru.fi` → `hogiguru.fi`, jos www jätettiin vain ohja
 
 - [ ] `https://hogiguru.fi` aukeaa, SSL-lukko kunnossa
 - [ ] `https://www.hogiguru.fi` → ohjautuu pääosoitteeseen
-- [ ] `https://guru.konderi.fi/leaderboard` → 301 → `https://hogiguru.fi/leaderboard`
+- [ ] `https://guru.konderi.fi/pistetilanne` → 301 → `https://hogiguru.fi/pistetilanne`
 - [ ] Kirjautuminen, Oma joukkue, vaihtotoive, uloskirjautuminen
 - [ ] Mobiililla (iOS Safari + Android Chrome)
 - [ ] Ylläpito → Tekninen ylläpito → *Testiviesti itselle* ja *Viikkokatsaus itselle*: lähettäjä ja linkit oikein

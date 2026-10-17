@@ -82,7 +82,7 @@ export default function Home() {
             <h1 className="text-5xl normal-case leading-[0.95] sm:text-7xl">Ho<span className="bg-gradient-to-r from-ice-200 to-ice-500 bg-clip-text text-transparent">Gi</span>Gu<span className="bg-gradient-to-r from-ice-200 to-ice-500 bg-clip-text text-transparent">Ru</span></h1>
             <p className="mt-5 max-w-md text-slate-300">Veikkaa runkosarjan lopputulos, joukkueiden parhaat pistemiehet ja pörssien voittajat, draftaa oma All-Stars-kentällisesi ja nouse Gurujen kärkeen.</p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/leaderboard" className="btn btn-primary">Koko leaderboard</Link>
+              <Link to="/pistetilanne" className="btn btn-primary">Koko pistetilanne</Link>
               <Link to="/pelaajat" className="btn btn-ghost">Pelaajat</Link>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function Home() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Top 10 */}
-        <Card title="Top 10 Gurut" action={<Link to="/leaderboard" className="text-sm font-semibold text-ice-400 hover:text-ice-300">Kaikki →</Link>} className="lg:col-span-2">
+        <Card title="Top 10 Gurut" action={<Link to="/pistetilanne" className="text-sm font-semibold text-ice-400 hover:text-ice-300">Kaikki →</Link>} className="lg:col-span-2">
           {data.leaderboard.length === 0 ? <Empty>Kausi ei ole vielä alkanut.</Empty> : (
             <table className="table">
               <tbody>
