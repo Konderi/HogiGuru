@@ -161,11 +161,23 @@ app.get('/games/:id', async (c) => {
     ]);
     for (const r of [...a.results, ...b.results] as { id: number }[]) mine.add(r.id);
   }
-  const [players, extra, preview] = await Promise.all([
+  // Kaikkien gurujen nykyiset kentälliset: pelaaja → gurujen nimet
+  const owners = new Map<number, string[]>();
+  {
+    const [a, b] = await db.batch([
+      db.prepare("SELECT s.entity_id AS id, g.name FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.position <> 'C' AND s.end_date IS NULL").bind(season.id),
+      db.prepare("SELECT s.player_id AS id, g.name FROM playoff_slots s JOIN gurus g ON g.id = s.guru_id WHERE s.end_date IS NULL AND g.season_id IN (SELECT id FROM seasons WHERE parent_season_id = ?)").bind(season.id),
+    ]);
+    for (const r of [...a.results, ...b.results] as { id: number; name: string }[]) {
+      const l = owners.get(r.id) ?? []; if (!l.includes(r.name)) l.push(r.name); owners.set(r.id, l);
+    }
+  }
+  const [players0, extra, preview] = await Promise.all([
     gameDetail(db, id, season.scoring, mine),
     game?.started ? gameExtra(season.liiga_season, id, game.ended, wu).catch(() => null) : Promise.resolve(null),
     game && !game.started ? gamePreview(season.liiga_season, game, wu).catch(() => null) : Promise.resolve(null),
   ]);
+  const players = players0.map((p) => ({ ...p, gurus: (owners.get(p.player_id) ?? []).sort((x, y) => x.localeCompare(y, 'fi')) }));
   if (!game && !players.length) return c.json({ error: 'Ottelua ei löytynyt' }, 404);
   return c.json({ game, players, extra, forecast, preview });
 });

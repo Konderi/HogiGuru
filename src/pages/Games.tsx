@@ -152,7 +152,28 @@ export default function Games() {
 interface PRow {
   player_id: number; team_id: string; name: string; picture: string | null; pos: 'F' | 'D' | 'G';
   goals: number; assists: number; pim: number; plus_minus: number; saves: number; goals_against: number; shutout: number; win: number;
-  hg: number; mine: boolean;
+  hg: number; mine: boolean; gurus?: string[];
+}
+
+/** HG-merkki: pelaaja on jonkun gurun kentällisessä – klikkaus näyttää kenen */
+function GuruBadge({ gurus, mine }: { gurus?: string[]; mine: boolean }) {
+  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
+  if (!gurus?.length) return null;
+  return (
+    <span className="inline-flex">
+      <button type="button" onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setOpen((o) => (o ? null : { x: Math.min(r.left, window.innerWidth - 180), y: r.bottom + 4 })); }} onBlur={() => setOpen(null)}
+        title={`Gurujen kentällisissä: ${gurus.length}`}
+        className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none ring-1 ${mine ? 'bg-amber-400/20 text-amber-200 ring-amber-300/40' : 'bg-ice-500/15 text-ice-200 ring-ice-400/30'} hover:brightness-125`}>
+        HG<span className="font-mono">{gurus.length}</span>
+      </button>
+      {open && (
+        <span style={{ left: open.x, top: open.y }} className="fixed z-50 min-w-[10rem] rounded-xl border border-white/10 bg-rink-900 p-2 text-xs shadow-xl">
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-slate-500">Kentällisessä</span>
+          {gurus.map((g) => <span key={g} className="block whitespace-nowrap py-0.5 text-white">{g}</span>)}
+        </span>
+      )}
+    </span>
+  );
 }
 
 interface XPlayer { id: number; toi: number; shots: number; blocked: number; fo: number; foWon: number; xg: number; speed: number | null; hardest: number | null }
@@ -263,7 +284,7 @@ function TeamStats({ t, players, x }: { t: GameTeam; players: PRow[]; x?: XTeam 
             <tbody>
               {sk.map((p) => { const e = xp.get(p.player_id); return (
                 <tr key={p.player_id} className={p.mine ? 'bg-ice-500/[0.07]' : ''}>
-                  <td><span className="flex items-center gap-2"><Avatar src={p.picture} name={p.name} size="h-6 w-6" /><span className="text-white" title={e?.speed ? `Huippunopeus ${e.speed} km/h${e.hardest ? ` · kovin laukaus ${e.hardest} km/h` : ''}` : undefined}>{p.name}</span>{p.pos === 'D' && <span className="text-[10px] text-slate-500">P</span>}{p.mine && <span title="Joukkueessasi">⭐</span>}</span></td>
+                  <td><span className="flex items-center gap-2"><Avatar src={p.picture} name={p.name} size="h-6 w-6" /><span className="text-white" title={e?.speed ? `Huippunopeus ${e.speed} km/h${e.hardest ? ` · kovin laukaus ${e.hardest} km/h` : ''}` : undefined}>{p.name}</span>{p.pos === 'D' && <span className="text-[10px] text-slate-500">P</span>}{p.mine && <span title="Joukkueessasi">⭐</span>}<GuruBadge gurus={p.gurus} mine={p.mine} /></span></td>
                   <td className="num">{p.goals || ''}</td><td className="num">{p.assists || ''}</td>
                   <td className={`num ${p.plus_minus > 0 ? 'text-emerald-300' : p.plus_minus < 0 ? 'text-red-300' : 'text-slate-500'}`}>{p.plus_minus ? pm(p.plus_minus) : ''}</td>
                   <td className="num text-slate-400">{p.pim || ''}</td>
@@ -276,7 +297,7 @@ function TeamStats({ t, players, x }: { t: GameTeam; players: PRow[]; x?: XTeam 
               <tbody className="border-t border-white/10">
                 {gk.map((p) => (
                   <tr key={p.player_id} className={p.mine ? 'bg-ice-500/[0.07]' : ''}>
-                    <td><span className="flex items-center gap-2"><Avatar src={p.picture} name={p.name} size="h-6 w-6" /><span className="text-white">{p.name}</span><span className="text-[10px] text-slate-500">MV</span>{p.mine && <span>⭐</span>}</span></td>
+                    <td><span className="flex items-center gap-2"><Avatar src={p.picture} name={p.name} size="h-6 w-6" /><span className="text-white">{p.name}</span><span className="text-[10px] text-slate-500">MV</span>{p.mine && <span>⭐</span>}<GuruBadge gurus={p.gurus} mine={p.mine} /></span></td>
                     <td colSpan={x ? 7 : 4} className="text-xs text-slate-400">{p.saves} torjuntaa, {p.goals_against} päästettyä{p.saves + p.goals_against ? ` (${Math.round((p.saves / (p.saves + p.goals_against)) * 1000) / 10} %)` : ''}{p.shutout ? ' · nollapeli' : ''}{p.win ? ' · voitto' : ''}{x && xp.get(p.player_id)?.toi ? ` · ${toi(xp.get(p.player_id)!.toi)}` : ''}</td>
                     <td className="num font-semibold text-ice-300">{fmt(p.hg)}</td>
                   </tr>
