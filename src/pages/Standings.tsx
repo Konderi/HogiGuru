@@ -20,7 +20,7 @@ export function StandingsTable({ rows, compact }: { rows: StandingRow[]; compact
         </thead>
         <tbody>
           {rows.map((t) => {
-            const zone = t.ranking <= 6 ? 'border-l-ice-400' : t.ranking <= 10 ? 'border-l-ice-400/40' : t.ranking >= rows.length ? 'border-l-goal' : 'border-l-transparent';
+            const zone = t.ranking <= 6 ? 'border-l-ice-400' : t.ranking <= 10 ? 'border-l-ice-400/40' : t.ranking > rows.length - 3 ? 'border-l-goal' : 'border-l-transparent';
             const diff = t.goals_for - t.goals_against;
             return (
               <tr key={t.team_id}>
@@ -55,7 +55,7 @@ export default function Standings() {
       <p className="mt-4 flex flex-wrap gap-4 text-xs text-slate-500">
         <span><span className="mr-1 inline-block h-2 w-2 bg-ice-400" />Suoraan puolivälieriin</span>
         <span><span className="mr-1 inline-block h-2 w-2 bg-ice-400/40" />Säälipudotuspelit</span>
-        <span><span className="mr-1 inline-block h-2 w-2 bg-goal" />Viimeinen</span>
+        <span><span className="mr-1 inline-block h-2 w-2 bg-goal" />Putoavat (3 alinta)</span>
       </p>
     </>
   );
