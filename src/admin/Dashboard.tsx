@@ -19,7 +19,7 @@ export default function Dashboard() {
   const stats = [
     { label: 'Gurut', value: data.counts.gurus, to: '/admin/gurut' },
     { label: 'Käyttäjät', value: data.counts.users, to: '/admin/kayttajat' },
-    { label: 'Pelaajat kannassa', value: data.counts.players, to: '/tilastot' },
+    { label: 'Pelaajat kannassa', value: data.counts.players, to: '/pelaajat' },
     { label: 'Vaihtoja tehty', value: data.counts.swaps, to: '/admin/vaihdot' },
   ];
   const draftLabel = { setup: 'Valmistelu', live: 'Käynnissä', done: 'Valmis' }[data.season.draft_status];

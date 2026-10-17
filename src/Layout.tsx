@@ -9,7 +9,7 @@ const nav = [
   { to: '/gurukierros', label: 'Gurukierros' },
   { to: '/ottelut', label: 'Ottelut' },
   { to: '/sarjataulukko', label: 'Sarjataulukko' },
-  { to: '/tilastot', label: 'Tilastot' },
+  { to: '/pelaajat', label: 'Pelaajat' },
   { to: '/kokonaistulokset', label: 'Kokonaistulokset' },
   { to: '/hall-of-fame', label: 'Hall of Fame' },
 ];

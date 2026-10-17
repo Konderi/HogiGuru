@@ -55,7 +55,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="gurukierros" element={<Gurukierros />} />
             <Route path="sarjataulukko" element={<Standings />} />
-            <Route path="tilastot" element={<Stats />} />
+            <Route path="pelaajat" element={<Stats />} />
+            <Route path="tilastot" element={<Navigate to="/pelaajat" replace />} />
             <Route path="ottelut" element={<Games />} />
             <Route path="ottelut/:id" element={<GameDetail />} />
             <Route path="tietosuoja" element={<Privacy />} />

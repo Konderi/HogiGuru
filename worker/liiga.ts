@@ -185,6 +185,12 @@ export async function syncGames(db: D1Database, y: number, max = 12, tournament:
         : db.prepare('INSERT OR REPLACE INTO team_games (season, game_id, date, team_id, opponent, home, gf, ga, points) VALUES (?,?,?,?,?,?,?,?,?)')
           .bind(y, g.id, date, String(t.teamId), o.teamName ?? null, s.home, gf, ga, pts));
 
+      // Sairastupa: kokoonpanon injured-lippu (vain runkosarja; uudempi ottelu ohittaa vanhemman)
+      if (!po) for (const p of s.players ?? []) {
+        if (!p.id) continue;
+        stmts.push(db.prepare('UPDATE players SET injured = ?, injured_date = ? WHERE id = ? AND (injured_date IS NULL OR injured_date <= ?)')
+          .bind(p.injured ? 1 : 0, date, p.id, date));
+      }
       const played = (s.players ?? []).filter((p) => p.line != null && !p.removed);
       const byJersey = new Map(played.map((p) => [String(p.jersey), p.id as number]));
       const oppPlayers = (s.key === 'homeTeam' ? det.awayTeamPlayers : det.homeTeamPlayers) as ApiPlayer[];

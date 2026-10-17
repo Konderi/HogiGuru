@@ -5,8 +5,23 @@ import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
 import PlayerCard, { type CardSeed } from '../components/PlayerCard';
 
 interface PlayerStat {
-  id: number; name: string; team: string; picture: string | null; games: number; goals: number; assists: number; pim: number;
+  id: number; name: string; team: string; picture: string | null; pos: 'F' | 'D' | 'G'; injured: boolean; max: number; games: number; goals: number; assists: number; pim: number;
   plusMinus: number; shutouts: number; saves: number; goalsAgainst: number; wins: number; savePct: number | null; hg: number; reserved: number;
+}
+type Tab = 'A' | Position;
+const TAB_LABEL: Record<Tab, string> = { A: 'Kaikki', ...POS_PLURAL };
+const POS_SHORT: Record<'F' | 'D' | 'G', string> = { F: 'H', D: 'P', G: 'MV' };
+
+/** Sairastupa-merkki: punainen risti ensiapulaukussa */
+export function InjuryIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <span title="Sairastupa – merkitty loukkaantuneeksi joukkueen viimeisimmässä ottelussa (liiga.fi)" className="inline-flex shrink-0">
+      <svg viewBox="0 0 20 20" className={className} aria-label="Sairastupa">
+        <rect x="1" y="1" width="18" height="18" rx="5" fill="#dc2626" />
+        <path d="M8 4.5h4v3.5h3.5v4H12v3.5H8V12H4.5V8H8z" fill="#fff" />
+      </svg>
+    </span>
+  );
 }
 interface CoachStat { id: number; name: string; team: string; logo: string | null; team_points: number | null; hg: number; reserved: number; fired: number }
 type SortKey = 'name' | 'games' | 'goals' | 'assists' | 'points' | 'plusMinus' | 'pim' | 'wins' | 'saves' | 'goalsAgainst' | 'savePct' | 'shutouts' | 'reserved' | 'hg';
@@ -20,10 +35,11 @@ function Reserved({ n, max }: { n: number; max: number }) {
 }
 
 export default function Stats() {
-  const [pos, setPos] = useState<Position>('F');
+  const [pos, setPos] = useState<Tab>('A');
   const [q, setQ] = useState('');
   const [onlyFree, setOnlyFree] = useState(false);
-  const players = useApi<{ maxPicks: number; players: PlayerStat[] }>(pos === 'C' ? null : `/stats?pos=${pos}`, [pos]);
+  const [onlyInjured, setOnlyInjured] = useState(false);
+  const players = useApi<{ maxPicks: number; players: PlayerStat[] }>(pos === 'C' ? null : `/stats?pos=${pos === 'A' ? 'all' : pos}`, [pos]);
   const coaches = useApi<CoachStat[]>(pos === 'C' ? '/coaches' : null, [pos]);
   const max = players.data?.maxPicks ?? 5;
   const [card, setCard] = useState<CardSeed | null>(null);
@@ -34,16 +50,17 @@ export default function Stats() {
     const val = (p: PlayerStat): number | string => (sort.key === 'points' ? p.goals + p.assists : sort.key === 'savePct' ? p.savePct ?? -1 : p[sort.key]);
     return (players.data?.players ?? [])
       .filter((p) => matchName(`${p.name} ${p.team}`, q))
-      .filter((p) => !onlyFree || p.reserved < max)
+      .filter((p) => !onlyFree || p.reserved < p.max)
+      .filter((p) => !onlyInjured || p.injured)
       .sort((a, b) => {
         const x = val(a), y = val(b);
         const c = typeof x === 'string' ? x.localeCompare(String(y), 'fi') : x - (y as number);
         return (sort.desc ? -c : c) || b.hg - a.hg;
       });
-  }, [players.data, q, onlyFree, max, sort]);
+  }, [players.data, q, onlyFree, onlyInjured, sort]);
 
-  // Haku muista pelipaikoista: vihje, jos pelaaja löytyy toiselta välilehdeltä (esim. puolustaja)
-  const searching = q.trim().length >= 2;
+  // Haku muista pelipaikoista: vihje, jos pelaaja löytyy toiselta välilehdeltä (ei Kaikki-välilehdellä)
+  const searching = q.trim().length >= 2 && pos !== 'A';
   const allF = useApi<{ players: PlayerStat[] }>(searching && pos !== 'F' ? '/stats?pos=F' : null, [searching && pos !== 'F']);
   const allD = useApi<{ players: PlayerStat[] }>(searching && pos !== 'D' ? '/stats?pos=D' : null, [searching && pos !== 'D']);
   const allG = useApi<{ players: PlayerStat[] }>(searching && pos !== 'G' ? '/stats?pos=G' : null, [searching && pos !== 'G']);
@@ -60,20 +77,23 @@ export default function Stats() {
 
   return (
     <>
-      <PageHeader kicker="HG-pisteet & varaustilanne" title="Tilastot">
+      <PageHeader kicker="HG-pisteet, varaustilanne & sairastupa" title="Pelaajat">
         <div className="flex flex-wrap items-center gap-3">
           <input type="search" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} enterKeyHint="search" className="input w-full sm:w-56" placeholder="Hae pelaajaa tai joukkuetta…" value={q} onChange={(e) => setQ(e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} className="accent-ice-400" /> Vain vapaat
           </label>
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={onlyInjured} onChange={(e) => setOnlyInjured(e.target.checked)} className="accent-ice-400" /> <InjuryIcon className="h-3.5 w-3.5" /> Sairastupa
+          </label>
         </div>
       </PageHeader>
 
       <div className="mb-5 flex gap-1 rounded-2xl border border-white/8 bg-rink-850/60 p-1 sm:inline-flex">
-        {(['F', 'D', 'G', 'C'] as Position[]).map((p) => (
+        {(['A', 'F', 'D', 'G', 'C'] as Tab[]).map((p) => (
           <button key={p} onClick={() => setPos(p)}
             className={`flex-1 rounded-xl px-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide transition sm:px-4 sm:text-sm sm:tracking-wider ${pos === p ? 'bg-ice-500 text-rink-950' : 'text-slate-400 hover:text-white'}`}>
-            {POS_PLURAL[p]}
+            {TAB_LABEL[p]}
           </button>
         ))}
       </div>
@@ -117,6 +137,8 @@ export default function Stats() {
                   <Th k="games" title="Ottelut">O</Th>
                   {pos === 'G'
                     ? <><Th k="wins" title="Voitot">V</Th><Th k="saves" title="Torjunnat">Torj.</Th><Th k="goalsAgainst" title="Päästetyt maalit">PM</Th><Th k="savePct" title="Torjuntaprosentti">Torj-%</Th><Th k="shutouts" title="Nollapelit">NP</Th></>
+                    : pos === 'A'
+                    ? <><Th k="goals" title="Maalit">M</Th><Th k="assists" title="Syötöt">S</Th><Th k="points" title="Pisteet (M+S)">P</Th></>
                     : <><Th k="goals" title="Maalit">M</Th><Th k="assists" title="Syötöt">S</Th><Th k="points" title="Pisteet (M+S)">P</Th><Th k="plusMinus" title="Plus/miinus">+/−</Th><Th k="pim" title="Jäähyminuutit">J</Th></>}
                   <Th k="reserved" title="Varaukset">Varattu</Th><Th k="hg" title="HG-pisteet">HG</Th>
                 </tr>
@@ -124,19 +146,25 @@ export default function Stats() {
               <tbody>
                 {rows.slice(0, 200).map((p, i) => (
                   <tr key={p.id} className="cursor-pointer" title="Avaa pelaajakortti"
-                    onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max, goalie: pos === 'G', position: pos })}>
+                    onClick={() => setCard({ id: p.id, name: p.name, team: p.team, picture: p.picture, hg: p.hg, reserved: p.reserved, max: p.max, goalie: p.pos === 'G', position: p.pos })}>
                     <td className="font-display text-slate-500">{i + 1}</td>
                     <td className="min-w-[11rem]">
                       <span className="flex items-center gap-3">
                         <Avatar src={p.picture} name={p.name} />
-                        <span className="min-w-0"><span className="block font-semibold text-white underline-offset-2 hover:underline">{p.name}</span><span className="text-xs text-slate-400">{p.team}</span></span>
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-1.5 font-semibold text-white underline-offset-2 hover:underline">{p.name}{p.injured && <InjuryIcon />}</span>
+                          <span className="text-xs text-slate-400">{pos === 'A' && <span className="mr-1.5 rounded bg-white/8 px-1 text-[10px] font-semibold text-slate-300">{POS_SHORT[p.pos]}</span>}{p.team}</span>
+                        </span>
                       </span>
                     </td>
                     <td className="num">{p.games}</td>
                     {pos === 'G'
                       ? <><td className="num">{p.wins}</td><td className="num">{p.saves}</td><td className="num">{p.goalsAgainst}</td><td className="num">{p.savePct != null ? fmt(p.savePct) : '–'}</td><td className="num">{p.shutouts}</td></>
+                      : pos === 'A'
+                      ? (p.pos === 'G' ? <td className="num text-slate-500" colSpan={3}>{p.wins} V · {p.savePct != null ? fmt(p.savePct) : '–'} %</td>
+                        : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className="num font-semibold text-white">{p.goals + p.assists}</td></>)
                       : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className="num font-semibold text-white">{p.goals + p.assists}</td><td className={`num ${p.plusMinus > 0 ? 'text-emerald-400' : p.plusMinus < 0 ? 'text-goal' : ''}`}>{p.plusMinus > 0 ? `+${p.plusMinus}` : p.plusMinus}</td><td className="num">{p.pim}</td></>}
-                    <td className="num"><Reserved n={p.reserved} max={max} /></td>
+                    <td className="num"><Reserved n={p.reserved} max={p.max} /></td>
                     <td className="num scoreboard">{fmt(p.hg)}</td>
                   </tr>
                 ))}
@@ -145,7 +173,7 @@ export default function Stats() {
           </div>
         )}
       </Card>
-      <p className="mt-4 text-xs text-slate-500">Klikkaa sarakkeen otsikkoa järjestääksesi (uudelleen klikkaus kääntää suunnan). Klikkaa pelaajaa avataksesi pelaajakortin. Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa.</p>
+      <p className="mt-4 text-xs text-slate-500">Klikkaa sarakkeen otsikkoa järjestääksesi (uudelleen klikkaus kääntää suunnan). Klikkaa pelaajaa avataksesi pelaajakortin. Varattu = kuinka monen gurun kentällisessä pelaaja on nyt (max {max}). Punainen = täynnä, ei voi valita vaihdossa. <InjuryIcon className="inline h-3 w-3 align-[-2px]" /> = sairastupa: merkitty loukkaantuneeksi joukkueen viimeisimmässä ottelussa (liiga.fi; kaikki joukkueet eivät kirjaa tietoa).</p>
       <PlayerCard seed={card} onClose={() => setCard(null)} />
     </>
   );

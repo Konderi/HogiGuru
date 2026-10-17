@@ -81,7 +81,7 @@ export default function Home() {
             <p className="mt-5 max-w-md text-slate-300">Veikkaa runkosarjan lopputulos, joukkueiden parhaat pistemiehet ja pörssien voittajat, draftaa oma All-Stars-kentällisesi ja nouse Gurujen kärkeen.</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link to="/leaderboard" className="btn btn-primary">Koko leaderboard</Link>
-              <Link to="/tilastot" className="btn btn-ghost">Pelaajatilastot</Link>
+              <Link to="/pelaajat" className="btn btn-ghost">Pelaajat</Link>
             </div>
           </div>
           {/* Podium */}

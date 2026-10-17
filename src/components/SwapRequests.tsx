@@ -143,7 +143,7 @@ export function SwapRequests({ slots }: { slots: Slot[] }) {
           <div className="space-y-2 p-5 text-xs text-slate-400">
             <p>Pelaajahaun tuloksissa ja toivelistassa näkyy merkki <b className="text-white">varattu / max</b>: vihreä = tilaa, keltainen = yksi paikka jäljellä, punainen = täynnä.</p>
             <p>Huom: tilanne voi muuttua ennen käsittelyä, siksi kannattaa lisätä varavaihtoehtoja.</p>
-            <a href="/tilastot" className="inline-block font-semibold text-ice-300 hover:underline">Kaikki pelaajat ja vapaat paikat → Tilastot</a>
+            <a href="/pelaajat" className="inline-block font-semibold text-ice-300 hover:underline">Kaikki pelaajat ja vapaat paikat → Pelaajat</a>
           </div>
         </Card>
       </div>

@@ -215,22 +215,26 @@ app.get('/standings', async (c) => c.json(await standingsQuery(c.env.DB, c.get('
 app.get('/stats', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   const reqPos = c.req.query('pos');
+  const all = reqPos === 'all';
   const pos: 'F' | 'D' | 'G' = reqPos === 'D' || reqPos === 'G' ? reqPos : 'F';
-  const roleFilter = pos === 'G' ? "p.role = 'MV'" : pos === 'D' ? "p.role = 'P'" : "p.role NOT IN ('MV','P')";
+  const roleFilter = all ? '1=1' : pos === 'G' ? "p.role = 'MV'" : pos === 'D' ? "p.role = 'P'" : "p.role NOT IN ('MV','P')";
   const [rows, usage] = await Promise.all([
     db.prepare(
-      `SELECT p.id, p.first_name, p.last_name, p.team_name, p.picture, p.role, s.*
+      `SELECT p.id, p.first_name, p.last_name, p.team_name, p.picture, p.role, p.injured, s.*
        FROM player_stats s JOIN players p ON p.id = s.player_id WHERE s.season = ? AND ${roleFilter}`,
-    ).bind(season.liiga_season).all<StatRow & { id: number; first_name: string; last_name: string; team_name: string; picture: string; role: string; save_pct: number }>(),
+    ).bind(season.liiga_season).all<StatRow & { id: number; first_name: string; last_name: string; team_name: string; picture: string; role: string; injured: number; save_pct: number }>(),
     usageCounts(db, season.id),
   ]);
-  const out = rows.results.map((r) => ({
-    id: r.id, name: `${r.first_name} ${r.last_name}`, team: r.team_name, picture: r.picture,
-    games: r.games, goals: r.goals, assists: r.assists, pim: r.pim, plusMinus: r.plus_minus,
-    shutouts: r.shutouts, saves: r.saves, goalsAgainst: r.goals_against, wins: r.wins, savePct: r.save_pct,
-    hg: pos === 'G' ? goaliePoints(r, season.scoring.G) : skaterPoints(r, season.scoring[pos]),
-    reserved: usage.get(usageKey(pos, r.id)) ?? 0,
-  })).sort((a, b) => b.hg - a.hg);
+  const out = rows.results.map((r) => {
+    const pp: 'F' | 'D' | 'G' = r.role === 'MV' ? 'G' : r.role === 'P' ? 'D' : 'F';
+    return {
+      id: r.id, name: `${r.first_name} ${r.last_name}`, team: r.team_name, picture: r.picture, pos: pp, injured: !!r.injured,
+      games: r.games, goals: r.goals, assists: r.assists, pim: r.pim, plusMinus: r.plus_minus,
+      shutouts: r.shutouts, saves: r.saves, goalsAgainst: r.goals_against, wins: r.wins, savePct: r.save_pct,
+      hg: pp === 'G' ? goaliePoints(r, season.scoring.G) : skaterPoints(r, season.scoring[pp]),
+      reserved: usage.get(usageKey(pp, r.id)) ?? 0, max: maxFor(season, pp),
+    };
+  }).sort((a, b) => b.hg - a.hg);
   return c.json({ maxPicks: maxFor(season, pos), players: out });
 });
 
