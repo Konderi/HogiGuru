@@ -73,7 +73,7 @@ export function PlayerBrowser({ open, pos, exclude, onPick, onClose }: {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="cursor-pointer hover:bg-ice-500/10" title="Valitse tulijaksi"
-                    onClick={() => onPick({ id: r.id, name: r.name, team: r.team, picture: r.picture, reserved: r.reserved, max: r.max ?? maxDefault })}>
+                    onClick={() => onPick({ id: r.id, name: r.name, team: r.team, picture: r.picture, reserved: r.reserved, max: r.max ?? maxDefault, hg: r.hg })}>
                     <td className="min-w-[10rem]">
                       <span className="flex items-center gap-2.5">
                         {pos !== 'C' && <Avatar src={r.picture} name={r.name} size="h-7 w-7" />}

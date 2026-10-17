@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { api, fmt, fmtDate, POS_LABEL, type Slot } from '../api';
+import { api, fmt, fmtDate, type Slot } from '../api';
 import { useApi } from '../auth';
-import { Avatar, Card, EntityPicker, Modal, PosBadge, Spinner, type SearchHit } from '../ui';
+import { Avatar, Card, Modal, PosBadge, Spinner, type SearchHit } from '../ui';
+import { PlayerBrowser } from './PlayerBrowser';
 
 interface Resp {
   enabled: boolean; preview: boolean; draftDone: boolean; open: boolean; freezeGames: number; minPlayed: number;
@@ -11,7 +12,6 @@ interface Resp {
 /** Gurun omat vaihdot: freeze N ottelua draftin jälkeen, sitten vapaa vaihtaminen kiintiön puitteissa. */
 export function SelfSwap({ slots, onDone }: { slots: Slot[]; onDone: () => void }) {
   const { data, reload } = useApi<Resp>('/me/self-swap');
-  const coaches = useApi<SearchHit[]>('/coaches');
   const [out, setOut] = useState<Slot | null>(null);
   const [pick, setPick] = useState<SearchHit | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,15 +78,14 @@ export function SelfSwap({ slots, onDone }: { slots: Slot[]; onDone: () => void 
         )}
       </div>
 
-      <Modal open={!!out} onClose={close} title={out ? `Vaihda: ${out.name}` : ''}>
-        {out && (
+      <PlayerBrowser open={!!out && !pick} pos={out?.position ?? 'F'} exclude={out ? [out.entity_id] : []} onClose={close} onPick={setPick} />
+      <Modal open={!!out && !!pick} onClose={close} title={out ? `Vaihda: ${out.name}` : ''}>
+        {out && pick && (
           <div className="space-y-4">
-            {!pick ? (
-              <EntityPicker pos={out.position} options={out.position === 'C' ? coaches.data ?? [] : undefined} placeholder={`Hae ${POS_LABEL[out.position].toLowerCase()}…`} onPick={setPick} />
-            ) : (
+            {(
               <div className="rounded-xl bg-white/5 p-4 text-sm">
                 <p><span className="text-slate-400">Ulos:</span> <b className="text-white">{out.name}</b> ({fmt(out.value)} HG)</p>
-                <p className="mt-1"><span className="text-slate-400">Sisään:</span> <b className="text-white">{pick.name}</b> {pick.team && <span className="text-slate-500">· {pick.team}</span>}</p>
+                <p className="mt-1"><span className="text-slate-400">Sisään:</span> <b className="text-white">{pick.name}</b> {pick.team && <span className="text-slate-500">· {pick.team}</span>}{pick.hg != null && <span className="text-slate-400"> ({fmt(pick.hg)} HG)</span>}</p>
                 {pick.max != null && (pick.reserved ?? 0) >= pick.max && <p className="mt-2 text-goal">Pelaaja on jo varattu maksimimäärän.</p>}
                 <p className="mt-3 text-xs text-slate-500">Vaihto on lopullinen ja kuluttaa yhden vaihdon kiintiöstä.</p>
               </div>

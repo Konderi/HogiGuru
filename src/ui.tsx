@@ -104,7 +104,7 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   );
 }
 
-export interface SearchHit { id: number; name: string; team: string | null; picture?: string | null; reserved?: number; max?: number }
+export interface SearchHit { id: number; name: string; team: string | null; picture?: string | null; reserved?: number; max?: number; hg?: number }
 
 /** Varaustilanne-merkki: 2/5 (vihreä), 4/5 (keltainen), 5/5 täynnä (punainen). */
 export function ReservedBadge({ n, max }: { n: number; max: number }) {
