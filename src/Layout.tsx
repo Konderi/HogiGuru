@@ -5,8 +5,8 @@ import { Logo } from './ui';
 
 const nav = [
   { to: '/', label: 'Etusivu', end: true },
-  { to: '/leaderboard', label: 'Leaderboard' },
-  { to: '/gurukierros', label: 'Gurukierros' },
+  { to: '/leaderboard', label: 'Pistetilanne' },
+  { to: '/gurukierros', label: 'Kuntopuntari' },
   { to: '/ottelut', label: 'Ottelut' },
   { to: '/sarjataulukko', label: 'Sarjataulukko' },
   { to: '/pelaajat', label: 'Pelaajat' },

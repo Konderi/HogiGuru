@@ -175,7 +175,7 @@ function EmailPrefs() {
             await api('/me/email-prefs', { method: 'PUT', body: { ...prefs.data, weekly: e.target.checked } }).catch(() => {});
             await prefs.reload(); setSaving(false);
           }} />
-        <span><span className="block font-semibold text-white">Gurukierros-viikkokatsaus</span>
+        <span><span className="block font-semibold text-white">Kuntopuntari-viikkokatsaus</span>
           <span className="text-sm text-slate-400">Maanantaisin: oman viikkosi pisteet ja sijoitus, viikon tähdet ja huippupelit.</span></span>
       </label>
     </Card>

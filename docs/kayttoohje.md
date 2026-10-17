@@ -59,13 +59,13 @@ Draftia voi seurata livenä sivulla **Draft** (linkki yläpalkissa draftin aikaa
 
 Kentällisesi näkyy vain sinulle ja ylläpidolle.
 
-**Sähköposti-ilmoitukset:** sivun alaosassa voit valita, haluatko maanantaisin Gurukierros-viikkokatsauksen sähköpostiisi (oletuksena päällä). Viestin lopussa on myös peruutuslinkki.
+**Sähköposti-ilmoitukset:** sivun alaosassa voit valita, haluatko maanantaisin Kuntopuntari-viikkokatsauksen sähköpostiisi (oletuksena päällä). Viestin lopussa on myös peruutuslinkki.
 
 ---
 
-## 5. Gurukierros
+## 5. Kuntopuntari
 
-**Gurukierros**-sivulla on kaksi näkymää:
+**Kuntopuntari**-sivulla on kaksi näkymää:
 
 - **Viikkokatsaus** (ma–su, nuolilla edellisiin viikkoihin): viikon parhaat ja heikoimmat gurut viikon HG-pisteillä, viikon tähdet (paras hyökkääjä, puolustaja, maalivahti ja valmentaja), viikon huippupelit, top 10 HG-pelaajat, gurujen suosikkipelaajien viikko sekä pelaajat, joita kukaan ei omista mutta jotka olisivat kannattaneet. Gurujen kentällisiä ei paljasteta.
 - **Vaihtojen kuningas**: jokaisen vaihdon nettovaikutus = tulleen pelaajan pisteet vaihdon jälkeen − pisteet, jotka lähtenyt pelaaja olisi kerännyt samana aikana. Parhaat ja kalleimmat vaihdot, omat vaihtosi sekä vaihtotehokkuus guruittain.
@@ -110,7 +110,7 @@ Pelaajien osalta poikkeuksia ei ole: jos pelaaja lähtee Liigasta, hänet vaihde
 
 | Sivu | Mitä näet |
 |---|---|
-| **Leaderboard** | Kaikkien gurujen pisteet, sijoitusmuutokset ▲▼ ja ero kärkeen. Klikkaa gurua nähdäksesi hänen joukkueensa |
+| **Pistetilanne** | Kaikkien gurujen pisteet, sijoitusmuutokset ▲▼ ja ero kärkeen. Klikkaa gurua nähdäksesi hänen joukkueensa |
 | **Pelaajat** | Kaikki pelaajat ja valmentajat HG-pisteineen, paikka (H/P/MV), varaustilanne (klikkaa → gurut), "vain vapaat" ja 🩹 **Sairastupa** -suodattimet. Järjestä sarakkeen otsikosta; klikkaa pelaajaa avataksesi pelaajakortin |
 | **Ottelut** | Otteluohjelma, kokoonpanot HG-merkein ja maalivideot |
 | **Sarjataulukko** | Liigan runkosarja |

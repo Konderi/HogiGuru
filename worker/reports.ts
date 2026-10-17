@@ -29,7 +29,7 @@ export async function sendWeeklyReport(env: MailEnv, season: Season, opts: { onl
     ], ['left', 'right']),
     h2('Viikon huippupelit'),
     table(w.bestGames.slice(0, 3).map((g) => [`${esc(g.name)} <span style="color:#64748b">(${POS[g.pos]}) vs ${esc(g.opponent)} · ${esc(g.line)}</span>`, fmt(g.hg)]), ['left', 'right']),
-    `<p style="margin-top:20px"><a href="${SITE}/gurukierros" style="display:inline-block;background:#38bdf8;color:#060b18;padding:10px 18px;border-radius:10px;font-weight:bold;text-decoration:none">Koko Gurukierros →</a></p>`,
+    `<p style="margin-top:20px"><a href="${SITE}/gurukierros" style="display:inline-block;background:#38bdf8;color:#060b18;padding:10px 18px;border-radius:10px;font-weight:bold;text-decoration:none">Koko Kuntopuntari →</a></p>`,
   ].join('');
 
   let ok = 0; let fail = 0; let skipped = 0;
@@ -45,7 +45,7 @@ export async function sendWeeklyReport(env: MailEnv, season: Season, opts: { onl
 <td align="center"><div style="font-size:11px;color:#64748b;text-transform:uppercase">Kokonaissija</div><div style="font-size:24px;font-weight:bold;color:#ffffff">${me?.rank ?? '–'}${delta ? ` <span style="font-size:14px;color:${delta > 0 ? '#34d399' : '#f87171'}">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</span>` : ''}</div></td>
 </tr></table>`;
     const unsub = `${SITE}/api/unsubscribe?t=${await unsubToken(db, r.user_id)}`;
-    const good = await sendMail(env, kind, r.email, `Gurukierros ${w.monday.slice(8, 10)}.${w.monday.slice(5, 7)}.–${w.sunday.slice(8, 10)}.${w.sunday.slice(5, 7)}.`, layout('Gurukierros', own + common, unsub), unsub);
+    const good = await sendMail(env, kind, r.email, `Kuntopuntari ${w.monday.slice(8, 10)}.${w.monday.slice(5, 7)}.–${w.sunday.slice(8, 10)}.${w.sunday.slice(5, 7)}.`, layout('Kuntopuntari', own + common, unsub), unsub);
     if (good) ok++; else fail++;
   }
   return { week: monday, recipients: recipients.length, ok, fail, skipped };

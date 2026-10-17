@@ -14,7 +14,7 @@ export default function Leaderboard() {
 
   return (
     <>
-      <PageHeader kicker="HogiGuru" title="Leaderboard">
+      <PageHeader kicker="HogiGuru" title="Pistetilanne">
         <input className="input max-w-xs" placeholder="Etsi gurua…" value={q} onChange={(e) => setQ(e.target.value)} />
       </PageHeader>
       <ErrorBox error={error} />

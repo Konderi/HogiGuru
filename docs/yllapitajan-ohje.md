@@ -93,7 +93,7 @@ Gurut tekevät vaihdot itse *Oma joukkue → Vaihdot* -välilehdellä; vaihto to
 
 - **Kytkin (Vaihdot → Gurujen vaihtosivu):** kun pois päältä, gurut eivät näe välilehteä eivätkä voi vaihtaa. Ylläpitäjät näkevät sivun silti **esikatseluna** ja voivat testata sitä. Kytke päälle, kun vaihdot avataan.
 - **Freeze:** vaikka kytkin on päällä, vaihdot aukeavat vasta, kun jokainen joukkue on pelannut asetetun määrän otteluita.
-- Gurut näkevät vaihtojen vaikutuksen *Gurukierros → Vaihtojen kuningas* -näkymästä.
+- Gurut näkevät vaihtojen vaikutuksen *Kuntopuntari → Vaihtojen kuningas* -näkymästä.
 
 **Yksittäinen vaihto käsin:** Vaihdot → Käsin vaihto tai Gurut → ⇄ Vaihda.
 **Virheellinen vaihto:** Vaihdot → vaihtoloki → ↶ Peru.
@@ -135,7 +135,7 @@ Vaikutukset tarkemmin:
 | Vaihdossa **poistuneet** pelaajat | Pisteet on jäädytetty vaihtohetkellä vanhoilla kertoimilla, **eivät muutu** |
 | Vaihdossa **tulleet** pelaajat | Alkupisteet on tallennettu vanhoilla kertoimilla, mutta nykyiset lasketaan uusilla. Erotus voi vääristyä (jopa negatiiviseksi) |
 | Pistekorjaukset, potkut | Eivät muutu |
-| Leaderboardin historia (sijoitusmuutokset) | Vanhat päiväkohtaiset sijat jäävät ennalleen, mikä voi tuottaa yhden kerran isoja ▲▼-hyppyjä |
+| Pistetilanteen historia (sijoitusmuutokset) | Vanhat päiväkohtaiset sijat jäävät ennalleen, mikä voi tuottaa yhden kerran isoja ▲▼-hyppyjä |
 
 **Suositus:** älä muuta kertoimia kauden alettua. Jos sääntömuutos on pakko tehdä (HG-komitean päätös):
 1. Ota varmistus (*Tekninen ylläpito → Varmistukset → Tee varmistus nyt*).

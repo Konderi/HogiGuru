@@ -66,8 +66,8 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 |---|---|---|
 | Etusivu | `/` | Ilmoittautumisbanneri (kun auki), palkintopalli, Top 10, seuraavan vaihtopäivän lähtölaskenta, viimeisin päivitys, sarjataulukko |
 | Ilmoittaudu | `/ilmoittaudu` | Osallistumislomake veikkauksineen ja säännöt |
-| Leaderboard | `/leaderboard` | Kaikki gurut, sijoitusmuutokset ▲▼, ero kärkeen |
-| Gurukierros | `/gurukierros` | Viikkokatsaus (ma–su, oletuksena kuluva viikko): viikon parhaat gurut, tähdet, huippupelit, suosikkipelaajat, "olisi kannattanut". Vaihtojen kuningas: vaihtojen nettovaikutus. Kentällisiä ei paljasteta |
+| Pistetilanne | `/leaderboard` | Kaikki gurut, sijoitusmuutokset ▲▼, ero kärkeen |
+| Kuntopuntari | `/gurukierros` | Viikkokatsaus (ma–su, oletuksena kuluva viikko): viikon parhaat gurut, tähdet, huippupelit, "olisi kannattanut". Vaihtojen kuningas: vaihtojen nettovaikutus. Kentällisiä ei paljasteta |
 | Sarjataulukko | `/sarjataulukko` | Liigan runkosarja |
 | Pelaajat | `/pelaajat` (`/tilastot` ohjautuu) | Kaikki / H / P / MV / valmentajat HG-pisteineen, paikkamerkki, lajittelu, varaustilanne (klikkaus näyttää gurut), "vain vapaat" ja "Sairastupa" -suodattimet, loukkaantumismerkki, pelaajakortti |
 | Ottelut | `/ottelut` | Otteluohjelma, ottelusivu kokoonpanoineen, HG-merkki (gurulista), maalivideot (hls.js, `videos.liiga.fi`). **Live-seuranta:** käynnissä oleva ottelu päivittyy 15 s välein (liiga.fi-välimuisti 10 s), kello ja erä, tapahtumat uusin ensin (maalit videoineen, jäähyt, maalivahdin vaihdot, aikalisät, voittolaukaukset), uudet tapahtumat korostetaan ja ilmoitetaan ponnahduksella ja äänimerkillä (`src/liveSound.ts`, Web Audio; oma pelaaja = eri ääni), välilehden otsikossa tilanne |
@@ -99,7 +99,7 @@ Kauden 2026–2027 säännöt (osallistumiskaavakkeesta):
 | Hall of Fame | Historiatulokset |
 | Tekninen ylläpito | *Vain pääylläpitäjä:* järjestelmän tila, varmistukset (R2), sähköpostit ja lähetysloki, muutoshistoria |
 
-Muuta: Play-Offs-peli (`/playoff`) on kehitysvaiheessa ja näkyy vain ylläpitäjille, kunnes Yleiskatsauksen *Play-Offs-peli*-kytkin (`app_settings.playoff_public`, `PUT /api/admin/playoff-settings`) avaa sen guruille; API estää `/api/playoff/*` muilta. Leaderboardin ja etusivun Top 10:n rivistä aukeaa gurun joukkue (`GuruTeamModal`, `GET /api/gurus/:id/team`); sarjataulukossa 3 alinta punaisella (putoavat); Hall of Famessa kausivoittajilla ja maratontaulukon ykkösellä 🏆; sairastupa päivittyy liiga.fi-kokoonpanojen `injured`-tiedosta.
+Muuta: Play-Offs-peli (`/playoff`) on kehitysvaiheessa ja näkyy vain ylläpitäjille, kunnes Yleiskatsauksen *Play-Offs-peli*-kytkin (`app_settings.playoff_public`, `PUT /api/admin/playoff-settings`) avaa sen guruille; API estää `/api/playoff/*` muilta. Pistetilanteen ja etusivun Top 10:n rivistä aukeaa gurun joukkue (`GuruTeamModal`, `GET /api/gurus/:id/team`); sarjataulukossa 3 alinta punaisella (putoavat); Hall of Famessa kausivoittajilla ja maratontaulukon ykkösellä 🏆; sairastupa päivittyy liiga.fi-kokoonpanojen `injured`-tiedosta.
 
 Koko sivusto on optimoitu mobiilille: taulukot vierivät sivuttain kortin sisällä, ponnahdusikkunat avautuvat alapaneelina, kenttien 16 px fontti estää iOS-zoomauksen.
 
@@ -141,7 +141,7 @@ Frontend ja API julkaistaan **yhtenä Workerina**; vain `/api/*` ohjataan koodil
 | Muulloin 30 min välein | Ottelulokin täydennys (max 12 ottelua / ajo) |
 | 03.00 | Tietokannan varmistus R2:een + vanhojen varmistusten siivous |
 | 07.00 | Ylläpitoraportti pääylläpitäjille |
-| ma 09.00 | Gurukierros-viikkokatsaus guruille |
+| ma 09.00 | Kuntopuntari-viikkokatsaus guruille |
 
 **Ilme:** tumma jäähalliteema, jäänsininen korostus, maalivalon punainen, kaukalon viivat taustalla, tulostaulumainen numerofontti. Responsiivinen, mobiili ensisijainen.
 
@@ -179,7 +179,7 @@ HogiGuru-app/
 │   ├── scoring.ts               pisteytyskaavat
 │   ├── draft.ts                 draft, automaattivalinta, vaihdot, vaihtokiintiö
 │   ├── swaps.ts                 vaihtotoiveiden vuorojärjestys, esikatselu ja käsittely
-│   ├── weekly.ts                Gurukierros: viikkokatsaus, vaihtojen analyysi
+│   ├── weekly.ts                Kuntopuntari: viikkokatsaus, vaihtojen analyysi
 │   ├── predictions.ts           veikkausosion pisteet
 │   ├── liiga.ts                 liiga.fi-synkronointi (tilastot + ottelut)
 │   ├── backup.ts                SQL-dump R2:een, säilytys ja listaus
@@ -189,7 +189,7 @@ HogiGuru-app/
 ├── src/                         FRONTEND
 │   ├── main.tsx, Layout.tsx, api.ts, auth.tsx, ui.tsx, index.css, draftLogic.ts (harjoitusdraftin selainlogiikka)
 │   ├── components/              HalfRink, GameLog, PlayerCard, CoachReplace, DraftPrefs, SelfSwap, PlayerBrowser, GuruPopover, GuruTeamModal, ResultsView, GalaReveal, GoldConfetti
-│   ├── pages/                   Home, Register, Leaderboard, Gurukierros, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard, DraftScreen, Team, Privacy
+│   ├── pages/                   Home, Register, Leaderboard, Kuntopuntari, Standings, Stats, Results, HallOfFame, Login, PasswordReset, MyTeam, DraftBoard, DraftScreen, Team, Privacy
 │   └── admin/                   AdminLayout, Dashboard, Registrations, Draft, DraftPractice, Swaps, Gurus, Scoring, Coaches, Users, Results, HallOfFame, Maintenance
 ├── tools/
 │   ├── import_excel.py          kauden tuonti Excelistä
@@ -214,7 +214,7 @@ HogiGuru-app/
 | `seasons` | Kausi: säännöt, kentällinen, pisteytys (JSON), valintarajat paikoittain, draftin tila, arvonta (`draft_lottery_at`, `draft_lottery_paused`), `draft_nav`, ilmoittautumisen asetukset, valintatapa, tulosten julkaisu |
 | `teams`, `players`, `player_stats`, `standings` | liiga.fi-data (`players.injured` = sairastupa) |
 | `app_settings` | Avain–arvo-asetukset, mm. `self_swaps` (vaihtosivu guruille 1/0), `self_swap_freeze` |
-| `game_stats`, `team_games`, `games_synced` | Ottelukohtaiset tilastot pelilokia ja Gurukierrosta varten |
+| `game_stats`, `team_games`, `games_synced` | Ottelukohtaiset tilastot pelilokia ja Kuntopuntarita varten |
 | `coaches` | Valmentajat + potkut |
 | `gurus` | Kisaajat, linkki tunnukseen, draft-numero, `remote_draft` (ei paikalla), `lottery_order` |
 | `roster_slots` | **Kentällisen paikat** aikaväleittäin |
@@ -487,7 +487,7 @@ Tuo kaikkien kausien (2001–2026) sijoitukset ja gaalapaikat. Kauden maratonpis
 ## Ylläpitäjän ohje
 
 📘 **Käyttöohjeet:**
-- [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, kirjautuminen ja salasanan palautus, draft, oma joukkue, Gurukierros, vaihtotoiveet, potkut, sähköposti-ilmoitukset
+- [Käyttöohje guruille](docs/kayttoohje.md): ilmoittautuminen, kirjautuminen ja salasanan palautus, draft, oma joukkue, Kuntopuntari, vaihtotoiveet, potkut, sähköposti-ilmoitukset
 - [Ylläpitäjän ohje](docs/yllapitajan-ohje.md): roolit, kauden valmistelu, draft, vaihtopäivän käsittely, potkut, korjaukset, kertoimien muutos kesken kauden, kauden päätös ja gaala, tekninen ylläpito, ongelmatilanteet
 - [Domainin vaihto](docs/domainin-vaihto.md): siirto guru.konderi.fi → oma domain (Cloudflare, Resend, uudelleenohjaus, istunnot, testaus)
 
@@ -527,7 +527,7 @@ Koko kartoitus ja avoimet suositukset: [docs/tietoturva.md](docs/tietoturva.md).
 - Käyttö- ja ylläpito-ohjeet
 - Tuotantojulkaisu (guru.konderi.fi, D1, ajastetut päivitykset) – lokakuu 2026
 - Ottelukohtaiset HG-pisteet (pelaajan peliloki), pelaajakortti, tilastojen lajittelu
-- Gurukierros: viikkokatsaus ja vaihtojen kuningas
+- Kuntopuntari: viikkokatsaus ja vaihtojen kuningas
 - Valmentajan potkut: välitön oma valinta ilman vaihtokiintiötä
 - Veikkausosion automaattinen laskenta, kokonaistulokset ja gaalaesitys
 - Varmistukset R2:een, muutoshistoria, pääylläpitäjä-rooli ja Tekninen ylläpito -sivu

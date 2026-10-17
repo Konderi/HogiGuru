@@ -348,7 +348,7 @@ function LeaderboardTab() {
   if (!data) return <Spinner />;
   if (!data.season) return <Empty>Play-Offs-kisaa ei ole vielä avattu.</Empty>;
   return (
-    <Card title="Play-Offs Leaderboard">
+    <Card title="Play-Offs pistetilanne">
       {!data.rows.length ? <Empty>Ei vielä osallistujia.</Empty> : (
         <div className="overflow-x-auto">
           <table className="table">
@@ -427,7 +427,7 @@ function BracketTab({ admin }: { admin: boolean }) {
 }
 
 const TABS = [
-  { id: 'lb', label: 'Leaderboard' },
+  { id: 'lb', label: 'Pistetilanne' },
   { id: 'team', label: 'Oma joukkue' },
   { id: 'bracket', label: 'Hakemistopuu' },
   { id: 'rules', label: 'Säännöt' },
