@@ -1,5 +1,5 @@
 """Generoi sivuston taustakuvan: jäähalli ylhäältä kuvattuna (kaukalo merkintöineen, vaihtopenkit,
-jäähypenkit, katsomot portaineen ja videokuutio). Tulos: public/arena-bg.svg.
+jäähypenkit, katsomot portaineen ja videokuutio). Tulos: public/arena-bg-v2.svg.
 Kuva on tarkoituksella täysvärinen; haalistus tehdään CSS:ssä (.arena-bg)."""
 import math, random
 
@@ -106,5 +106,5 @@ for i in range(-3, 4):
     for j in (-1, 1):
         a(f'<circle cx="{CX + i * 180}" cy="{CY + j * 230}" r="70" fill="#fff" fill-opacity=".05"/>')
 a('</svg>')
-open('public/arena-bg.svg', 'w').write('\n'.join(o))
+open('public/arena-bg-v2.svg', 'w').write('\n'.join(o))
 print('ok', sum(len(x) for x in o), 'tavua')

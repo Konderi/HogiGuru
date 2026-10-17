@@ -42,7 +42,7 @@ export default function Layout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo />
-            <span className="font-display text-2xl tracking-wider text-white">Ho<span className="text-ice-400">Gi</span>Gu<span className="text-ice-400">Ru</span></span>
+            <span className="gold-title font-display text-2xl tracking-wider">HoGiGuRu</span>
           </Link>
           <nav className="hidden flex-1 items-center gap-0.5 lg:flex">
             {nav.map((n) => <NavLink key={n.to} to={n.to} end={'end' in n} className={linkCls}>{n.label}</NavLink>)}
@@ -79,11 +79,11 @@ export default function Layout() {
         )}
       </header>
 
-      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-6 sm:px-6 sm:py-12">
+      <main className="relative z-10 mx-auto w-full min-w-0 max-w-7xl flex-1 px-3 py-6 sm:px-6 sm:py-12">
         <Outlet />
       </main>
 
-      <footer className="border-t border-white/6 py-8 text-center text-xs text-slate-500">
+      <footer className="relative z-10 border-t border-white/6 py-8 text-center text-xs text-slate-500">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4">
           <span className="font-display tracking-widest text-slate-400">HoGiGuRu</span>
           <span>Liiga-veikkaus</span>
