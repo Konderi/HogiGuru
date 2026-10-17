@@ -43,6 +43,20 @@
 }
 
 @layer components {
+  /* Taustakuva: jäähalli ylhäältä (public/arena-bg.svg, tools/arena_bg.py). Haalistettu ja tummennettu,
+     jotta sisältö pysyy pääosassa. Kiinteä kerros toimii myös mobiilissa (ei background-attachment: fixed). */
+  .arena-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: url('/arena-bg.svg') center / cover no-repeat;
+    opacity: 0.16; filter: saturate(0.6) blur(1px);
+  }
+  .arena-bg::after {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 45%, transparent 0%, rgb(6 11 24 / 0.55) 100%),
+      linear-gradient(to bottom, rgb(6 11 24 / 0.35), transparent 30%, transparent 70%, rgb(6 11 24 / 0.6));
+  }
+
   .card {
     @apply rounded-2xl border border-white/8 bg-rink-850/80 shadow-xl shadow-black/30 backdrop-blur;
   }

@@ -1,0 +1,11 @@
+/* Vanha sivuston tausta (talletettu 17.10.2026 ennen jäähallitaustaa) */
+@layer base {
+  body {
+    @apply bg-rink-900 font-sans text-slate-200 antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgb(14 165 233 / 0.18), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgb(239 68 68 / 0.07), transparent 70%);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+}
