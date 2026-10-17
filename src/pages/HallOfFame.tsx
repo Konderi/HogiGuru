@@ -8,6 +8,8 @@ interface Hof { id: number; season_name: string; rank: number; name: string; poi
 interface Marathon { name: string; seasons: number; titles: number; medals: number; best: number; points: number; years: string[]; history: Hof[] }
 
 const MEDAL = ['🥇', '🥈', '🥉'];
+/** Kauden sijoitus: voittaja pokaalilla */
+const PLACE = ['🏆', '🥈', '🥉'];
 const short = (s: string) => `${s.slice(2, 4)}–${s.slice(-2)}`;
 
 export default function HallOfFame() {
@@ -120,7 +122,7 @@ export default function HallOfFame() {
             <Card>
               <div className="overflow-x-auto">
                 <table className="table">
-                  <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Kaudet</th><th className="num">🥇</th><th className="num">Mitalit</th><th className="num">Paras</th><th className="num">Maratonpisteet</th></tr></thead>
+                  <thead><tr><th className="w-10">#</th><th>Guru</th><th className="num">Kaudet</th><th className="num" title="Mestaruudet">🏆</th><th className="num">Mitalit</th><th className="num">Paras</th><th className="num">Maratonpisteet</th></tr></thead>
                   <tbody>
                     {shown.map((x) => {
                       const r = rankOf.get(x.name)!;
@@ -142,7 +144,7 @@ export default function HallOfFame() {
                                 {x.history.map((h) => (
                                   <div key={h.id} className="flex items-center gap-2">
                                     <span className="w-12 font-mono text-slate-400">{short(h.season_name)}</span>
-                                    <span className="w-8 text-right">{MEDAL[h.rank - 1] ?? <span className="text-slate-300">{h.rank}.</span>}</span>
+                                    <span className="w-8 text-right">{PLACE[h.rank - 1] ?? <span className="text-slate-300">{h.rank}.</span>}</span>
                                     <span className="text-slate-500">/ {sizes.get(h.season_name)}</span>
                                     <span className="ml-auto font-mono text-slate-400">{fmt(h.points ?? 0)} p</span>
                                   </div>
@@ -176,7 +178,7 @@ export default function HallOfFame() {
                         <span className="w-24 font-display text-lg text-white">{s}</span>
                         <span className="w-48 text-xs text-slate-400">🎉 {venues.get(s) ?? '–'}</span>
                         <span className="flex flex-1 flex-wrap gap-x-4 text-sm">
-                          {rows.slice(0, 3).map((r) => <span key={r.id} className={r.rank === 1 ? 'font-semibold text-white' : 'text-slate-300'}>{MEDAL[r.rank - 1]} {r.name}</span>)}
+                          {rows.slice(0, 3).map((r) => <span key={r.id} className={r.rank === 1 ? 'font-semibold text-white' : 'text-slate-300'}>{PLACE[r.rank - 1]} {r.name}</span>)}
                         </span>
                         <span className="text-xs text-slate-500">{rows.length} gurua</span>
                       </button>
@@ -184,7 +186,7 @@ export default function HallOfFame() {
                         <ol className="grid gap-x-6 gap-y-1 bg-white/[0.02] px-5 py-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                           {rows.map((r) => (
                             <li key={r.id} className="flex items-center gap-2">
-                              <span className="w-7 text-right">{MEDAL[r.rank - 1] ?? <span className="font-mono text-xs text-slate-500">{r.rank}.</span>}</span>
+                              <span className="w-7 text-right">{PLACE[r.rank - 1] ?? <span className="font-mono text-xs text-slate-500">{r.rank}.</span>}</span>
                               <span className={r.rank <= 3 ? 'font-semibold text-white' : 'text-slate-300'}>{r.name}</span>
                             </li>
                           ))}
