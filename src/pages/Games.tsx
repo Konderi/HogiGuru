@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
 import { useApi, useAuth } from '../auth';
 import { Avatar, Card, Empty, ErrorBox, PageHeader, Spinner } from '../ui';
-import VideoModal from '../components/VideoModal';
+import VideoModal from '../components/GoalVideo';
 
 export interface GameTeam { id: string; name: string; logo: string | null; goals: number }
 export interface Forecast {
