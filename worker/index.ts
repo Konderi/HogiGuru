@@ -182,7 +182,9 @@ app.get('/games/:id', async (c) => {
     extra = { ...extra, events: extra.events.map((e: { scorerId?: number | null; assistIds?: number[] }) => {
       if (e.scorerId == null) return e;
       const ids = [e.scorerId, ...(e.assistIds ?? [])];
-      return { ...e, gurus: gs(ids), mine: ids.some((i) => mine.has(i)) };
+      const ev = e as { scorer?: string; assists?: string[] };
+      const owners = ids.map((pid, k) => ({ label: `${k ? 'S' : 'M'} · ${k ? ev.assists?.[k - 1] ?? '' : ev.scorer ?? ''}`, gurus: gs([pid]) }));
+      return { ...e, gurus: gs(ids), owners, mine: ids.some((i) => mine.has(i)) };
     }) };
   }
   const players = players0.map((p) => ({ ...p, gurus: (owners.get(p.player_id) ?? []).sort((x, y) => x.localeCompare(y, 'fi')) }));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GuruPopover } from '../components/GuruPopover';
+import { GuruPopover, type GuruGroup } from '../components/GuruPopover';
 import { Link, useParams } from 'react-router';
 import { fmt } from '../api';
 import { useApi, useAuth } from '../auth';
@@ -182,10 +182,10 @@ interface PRow {
 }
 
 /** HG-merkki: pelaaja on jonkun gurun kentällisessä – klikkaus näyttää kenen */
-function GuruBadge({ gurus, mine }: { gurus?: string[]; mine: boolean }) {
+function GuruBadge({ gurus, mine, groups }: { gurus?: string[]; mine: boolean; groups?: GuruGroup[] }) {
   if (!gurus?.length) return null;
   return (
-    <GuruPopover gurus={gurus} title={`Gurujen kentällisissä: ${gurus.length} – näytä kenellä`}
+    <GuruPopover gurus={gurus} groups={groups} title={`Gurujen kentällisissä: ${gurus.length} – näytä kenellä`}
       className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none ring-1 ${mine ? 'bg-amber-400/20 text-amber-200 ring-amber-300/40' : 'bg-ice-500/15 text-ice-200 ring-ice-400/30'} hover:brightness-125`}>
       HG<span className="font-mono">{gurus.length}</span>
     </GuruPopover>
@@ -197,7 +197,7 @@ interface XTeam { shots: number; blocked: number; fo: number; foWon: number; sho
 interface XEvent {
   id: string; type: 'goal' | 'penalty' | 'goalie' | 'timeout' | 'shootout' | 'disallowed'; side: 'home' | 'away'; time: number; period: number;
   scorer?: string; assists?: string[]; score?: string; types?: string[]; winning?: boolean; video?: string | null; thumb?: string | null;
-  player?: string | null; prev?: string | null; minutes?: number; reason?: string; scored?: boolean; gurus?: string[]; mine?: boolean;
+  player?: string | null; prev?: string | null; minutes?: number; reason?: string; scored?: boolean; gurus?: string[]; owners?: GuruGroup[]; mine?: boolean;
 }
 interface Live { started: boolean; ended: boolean; gameTime: number; period: number | null; home: number; away: number }
 interface Extra {
@@ -242,7 +242,7 @@ function EventLine({ e, g, fresh, onVideo }: { e: XEvent; g: Game; fresh: boolea
                   : <span className="inline-flex items-center gap-1 px-2 py-1">▶ video</span>}
               </button>
             ) : !g.ended ? <span className="text-[10px] text-slate-500">video tulossa…</span> : null}
-            {e.gurus?.length ? <GuruBadge gurus={e.gurus} mine={!!e.mine} /> : null}
+            {e.gurus?.length ? <GuruBadge gurus={e.gurus} groups={e.owners} mine={!!e.mine} /> : null}
           </span>
         </span>
       );
