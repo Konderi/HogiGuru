@@ -895,6 +895,15 @@ async function guruTeam(c: C, guruId: number) {
   };
 }
 
+/** Julkinen: gurun nykyinen kentällinen (leaderboardin klikkaus) */
+app.get('/gurus/:id/team', async (c) => {
+  const id = Number(c.req.param('id'));
+  const g = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE id = ? AND season_id = ?').bind(id, c.get('season').id).first<{ id: number; name: string }>();
+  if (!g) return c.json({ error: 'Gurua ei löytynyt' }, 404);
+  const t = await guruTeam(c, g.id);
+  return c.json({ guru: g, slots: t.slots.filter((s) => s.active), standing: t.standing });
+});
+
 app.get('/me/team', requireUser, async (c) => {
   const g = await c.env.DB.prepare('SELECT id, name FROM gurus WHERE user_id = ? AND season_id = ?').bind(c.get('user')!.id, c.get('season').id).first<{ id: number; name: string }>();
   if (!g) return c.json({ guru: null });

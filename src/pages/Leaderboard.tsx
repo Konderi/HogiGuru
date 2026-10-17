@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { fmt, matchName, type LeaderRow } from '../api';
 import { useApi, useAuth } from '../auth';
 import { Card, Empty, ErrorBox, PageHeader, RankBadge, RankDelta, Spinner } from '../ui';
+import { GuruTeamModal } from '../components/GuruTeamModal';
 
 export default function Leaderboard() {
+  const [open, setOpen] = useState<{ id: number; name: string } | null>(null);
   const { data, error, loading } = useApi<LeaderRow[]>('/leaderboard');
   const { me } = useAuth();
   const [q, setQ] = useState('');
@@ -26,9 +28,9 @@ export default function Leaderboard() {
                   const mine = me?.guru?.id === g.id;
                   const pct = leader > 0 ? Math.max(4, (g.points / leader) * 100) : 0;
                   return (
-                    <tr key={g.id} className={mine ? 'bg-ice-500/8' : ''}>
+                    <tr key={g.id} className={`cursor-pointer ${mine ? 'bg-ice-500/8' : ''}`} title="Näytä kentällinen" onClick={() => setOpen({ id: g.id, name: g.name })}>
                       <td><RankBadge rank={g.rank} /></td>
-                      <td className="font-semibold text-white">{g.name}{mine && <span className="chip ml-2 bg-ice-500/20 text-ice-300">Sinä</span>}</td>
+                      <td className="font-semibold text-white underline-offset-2 hover:underline">{g.name}{mine && <span className="chip ml-2 bg-ice-500/20 text-ice-300">Sinä</span>}</td>
                       <td className="text-center"><RankDelta rank={g.rank} prev={g.prevRank} /></td>
                       <td className="hidden sm:table-cell">
                         <div className="h-1.5 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-gradient-to-r from-ice-500 to-ice-300" style={{ width: `${pct}%` }} /></div>
@@ -43,6 +45,7 @@ export default function Leaderboard() {
           </div>
         )}
       </Card>
+      <GuruTeamModal guru={open} onClose={() => setOpen(null)} />
     </>
   );
 }

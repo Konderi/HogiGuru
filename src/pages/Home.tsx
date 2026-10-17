@@ -6,6 +6,7 @@ import { GameRow, type Game } from './Games';
 import { Card, Countdown, Empty, ErrorBox, RankBadge, RankDelta, Spinner } from '../ui';
 import { StandingsTable, type StandingRow } from './Standings';
 import { fmtDeadline, type RegInfo } from './Register';
+import { GuruTeamModal } from '../components/GuruTeamModal';
 
 interface Overview {
   season: { name: string; draftStatus: string };
@@ -49,6 +50,7 @@ function PlayerChanges({ list }: { list: PlayerChange[] }) {
 
 export default function Home() {
   const { data, error, loading } = useApi<Overview>('/public/overview');
+  const [guru, setGuru] = useState<{ id: number; name: string } | null>(null);
   if (loading && !data) return <Spinner />;
   if (!data) return <ErrorBox error={error} />;
   const top3 = data.leaderboard.slice(0, 3);
@@ -109,9 +111,9 @@ export default function Home() {
             <table className="table">
               <tbody>
                 {data.leaderboard.slice(0, 10).map((g) => (
-                  <tr key={g.id}>
+                  <tr key={g.id} className="cursor-pointer" title="Näytä kentällinen" onClick={() => setGuru({ id: g.id, name: g.name })}>
                     <td className="w-12"><RankBadge rank={g.rank} /></td>
-                    <td className="font-semibold text-white">{g.name}</td>
+                    <td className="font-semibold text-white underline-offset-2 hover:underline">{g.name}</td>
                     <td className="w-14 text-center"><RankDelta rank={g.rank} prev={g.prevRank} /></td>
                     <td className="num scoreboard text-base">{fmt(g.points)}</td>
                   </tr>
@@ -148,6 +150,7 @@ export default function Home() {
       <Card title="Liigan sarjataulukko" action={<Link to="/sarjataulukko" className="text-sm font-semibold text-ice-400 hover:text-ice-300">Koko taulukko →</Link>}>
         <StandingsTable rows={data.standings} compact />
       </Card>
+      <GuruTeamModal guru={guru} onClose={() => setGuru(null)} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { fmt, type Position } from '../api';
 import { useApi } from '../auth';
 import GameLog from './GameLog';
 import { Avatar, ErrorBox, Modal, Spinner } from '../ui';
+import { GuruPopover } from './GuruPopover';
 
 interface Hist { season: number; team: string; games: number; goals: number; assists: number; points: number; pim: number; plusMinus: number; saves: number; savePct: number; gaa: number; shutouts: number; gkWins: number }
 interface Info {
@@ -9,7 +10,7 @@ interface Info {
   nationality: string | null; birthplace: string | null; team: string | null; jersey: number | null; position: string | null; picture: string | null; history: Hist[];
 }
 /** Tilastot-sivulta välitettävät tämän kauden HG-tiedot */
-export interface CardSeed { id: number; name: string; team: string | null; picture: string | null; hg: number; reserved: number; max: number; goalie: boolean; position?: Position }
+export interface CardSeed { id: number; name: string; team: string | null; picture: string | null; hg: number; reserved: number; max: number; goalie: boolean; position?: Position; gurus?: string[] }
 
 const POS: Record<string, string> = { H: 'Hyökkääjä', VL: 'Vasen laitahyökkääjä', OL: 'Oikea laitahyökkääjä', KH: 'Keskushyökkääjä', P: 'Puolustaja', MV: 'Maalivahti' };
 const age = (d: string) => Math.floor((Date.now() - new Date(d).getTime()) / 31557600000);
@@ -43,10 +44,17 @@ export default function PlayerCard({ seed, onClose }: { seed: CardSeed | null; o
             <div className="text-[11px] uppercase tracking-wider text-slate-400">HG-pisteet</div>
             <div className="scoreboard text-2xl">{fmt(seed.hg)}</div>
           </div>
+          {seed.gurus?.length ? (
+            <GuruPopover gurus={seed.gurus} title="Näytä gurut" className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-center hover:border-ice-400/40 hover:bg-white/[0.06]">
+              <div className="text-[11px] uppercase tracking-wider text-slate-400">Varattu ▾</div>
+              <div className={`font-mono text-2xl font-bold ${seed.reserved >= seed.max ? 'text-goal' : 'text-white'}`}>{seed.reserved}/{seed.max}</div>
+            </GuruPopover>
+          ) : (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-center">
             <div className="text-[11px] uppercase tracking-wider text-slate-400">Varattu</div>
             <div className={`font-mono text-2xl font-bold ${seed.reserved >= seed.max ? 'text-goal' : 'text-white'}`}>{seed.reserved}/{seed.max}</div>
           </div>
+          )}
         </div>
       </div>
 
