@@ -34,7 +34,7 @@ a('''<defs>
 a(f'<rect width="{W}" height="{H}" fill="#0a1328"/>')
 
 # Katsomot: sisäkkäiset pyöristetyt renkaat, rivit viivoina, portaat (käytävät) poikki
-tiers = [(40, 330, '#14254f'), (360, 560, '#101e42')]
+tiers = [(14, 330, '#14254f'), (360, 560, '#101e42')]
 for t0, t1, col in tiers:
     a(rrect(X0 - t1, Y0 - t1, RW + 2 * t1, RH + 2 * t1, RR + t1, fill='url(#crowd)'))
     a(rrect(X0 - t0, Y0 - t0, RW + 2 * t0, RH + 2 * t0, RR + t0, fill='#0a1328'))
@@ -46,11 +46,11 @@ for t0, t1, col in tiers:
 a(rrect(X0 - 345, Y0 - 345, RW + 690, RH + 690, RR + 345, fill='none', stroke='#1b2c55', stroke_width='26'))
 for i in range(-5, 6):
     x = CX + i * 115
-    for y1, y2 in ((Y0 - 560, Y0 - 40), (Y0 + RH + 40, Y0 + RH + 560)):
+    for y1, y2 in ((Y0 - 560, Y0 - 60), (Y0 + RH + 60, Y0 + RH + 560)):
         a(f'<line x1="{x:.1f}" y1="{y1:.1f}" x2="{x:.1f}" y2="{y2:.1f}" stroke="#0a1328" stroke-width="7"/>')
 for j in (-1, 0, 1):
     y = CY + j * 170
-    for x1, x2 in ((X0 - 560, X0 - 40), (X0 + RW + 40, X0 + RW + 560)):
+    for x1, x2 in ((X0 - 560, X0 - 20), (X0 + RW + 20, X0 + RW + 560)):
         a(f'<line x1="{x1:.1f}" y1="{y:.1f}" x2="{x2:.1f}" y2="{y:.1f}" stroke="#0a1328" stroke-width="7"/>')
 # Kulmien viistot käytävät
 for sx in (-1, 1):
@@ -59,7 +59,7 @@ for sx in (-1, 1):
         for ang in (30, 60):
             r = math.radians(ang)
             dx, dy = sx * math.cos(r), sy * math.sin(r)
-            a(f'<line x1="{cx + dx * (RR + 40):.1f}" y1="{cy + dy * (RR + 40):.1f}" x2="{cx + dx * (RR + 560):.1f}" y2="{cy + dy * (RR + 560):.1f}" stroke="#0a1328" stroke-width="7"/>')
+            a(f'<line x1="{cx + dx * (RR + 20):.1f}" y1="{cy + dy * (RR + 20):.1f}" x2="{cx + dx * (RR + 560):.1f}" y2="{cy + dy * (RR + 560):.1f}" stroke="#0a1328" stroke-width="7"/>')
 
 # Laidat ja jää
 a(rrect(X0 - 14, Y0 - 14, RW + 28, RH + 28, RR + 14, fill='#e5edf7'))
@@ -100,9 +100,7 @@ a(f'<circle cx="{CX}" cy="{CY}" r="{0.15 * M:.1f}" fill="{blue}"/>')
 a(f'<path d="M{CX - 3 * M:.1f},{Y0 + RH} A{3 * M:.1f},{3 * M:.1f} 0 0 1 {CX + 3 * M:.1f},{Y0 + RH}" stroke="{red}" stroke-width="2"/>')
 a('</g>')
 
-# Keskikuution varjo ja kattovalojen heijastus
-a(f'<rect x="{CX - 70}" y="{CY - 48}" width="140" height="96" rx="6" fill="#0b1530" fill-opacity=".55"/>')
-a(f'<rect x="{CX - 58}" y="{CY - 38}" width="116" height="76" rx="4" fill="#15244a" stroke="#38bdf8" stroke-opacity=".5" stroke-width="2"/>')
+# Kattovalojen heijastus
 a(f'<ellipse cx="{CX}" cy="{CY}" rx="{RW * 0.6:.0f}" ry="{RH * 0.7:.0f}" fill="url(#light)"/>')
 for i in range(-3, 4):
     for j in (-1, 1):
