@@ -124,17 +124,6 @@ export default function Home() {
         </Card>
 
         <div className="flex flex-col gap-6">
-          <Card title="Seuraava vaihtopäivä" className="flex-1">
-            <div className="p-5">
-              {data.nextSwap ? (
-                <>
-                  <p className="mb-4 font-display text-2xl text-white">{fmtDate(data.nextSwap.date)}{data.nextSwap.start_time && <span className="ml-2 font-mono text-base text-ice-300">klo {data.nextSwap.start_time}–{data.nextSwap.end_time}</span>}</p>
-                  <Countdown date={`${data.nextSwap.date}T${data.nextSwap.start_time ?? '00:00'}:00`} />
-                  {data.nextSwap.note && <p className="mt-4 text-sm text-slate-400">{data.nextSwap.note}</p>}
-                </>
-              ) : <p className="text-sm text-slate-400">Vaihtopäiviä ei ole vielä julkaistu.</p>}
-            </div>
-          </Card>
           <Card title="Tilastot päivitetty" className="flex-1">
             <div className="p-5 text-sm">
               <p className="scoreboard text-xl">{fmtDateTime(data.lastSync?.finished_at)}</p>

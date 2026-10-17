@@ -182,7 +182,7 @@ export default function Register() {
         </div>
         <div>
           <p className="label">Vaihdot</p>
-          <p>Kauden aikana {data.season.maxSwaps ?? 'rajaton määrä'} vaihtoa, vain vaihtopäivinä. Valmentajan saa vaihtaa aina potkujen yhteydessä; muuten saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.</p>
+          <p>Kauden aikana {data.season.maxSwaps ?? 'rajaton määrä'} vaihtoa. Vaihdot avautuvat, kun jokainen joukkue on pelannut 10 ottelua, ja ne tehdään itse sivustolla. Valmentajan saa vaihtaa aina potkujen yhteydessä; muuten saman joukkueen uusi valmentaja jatkaa pisteiden keräämistä.</p>
           {data.swapDays.length > 0 && (
             <ul className="mt-2 grid grid-cols-2 gap-2">
               {data.swapDays.map((d) => <li key={d.date} className="rounded-lg bg-white/5 px-3 py-2"><span className="block font-semibold text-white">{fmtDate(d.date)}</span><span className="font-mono text-xs text-ice-300">klo {d.start_time}–{d.end_time}</span></li>)}
