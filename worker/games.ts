@@ -101,13 +101,20 @@ export async function gameExtra(season: number, id: number, ended: boolean, wait
   const events: any[] = [];
   for (const side of ['home', 'away'] as const) {
     const t = g[`${side}Team`];
-    for (const e of t.goalEvents ?? []) events.push({
+    for (const e of t.goalEvents ?? []) {
+      // Hylätty maali (videotarkistus): liiga.fi merkitsee goalTypes = VT0 eikä maalintekijää ole
+      if (!e.scorerPlayerId && (e.goalTypes ?? []).some((x: string) => /^VT0?$/.test(x))) {
+        events.push({ id: `x-${side}-${e.eventId ?? e.gameTime}`, type: 'disallowed', side, time: e.gameTime, period: e.period });
+        continue;
+      }
+      events.push({
       id: `g-${side}-${e.eventId ?? e.gameTime}`,
       type: 'goal', side, time: e.gameTime, period: e.period, scorer: nm(e.scorerPlayerId) || `${e.scorerPlayer?.firstName ?? ''} ${e.scorerPlayer?.lastName ?? ''}`.trim(),
       scorerId: e.scorerPlayerId ?? null, assistIds: e.assistantPlayerIds ?? [],
       assists: (e.assistantPlayers ?? []).map((a: any) => `${a.firstName} ${a.lastName}`), score: `${e.homeTeamScore}–${e.awayTeamScore}`,
       types: (e.goalTypes ?? []).map((x: string) => GOAL_TYPES[x] ?? x), winning: !!e.winningGoal, video: e.videoClipUrl ?? null, thumb: e.videoThumbnailUrl ?? null,
     });
+    }
     for (const e of t.penaltyEvents ?? []) events.push({ id: `p-${side}-${e.eventId ?? `${e.gameTime}-${e.playerId}`}`, type: 'penalty', side, time: e.gameTime, period: e.period, player: nm(e.playerId), minutes: e.penaltyMinutes, reason: e.penaltyFaultName });
     for (const e of t.goalKeeperChanges ?? []) events.push({ id: `k-${side}-${e.eventId ?? e.time}`, type: 'goalie', side, time: e.time, period: e.period, player: nm(e.nextGoalie) || null, prev: nm(e.previousGoalie) || null });
     if (typeof t.timeOut === 'number') events.push({ id: `t-${side}`, type: 'timeout', side, time: t.timeOut, period: Math.min(4, Math.floor(t.timeOut / 1200) + 1) });

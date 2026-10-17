@@ -186,7 +186,7 @@ function GuruBadge({ gurus, mine }: { gurus?: string[]; mine: boolean }) {
 interface XPlayer { id: number; toi: number; shots: number; blocked: number; fo: number; foWon: number; xg: number; speed: number | null; hardest: number | null }
 interface XTeam { shots: number; blocked: number; fo: number; foWon: number; shotsByPeriod: number[]; pp: string; sh: number; xg: number | null; pim: number; players: XPlayer[] }
 interface XEvent {
-  id: string; type: 'goal' | 'penalty' | 'goalie' | 'timeout' | 'shootout'; side: 'home' | 'away'; time: number; period: number;
+  id: string; type: 'goal' | 'penalty' | 'goalie' | 'timeout' | 'shootout' | 'disallowed'; side: 'home' | 'away'; time: number; period: number;
   scorer?: string; assists?: string[]; score?: string; types?: string[]; winning?: boolean; video?: string | null; thumb?: string | null;
   player?: string | null; prev?: string | null; minutes?: number; reason?: string; scored?: boolean; gurus?: string[]; mine?: boolean;
 }
@@ -240,6 +240,7 @@ function EventLine({ e, g, fresh, onVideo }: { e: XEvent; g: Game; fresh: boolea
       case 'penalty': return <span className="flex-1 text-slate-300">⏱ {e.player} {e.minutes} min <span className="text-xs text-slate-400">({e.reason})</span></span>;
       case 'goalie': return <span className="flex-1 text-slate-300">🥅 Maalivahdin vaihto: {e.player ?? 'tyhjä maali'}{e.prev ? <span className="text-xs text-slate-500"> ({e.prev} ulos)</span> : null}</span>;
       case 'timeout': return <span className="flex-1 text-slate-300">✋ Aikalisä · {team}</span>;
+      case 'disallowed': return <span className="flex-1 text-slate-400">❌ Hylätty maali · {team} <span className="text-xs">(videotarkistus)</span></span>;
       case 'shootout': return <span className="flex-1 text-slate-300">🎯 {e.player}: {e.scored ? <b className="text-white">maali{e.winning ? ' (ratkaisu)' : ''}</b> : 'ei maalia'}</span>;
     }
   })();
@@ -255,21 +256,23 @@ function ExtraView({ g, x, fresh, newestFirst }: { g: Game; x: Extra; fresh: Set
   const foPct = (t: XTeam) => (t.fo ? Math.round((t.foWon / t.fo) * 100) : 0);
   const [video, setVideo] = useState<{ src: string; title: string } | null>(null);
   const events = newestFirst ? [...x.events].reverse() : x.events;
+  // Vain pelatut erät: jatkoaika/voittolaukaukset näkyvät vasta kun niihin edetään
+  const ps = x.periods.filter((p) => p.index <= Math.max(3, x.live?.period ?? 3));
   return (
     <>
       <VideoModal src={video?.src ?? null} title={video?.title ?? ''} onClose={() => setVideo(null)} />
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Joukkuevertailu">
           <div className="space-y-3 p-4">
-            {x.periods.length > 0 && (
+            {ps.length > 0 && (
               <table className="table mb-2">
-                <thead><tr><th /> {x.periods.map((p) => <th key={p.index} className="num">{periodName(p.index, p.category)}</th>)}<th className="num">Yht.</th></tr></thead>
+                <thead><tr><th /> {ps.map((p) => <th key={p.index} className="num">{periodName(p.index, p.category)}</th>)}<th className="num">Yht.</th></tr></thead>
                 <tbody>
                   {(['home', 'away'] as const).map((s) => (
-                    <tr key={s}><td className="text-white">{g[s].name}</td>{x.periods.map((p) => <td key={p.index} className="num">{p[s]}</td>)}<td className="num font-semibold text-white">{g[s].goals}</td></tr>
+                    <tr key={s}><td className="text-white">{g[s].name}</td>{ps.map((p) => <td key={p.index} className="num">{p[s]}</td>)}<td className="num font-semibold text-white">{g[s].goals}</td></tr>
                   ))}
                   {x.home.shotsByPeriod.length > 0 && (['home', 'away'] as const).map((s) => (
-                    <tr key={`sh-${s}`} className="text-xs text-slate-400"><td>laukaukset · {g[s].name}</td>{x.periods.map((p, i) => <td key={p.index} className="num">{x[s].shotsByPeriod[i] ?? ''}</td>)}<td className="num">{x[s].shots}</td></tr>
+                    <tr key={`sh-${s}`} className="text-xs text-slate-400"><td>laukaukset · {g[s].name}</td>{ps.map((p, i) => <td key={p.index} className="num">{x[s].shotsByPeriod[i] ?? ''}</td>)}<td className="num">{x[s].shots}</td></tr>
                   ))}
                 </tbody>
               </table>
@@ -547,7 +550,7 @@ function SoundToggle() {
 
 function LiveToast({ e, g, onClose }: { e: XEvent; g: Game; onClose: () => void }) {
   const t = g[e.side].name;
-  const text = e.type === 'goal' ? `🚨 MAALI! ${t} ${e.score} · ${e.scorer}` : e.type === 'penalty' ? `⏱ Jäähy ${t}: ${e.player} ${e.minutes} min` : e.type === 'goalie' ? `🥅 Maalivahdin vaihto · ${t}` : e.type === 'timeout' ? `✋ Aikalisä · ${t}` : `🎯 ${e.player}: ${e.scored ? 'maali' : 'ei maalia'}`;
+  const text = e.type === 'goal' ? `🚨 MAALI! ${t} ${e.score} · ${e.scorer}` : e.type === 'penalty' ? `⏱ Jäähy ${t}: ${e.player} ${e.minutes} min` : e.type === 'goalie' ? `🥅 Maalivahdin vaihto · ${t}` : e.type === 'timeout' ? `✋ Aikalisä · ${t}` : e.type === 'disallowed' ? `❌ Hylätty maali · ${t}` : `🎯 ${e.player}: ${e.scored ? 'maali' : 'ei maalia'}`;
   return (
     <button type="button" onClick={onClose}
       className={`fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-2xl border px-4 py-3 text-left text-sm font-semibold text-white shadow-2xl backdrop-blur ${e.type === 'goal' ? 'border-goal/50 bg-goal/80' : 'border-white/10 bg-rink-800/95'}`}>
