@@ -6,7 +6,7 @@ import PlayerCard, { type CardSeed } from '../components/PlayerCard';
 
 interface PlayerStat {
   id: number; name: string; team: string; picture: string | null; pos: 'F' | 'D' | 'G'; injured: boolean; max: number; games: number; goals: number; assists: number; pim: number;
-  plusMinus: number; shutouts: number; saves: number; goalsAgainst: number; wins: number; savePct: number | null; hg: number; reserved: number;
+  plusMinus: number; shutouts: number; saves: number; goalsAgainst: number; wins: number; savePct: number | null; hg: number; reserved: number; gurus?: string[];
 }
 type Tab = 'A' | Position;
 const TAB_LABEL: Record<Tab, string> = { A: 'Kaikki', ...POS_PLURAL };
@@ -23,14 +23,25 @@ export function InjuryIcon({ className = 'h-4 w-4' }: { className?: string }) {
     </span>
   );
 }
-interface CoachStat { id: number; name: string; team: string; logo: string | null; team_points: number | null; hg: number; reserved: number; fired: number }
+interface CoachStat { id: number; name: string; team: string; logo: string | null; team_points: number | null; hg: number; reserved: number; fired: number; gurus?: string[] }
 type SortKey = 'name' | 'games' | 'goals' | 'assists' | 'points' | 'plusMinus' | 'pim' | 'wins' | 'saves' | 'goalsAgainst' | 'savePct' | 'shutouts' | 'reserved' | 'hg';
 
-function Reserved({ n, max }: { n: number; max: number }) {
+function Reserved({ n, max, gurus }: { n: number; max: number; gurus?: string[] }) {
+  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
+  const dots = Array.from({ length: max }, (_, i) => <span key={i} className={`h-2 w-2 rounded-full ${i < n ? (n >= max ? 'bg-goal' : 'bg-ice-400') : 'bg-white/10'}`} />);
+  if (!gurus?.length) return <span className="inline-flex items-center gap-1" title={`Varattu ${n}/${max}`}>{dots}</span>;
   return (
-    <span className="inline-flex items-center gap-1" title={`Varattu ${n}/${max}`}>
-      {Array.from({ length: max }, (_, i) => <span key={i} className={`h-2 w-2 rounded-full ${i < n ? (n >= max ? 'bg-goal' : 'bg-ice-400') : 'bg-white/10'}`} />)}
-    </span>
+    <>
+      <button type="button" title={`Varattu ${n}/${max} – näytä gurut`} onBlur={() => setOpen(null)}
+        onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setOpen((o) => (o ? null : { x: Math.max(8, Math.min(r.right - 176, window.innerWidth - 184)), y: r.bottom + 4 })); }}
+        className="-m-1.5 inline-flex items-center gap-1 rounded-lg p-1.5 hover:bg-white/10">{dots}</button>
+      {open && (
+        <span style={{ left: open.x, top: open.y }} onClick={(e) => e.stopPropagation()} className="fixed z-50 w-44 rounded-xl border border-white/10 bg-rink-900 p-2 text-left text-xs shadow-xl">
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-slate-500">Kentällisessä</span>
+          {gurus.map((g) => <span key={g} className="block truncate py-0.5 font-sans text-white">{g}</span>)}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -120,7 +131,7 @@ export default function Stats() {
                     <td className="font-semibold text-white">{c.name}{c.fired ? <span className="chip ml-2 bg-goal/20 text-red-300">Potkut</span> : null}</td>
                     <td><span className="flex items-center gap-2">{c.logo && <img src={c.logo} className="h-5 w-5" alt="" />}{c.team}</span></td>
                     <td className="num">{c.team_points ?? 0}</td>
-                    <td className="num"><Reserved n={c.reserved} max={max} /></td>
+                    <td className="num"><Reserved n={c.reserved} max={max} gurus={c.gurus} /></td>
                     <td className="num scoreboard">{fmt(c.hg)}</td>
                   </tr>
                 ))}
@@ -164,7 +175,7 @@ export default function Stats() {
                       ? (p.pos === 'G' ? <td className="num text-slate-500" colSpan={3}>{p.wins} V · {p.savePct != null ? fmt(p.savePct) : '–'} %</td>
                         : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className="num font-semibold text-white">{p.goals + p.assists}</td></>)
                       : <><td className="num">{p.goals}</td><td className="num">{p.assists}</td><td className="num font-semibold text-white">{p.goals + p.assists}</td><td className={`num ${p.plusMinus > 0 ? 'text-emerald-400' : p.plusMinus < 0 ? 'text-goal' : ''}`}>{p.plusMinus > 0 ? `+${p.plusMinus}` : p.plusMinus}</td><td className="num">{p.pim}</td></>}
-                    <td className="num"><Reserved n={p.reserved} max={p.max} /></td>
+                    <td className="num"><Reserved n={p.reserved} max={p.max} gurus={p.gurus} /></td>
                     <td className="num scoreboard">{fmt(p.hg)}</td>
                   </tr>
                 ))}

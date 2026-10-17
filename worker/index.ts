@@ -162,16 +162,7 @@ app.get('/games/:id', async (c) => {
     for (const r of [...a.results, ...b.results] as { id: number }[]) mine.add(r.id);
   }
   // Kaikkien gurujen nykyiset kentälliset: pelaaja → gurujen nimet
-  const owners = new Map<number, string[]>();
-  {
-    const [a, b] = await db.batch([
-      db.prepare("SELECT s.entity_id AS id, g.name FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.position <> 'C' AND s.end_date IS NULL").bind(season.id),
-      db.prepare("SELECT s.player_id AS id, g.name FROM playoff_slots s JOIN gurus g ON g.id = s.guru_id WHERE s.end_date IS NULL AND g.season_id IN (SELECT id FROM seasons WHERE parent_season_id = ?)").bind(season.id),
-    ]);
-    for (const r of [...a.results, ...b.results] as { id: number; name: string }[]) {
-      const l = owners.get(r.id) ?? []; if (!l.includes(r.name)) l.push(r.name); owners.set(r.id, l);
-    }
-  }
+  const owners = await ownerNames(db, season.id, 'P');
   const [players0, extra, preview] = await Promise.all([
     gameDetail(db, id, season.scoring, mine),
     game?.started ? gameExtra(season.liiga_season, id, game.ended, wu).catch(() => null) : Promise.resolve(null),
@@ -227,6 +218,7 @@ app.get('/standings', async (c) => c.json(await standingsQuery(c.env.DB, c.get('
 app.get('/stats', async (c) => {
   const db = c.env.DB; const season = c.get('season');
   const reqPos = c.req.query('pos');
+  const owners = await ownerNames(db, season.id, 'P');
   const all = reqPos === 'all';
   const pos: 'F' | 'D' | 'G' = reqPos === 'D' || reqPos === 'G' ? reqPos : 'F';
   const roleFilter = all ? '1=1' : pos === 'G' ? "p.role = 'MV'" : pos === 'D' ? "p.role = 'P'" : "p.role NOT IN ('MV','P')";
@@ -244,7 +236,7 @@ app.get('/stats', async (c) => {
       games: r.games, goals: r.goals, assists: r.assists, pim: r.pim, plusMinus: r.plus_minus,
       shutouts: r.shutouts, saves: r.saves, goalsAgainst: r.goals_against, wins: r.wins, savePct: r.save_pct,
       hg: pp === 'G' ? goaliePoints(r, season.scoring.G) : skaterPoints(r, season.scoring[pp]),
-      reserved: usage.get(usageKey(pp, r.id)) ?? 0, max: maxFor(season, pp),
+      reserved: usage.get(usageKey(pp, r.id)) ?? 0, max: maxFor(season, pp), gurus: owners.get(r.id) ?? [],
     };
   }).sort((a, b) => b.hg - a.hg);
   return c.json({ maxPicks: maxFor(season, pos), players: out });
@@ -260,11 +252,29 @@ app.get('/coaches', async (c) => {
     ).bind(season.liiga_season, season.id).all<{ id: number; team_points: number | null }>(),
     usageCounts(db, season.id),
   ]);
+  const owners = await ownerNames(db, season.id, 'C');
   return c.json(res.results.map((r) => ({
     ...r, hg: Math.round((r.team_points ?? 0) * season.scoring.C.teamPoints * 100) / 100,
-    reserved: usage.get(usageKey('C', r.id)) ?? 0, max: maxFor(season, 'C'),
+    reserved: usage.get(usageKey('C', r.id)) ?? 0, max: maxFor(season, 'C'), gurus: owners.get(r.id) ?? [],
   })));
 });
+
+/** Gurujen nykyiset kentälliset: pelaaja/valmentaja-id → gurujen nimet (aakkosjärjestyksessä) */
+async function ownerNames(db: D1Database, seasonId: number, kind: 'P' | 'C') {
+  const stmts = kind === 'C'
+    ? [db.prepare("SELECT s.entity_id AS id, g.name FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.position = 'C' AND s.end_date IS NULL").bind(seasonId)]
+    : [
+      db.prepare("SELECT s.entity_id AS id, g.name FROM roster_slots s JOIN gurus g ON g.id = s.guru_id WHERE g.season_id = ? AND s.position <> 'C' AND s.end_date IS NULL").bind(seasonId),
+      db.prepare("SELECT s.player_id AS id, g.name FROM playoff_slots s JOIN gurus g ON g.id = s.guru_id WHERE s.end_date IS NULL AND g.season_id IN (SELECT id FROM seasons WHERE parent_season_id = ?)").bind(seasonId),
+    ];
+  const res = await db.batch(stmts);
+  const m = new Map<number, string[]>();
+  for (const r of res.flatMap((x) => x.results) as { id: number; name: string }[]) {
+    const l = m.get(r.id) ?? []; if (!l.includes(r.name)) l.push(r.name); m.set(r.id, l);
+  }
+  for (const l of m.values()) l.sort((a, b) => a.localeCompare(b, 'fi'));
+  return m;
+}
 
 /** Pelaajakortti: liiga.fi:n pelaajatiedot (välimuistissa 6 h) */
 app.get('/players/:id/info', async (c) => {
